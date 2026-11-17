@@ -22,23 +22,22 @@ export const router = {
 
       // Static assets
       if (!config.get('isProduction') && !config.get('isTest')) {
-        await (async () => {
-          const createViteServer = (await import('vite')).createServer
-          const vite = await createViteServer({
-            server: { middlewareMode: true },
-            appType: 'custom'
-          })
+        const { createServer: createViteServer } = await import('vite')
+        const vite = await createViteServer({
+          server: { middlewareMode: true },
+          appType: 'custom'
+        })
+        server.ext('onPostStop', () => vite.close())
 
-          await server.register({
-            plugin: (await import('@defra/hapi-connect')).default,
-            options: {
-              path: '/public',
-              middleware: [vite.middlewares]
-            }
-          })
-        })()
+        await server.register({
+          plugin: (await import('@defra/hapi-connect')).default,
+          options: {
+            path: '/public',
+            middleware: [vite.middlewares]
+          }
+        })
       } else {
-        server.register(serveStaticFiles)
+        await server.register(serveStaticFiles)
       }
     }
   }

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 vi.mock('@defra/cdp-auditing', () => ({ setAuditDestination: vi.fn() }))
+vi.mock('@defra/hapi-tracing', () => ({ getTraceId: vi.fn() }))
 
 const originalLogFormat = process.env.LOG_FORMAT
 
@@ -34,5 +35,23 @@ describe('logger destination', () => {
     expect(logDestination).toBeUndefined()
     expect(requestLogger.options.stream).toBeUndefined()
     expect(setAuditDestination).not.toHaveBeenCalled()
+  })
+})
+
+describe('trace id on log lines', () => {
+  test('each log line carries the trace id of the request it belongs to', async () => {
+    const { getTraceId } = await import('@defra/hapi-tracing')
+    vi.mocked(getTraceId).mockReturnValue('trace-abc-123')
+    const { loggerOptions } = await import('./logger-options.js')
+
+    expect(loggerOptions.mixin()).toEqual({ trace: { id: 'trace-abc-123' } })
+  })
+
+  test('log lines outside a request carry no trace id', async () => {
+    const { getTraceId } = await import('@defra/hapi-tracing')
+    vi.mocked(getTraceId).mockReturnValue(null)
+    const { loggerOptions } = await import('./logger-options.js')
+
+    expect(loggerOptions.mixin()).toEqual({})
   })
 })

@@ -1,3 +1,5 @@
+import { EventEmitter } from 'node:events'
+
 import { vi } from 'vitest'
 
 import { Cluster, Redis } from 'ioredis'
@@ -5,15 +7,17 @@ import { Cluster, Redis } from 'ioredis'
 import { config } from '#/config/config.js'
 import { buildRedisClient } from './redis-client.js'
 
-vi.mock('ioredis', () => ({
-  ...vi.importActual('ioredis'),
-  Cluster: vi.fn(function () {
-    return { on: () => ({}) }
-  }),
-  Redis: vi.fn(function () {
-    return { on: () => ({}) }
-  })
-}))
+vi.mock('ioredis', async () => {
+  const { EventEmitter } = await import('node:events')
+  return {
+    Cluster: vi.fn(function () {
+      return new EventEmitter()
+    }),
+    Redis: vi.fn(function () {
+      return new EventEmitter()
+    })
+  }
+})
 
 describe('#buildRedisClient', () => {
   describe('When Redis Single InstanceCache is requested', () => {
@@ -58,6 +62,43 @@ describe('#buildRedisClient', () => {
           },
           slotsRefreshTimeout: 10000
         }
+      )
+    })
+  })
+
+  describe('Connection events', () => {
+    let client
+
+    beforeEach(() => {
+      client = buildRedisClient(config.get('redis'))
+    })
+
+    test('a connection error is handled rather than crashing the service', () => {
+      expect(client).toBeInstanceOf(EventEmitter)
+      expect(() =>
+        client.emit('error', new Error('ECONNREFUSED'))
+      ).not.toThrow()
+    })
+
+    test('a successful connection is handled', () => {
+      expect(client.emit('connect')).toBe(true)
+    })
+  })
+
+  describe('Cluster DNS lookup', () => {
+    test('passes the configured host straight through, as ElastiCache TLS requires', () => {
+      buildRedisClient({
+        ...config.get('redis'),
+        useSingleInstanceCache: false
+      })
+      const { dnsLookup } = Cluster.mock.lastCall[1]
+      const callback = vi.fn()
+
+      dnsLookup('my-cluster.cache.amazonaws.com', callback)
+
+      expect(callback).toHaveBeenCalledWith(
+        null,
+        'my-cluster.cache.amazonaws.com'
       )
     })
   })

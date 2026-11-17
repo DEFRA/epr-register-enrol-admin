@@ -8,7 +8,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reportsDirectory: './coverage',
-      reporter: ['text', 'lcov'],
+      reporter: ['text', 'lcov', 'json-summary'],
       include: ['src/**/*.js'],
       exclude: [
         ...configDefaults.exclude,
@@ -19,7 +19,15 @@ export default defineConfig({
         'vitest.config.js',
         '.sonarlint',
         'babel.config.cjs'
-      ]
+      ],
+      // 100% and no source exclusions: code that no test can run is dead
+      // and gets deleted (see AGENTS.md, Testing).
+      thresholds: {
+        statements: 100,
+        branches: 100,
+        functions: 100,
+        lines: 100
+      }
     }
   }
 })

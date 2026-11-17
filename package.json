@@ -22,7 +22,7 @@
     "lint:scss": "stylelint \"src/**/*.scss\" --cache --cache-location .cache/stylelint --cache-strategy content --color --ignore-path .gitignore",
     "test": "AWS_EMF_ENVIRONMENT=Local TZ=UTC vitest run --coverage",
     "test:watch": "AWS_EMF_ENVIRONMENT=Local TZ=UTC vitest",
-    "security-audit": "npm audit --audit-level=critical",
+    "security-audit": "audit-ci --config audit-ci.jsonc",
     "server:watch": "nodemon --inspect=0.0.0.0 --ext js,json --legacy-watch --watch ./src/server --watch ./src/config --env-file-if-exists=.env ./src",
     "server:debug": "nodemon --inspect-brk=0.0.0.0 --ext js,json --legacy-watch --watch ./src/server --watch ./src/config --env-file-if-exists=.env ./src",
     "prestart": "npm run build:frontend",
@@ -44,7 +44,7 @@
     "@hapi/catbox-memory": "6.0.2",
     "@hapi/catbox-redis": "7.1.0",
     "@hapi/crumb": "9.0.1",
-    "@hapi/hapi": "21.4.10",
+    "@hapi/hapi": "21.4.12",
     "@hapi/inert": "7.1.2",
     "@hapi/scooter": "8.0.0",
     "@hapi/vision": "7.0.3",
@@ -59,7 +59,7 @@
     "hapi-pino": "13.0.0",
     "hapi-pulse": "4.0.0",
     "ioredis": "6.0.0",
-    "joi": "18.2.9",
+    "joi": "18.3.1",
     "lodash": "4.18.1",
     "nunjucks": "3.2.4",
     "pino": "10.4.0",
@@ -69,6 +69,7 @@
     "@babel/preset-env": "8.0.7",
     "@defra/hapi-connect": "1.0.2",
     "@vitest/coverage-v8": "4.1.11",
+    "audit-ci": "7.1.0",
     "cheerio": "1.2.0",
     "eslint": "9.39.5",
     "husky": "9.1.7",
@@ -82,5 +83,11 @@
     "vite": "8.3.3",
     "vitest": "4.1.11",
     "vitest-fetch-mock": "0.4.5"
+  },
+  "overrides": {
+    "@hapi/joi": "npm:joi@17.13.9",
+    "hapi-pulse": {
+      "joi": "$joi"
+    }
   }
 }

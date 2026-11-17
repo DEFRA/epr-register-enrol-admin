@@ -4,7 +4,9 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_epr-register-enrol-admin&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DEFRA_epr-register-enrol-admin)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_epr-register-enrol-admin&metric=coverage)](https://sonarcloud.io/summary/new_code?id=DEFRA_epr-register-enrol-admin)
 
-Core delivery platform Node.js Frontend Template.
+Internal Admin UI for the EPR Registration and Accreditation delivery team, built on the Core Delivery Platform (CDP).
+
+How we build this service (architecture, auth, testing, errors, monitoring, auditing and security) is in [AGENTS.md](AGENTS.md), written for people and AI agents alike. What runs in each environment is in [docs/environments.md](docs/environments.md).
 
 - [Requirements](#requirements)
   - [Node.js](#nodejs)

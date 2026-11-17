@@ -74,7 +74,7 @@ describe('context and cache', () => {
               href: '/about'
             }
           ],
-          serviceName: 'epr-register-enrol-admin',
+          serviceName: 'EPR Registrations and Accreditations Admin',
           serviceUrl: '/'
         })
       })
@@ -163,7 +163,7 @@ describe('context and cache', () => {
               href: '/about'
             }
           ],
-          serviceName: 'epr-register-enrol-admin',
+          serviceName: 'EPR Registrations and Accreditations Admin',
           serviceUrl: '/'
         })
       })

@@ -23,7 +23,7 @@ describe('#errors', () => {
     })
 
     expect(result).toEqual(
-      expect.stringContaining('Page not found | epr-register-enrol-admin')
+      expect.stringContaining('Page not found | EPR Registrations and Accreditations Admin')
     )
     expect(statusCode).toBe(statusCodes.notFound)
   })

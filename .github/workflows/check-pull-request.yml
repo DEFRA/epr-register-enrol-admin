@@ -14,35 +14,68 @@ jobs:
   pr-validator:
     name: Run Pull Request Checks
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Test code and Create Test Coverage Reports
+      - name: Set up Node
         uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Security audit
         run: npm run security-audit
 
-      - run: |
-          npm ci
+      - name: Build, format check, lint and test
+        run: |
           npm run build:frontend
           npm run format:check
           npm run lint
           npm test
 
+      # `npm test` (vitest --coverage) already fails this job if coverage drops
+      # below the thresholds in vitest.config.js; this step only surfaces the
+      # numbers on the PR. Runs even when the step above failed.
+      - name: Report coverage on PR
+        if: always()
+        run: |
+          node -e "
+            const s = require('./coverage/coverage-summary.json').total;
+            const row = (k, label) => \`| \${label} | \${s[k].pct}% | \${s[k].covered}/\${s[k].total} |\`;
+            console.log([
+              '### Test coverage — epr-register-enrol-admin',
+              '| Metric | Coverage | Covered/Total |',
+              '|---|---|---|',
+              row('statements', 'Statements'),
+              row('branches', 'Branches'),
+              row('functions', 'Functions'),
+              row('lines', 'Lines')
+            ].join('\n'));
+          " > /tmp/coverage-comment.md
+
+      - name: Comment coverage on PR
+        if: always()
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3
+        with:
+          header: coverage
+          path: /tmp/coverage-comment.md
+
+      - name: SonarCloud Scan
+        if: github.actor != 'dependabot[bot]'
+        uses: SonarSource/sonarqube-scan-action@v8.2.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.EPR_SONAR_TOKEN }}
+
       - name: Test Docker Image Build
         run: |
           set +e
-          docker build --no-cache --tag cdp-node-frontend-template .
+          docker build --no-cache --tag epr-register-enrol-admin .
           exit $?
-
-#      - name: SonarCloud Scan
-#        if: github.actor != 'dependabot[bot]'
-#        uses: SonarSource/sonarqube-scan-action@v5.3.1 #  (or check latest version on https://github.com/marketplace/actions/official-sonarqube-scan)
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -8,191 +8,55 @@ Internal Admin UI for the EPR Registration and Accreditation delivery team, buil
 
 How we build this service (architecture, auth, testing, errors, monitoring, auditing and security) is in [AGENTS.md](AGENTS.md), written for people and AI agents alike. What runs in each environment is in [docs/environments.md](docs/environments.md).
 
-- [Requirements](#requirements)
-  - [Node.js](#nodejs)
-- [Server-side Caching](#server-side-caching)
-- [Redis](#redis)
-- [Local Development](#local-development)
-  - [Setup](#setup)
-  - [Development](#development)
-  - [Production](#production)
-  - [Npm scripts](#npm-scripts)
-  - [Update dependencies](#update-dependencies)
-  - [Formatting](#formatting)
-    - [Windows prettier issue](#windows-prettier-issue)
-- [Docker](#docker)
-  - [Development image](#development-image)
-  - [Production image](#production-image)
-  - [Docker Compose](#docker-compose)
-  - [Dependabot](#dependabot)
-  - [SonarCloud](#sonarcloud)
-- [Licence](#licence)
-  - [About the licence](#about-the-licence)
-
 ## Requirements
 
-### Node.js
+- Node.js: the version in [`.nvmrc`](.nvmrc). With [nvm](https://github.com/nvm-sh/nvm), run `nvm use`.
+- Docker, for the Compose stack.
 
-Please install Node Version Manager [nvm](https://github.com/creationix/nvm)
-
-To use the correct version of Node.js for this application, via nvm:
-
-```bash
-cd epr-register-enrol-admin
-nvm use
-```
-
-## Server-side Caching
-
-We use Catbox for server-side caching. By default the service will use CatboxRedis when deployed and CatboxMemory for
-local development.
-You can override the default behaviour by setting the `SESSION_CACHE_ENGINE` environment variable to either `redis` or
-`memory`.
-
-Please note: CatboxMemory (`memory`) is _not_ suitable for production use! The cache will not be shared between each
-instance of the service and it will not persist between restarts.
-
-## Redis
-
-Redis is an in-memory key-value store. Every instance of a service has access to the same Redis key-value store similar
-to how services might have a database (or MongoDB). All frontend services are given access to a namespaced prefixed that
-matches the service name. e.g. `my-service` will have access to everything in Redis that is prefixed with `my-service`.
-
-If your service does not require a session cache to be shared between instances or if you don't require Redis, you can
-disable setting `SESSION_CACHE_ENGINE=false` or changing the default value in `src/config/index.js`.
-
-## Proxy
-
-We are using forward-proxy which is set up by default. Services are automatically configured with the proxy environment variables when deployed.
-
-Node.js 24 uses these variables to route outbound HTTP(S) requests through the proxy:
-
-NODE_USE_ENV_PROXY=1
-HTTPS_PROXY=...
-NO_PROXY=...
-
-No additional proxy configuration is required in the service.
-
-## Local Development
-
-### Setup
-
-Install application dependencies:
+## Running locally
 
 ```bash
 npm install
-```
-
-### Git hooks
-
-Install git hooks (optional)
-
-```bash
-npm run git:hooks
-```
-
-### Development
-
-To run the application in `development` mode run:
-
-```bash
 npm run dev
 ```
 
-### Production
+The app runs on <http://localhost:3000> with vite serving front-end assets, sessions held in memory and readable logs.
 
-To mimic the application running in `production` mode locally run:
-
-```bash
-npm start
-```
-
-### Npm scripts
-
-All available Npm scripts can be seen in [package.json](./package.json)
-To view them in your command line run:
+To run it as it runs on CDP (production build, Redis sessions):
 
 ```bash
-npm run
+docker compose up --build
 ```
 
-### Update dependencies
+Compose starts Redis and this service. If port 3000 is taken, set `ADMIN_PORT`, for example `ADMIN_PORT=3010 docker compose up --build`.
 
-To update dependencies use [npm-check-updates](https://github.com/raineorshine/npm-check-updates):
+To run against real Accreditation API and Case Management API instances, start them from the [`epr-register-enrol`](https://github.com/DEFRA/epr-register-enrol) umbrella repo's Compose stack. See [docs/environments.md](docs/environments.md).
 
-> The following script is a good start. Check out all the options on
-> the [npm-check-updates](https://github.com/raineorshine/npm-check-updates)
+## Checks
 
 ```bash
-ncu --interactive --format group
+npm run git:pre-commit-hook
 ```
 
-### Formatting
+This runs what CI runs: the security audit (fails on high vulnerabilities), format check, lint, and the tests with coverage (100% required). The husky pre-commit hook runs it on every commit.
 
-#### Windows prettier issue
+All npm scripts are in [package.json](package.json); `npm run` lists them.
 
-If you are having issues with formatting of line breaks on Windows update your global git config by running:
+## CI and deployment
 
-```bash
-git config --global core.autocrlf false
-```
+| Workflow                                                       | Runs                  | Does                                                                               |
+| -------------------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
+| [Check Pull Request](.github/workflows/check-pull-request.yml) | Every PR to `main`    | Audit, build, format, lint, tests, coverage comment, SonarCloud scan, Docker build |
+| [Publish](.github/workflows/publish.yml)                       | Every merge to `main` | Tests, builds and publishes the image CDP deploys, SonarCloud scan                 |
+| [Publish Hot Fix](.github/workflows/publish-hotfix.yml)        | Started by hand       | As Publish, from a hotfix branch                                                   |
 
-## Docker
+Deployments to each environment are made from the [CDP Portal](https://portal.cdp-int.defra.cloud). Dependabot raises grouped dependency updates weekly ([config](.github/dependabot.yml)).
 
-### Development image
+## Platform notes
 
-> [!TIP]
-> For Apple Silicon users, you may need to add `--platform linux/amd64` to the `docker run` command to ensure
-> compatibility fEx: `docker build --platform=linux/arm64 --no-cache --tag epr-register-enrol-admin`
-
-Build:
-
-```bash
-docker build --target development --no-cache --tag epr-register-enrol-admin:development .
-```
-
-Run:
-
-```bash
-docker run -p 3000:3000 epr-register-enrol-admin:development
-```
-
-### Production image
-
-Build:
-
-```bash
-docker build --no-cache --tag epr-register-enrol-admin .
-```
-
-Run:
-
-```bash
-docker run -p 3000:3000 epr-register-enrol-admin
-```
-
-### Docker Compose
-
-A local environment with:
-
-- Floci (replacing Localstack) for AWS services (S3, SQS)
-- Redis
-- MongoDB
-- This service.
-- A commented out backend example.
-
-```bash
-docker compose up --build -d
-```
-
-### Dependabot
-
-We have added an example dependabot configuration file to the repository. You can enable it by renaming
-the [.github/example.dependabot.yml](.github/example.dependabot.yml) to `.github/dependabot.yml`
-
-### SonarCloud
-
-Instructions for setting up SonarCloud can be found in [sonar-project.properties](./sonar-project.properties).
+- **Sessions:** Redis when deployed, in memory locally. Override with `SESSION_CACHE_ENGINE` (`redis` or `memory`). Memory is not suitable for deployed environments: it is not shared between instances.
+- **Outbound proxy:** CDP sets `HTTPS_PROXY`, `NO_PROXY` and `NODE_USE_ENV_PROXY` when deployed, and Node.js routes outbound requests through it. Nothing to configure in the service.
+- **Windows line endings:** if Prettier reports line-ending changes, run `git config --global core.autocrlf false`.
 
 ## Licence
 

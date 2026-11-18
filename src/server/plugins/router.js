@@ -1,11 +1,13 @@
 import inert from '@hapi/inert'
 
 import { home } from '../routes/home/index.js'
-import { about } from '../routes/about/index.js'
+import { search } from '../routes/search/index.js'
+import { authRoutes } from '../routes/auth/index.js'
 import { health } from '../routes/health/index.js'
 import { cookies } from '../routes/cookies/controller.js'
 import { serveStaticFiles } from './serve-static-files.js'
 import { config } from '#/config/config.js'
+import { statusCodes } from '../common/constants/status-codes.js'
 
 export const router = {
   plugin: {
@@ -18,7 +20,7 @@ export const router = {
       await server.register([cookies])
 
       // Application specific routes, add your own routes here
-      await server.register([home, about])
+      await server.register([home, authRoutes, search])
 
       // Static assets
       if (!config.get('isProduction') && !config.get('isTest')) {
@@ -29,16 +31,27 @@ export const router = {
         })
         server.ext('onPostStop', () => vite.close())
 
-        await server.register({
-          plugin: (await import('@defra/hapi-connect')).default,
-          options: {
-            path: '/public',
-            middleware: [vite.middlewares]
-          }
+        // Front-end assets are public: the sign-in page needs them.
+        server.route({
+          method: 'GET',
+          path: `${config.get('assetPath')}/{param*}`,
+          options: { auth: false },
+          handler: (request, h) => serveFromVite(vite, request, h)
         })
       } else {
         await server.register(serveStaticFiles)
       }
     }
   }
+}
+
+// Hands the request to vite's middleware, which answers it, or passes it on
+// (calls next) for a file it doesn't have.
+function serveFromVite(vite, request, h) {
+  const { req, res } = request.raw
+  vite.middlewares(req, res, () => {
+    res.statusCode = statusCodes.notFound
+    res.end()
+  })
+  return h.abandon
 }

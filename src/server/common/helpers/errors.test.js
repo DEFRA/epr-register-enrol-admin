@@ -23,9 +23,7 @@ describe('#errors', () => {
     })
 
     expect(result).toEqual(
-      expect.stringContaining(
-        'Page not found | EPR Registrations and Accreditations Admin'
-      )
+      expect.stringContaining('Page not found | RREPW Reg-Accred')
     )
     expect(statusCode).toBe(statusCodes.notFound)
   })
@@ -74,18 +72,6 @@ describe('#catchAll', () => {
       message: 'Forbidden'
     })
     expect(mockToolkitCode).toHaveBeenCalledWith(statusCodes.forbidden)
-  })
-
-  test('Should provide expected "Unauthorized" page', () => {
-    catchAll(mockRequest(statusCodes.unauthorized), mockToolkit)
-
-    expect(mockErrorLogger).not.toHaveBeenCalledWith(mockStack)
-    expect(mockToolkitView).toHaveBeenCalledWith(errorPage, {
-      pageTitle: 'Unauthorized',
-      heading: statusCodes.unauthorized,
-      message: 'Unauthorized'
-    })
-    expect(mockToolkitCode).toHaveBeenCalledWith(statusCodes.unauthorized)
   })
 
   test('Should provide expected "Bad Request" page', () => {

@@ -1,0 +1,30 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-l">You do not have access to {{ serviceName }}</h1>
+
+      <p class="govuk-body">
+        You're signed in as <strong data-testid="signed-in-as">{{ email }}</strong>,
+        but this account is not in the {{ serviceName }} group in Entra ID.
+      </p>
+
+      <p class="govuk-body">
+        If you signed in with the wrong account,
+        <a href="/auth/sign-out" class="govuk-link">sign out and sign in again</a>.
+      </p>
+
+      <h2 class="govuk-heading-m">Getting access</h2>
+
+      <p class="govuk-body">
+        Ask someone in the RREPW Reg-Accred team to add the account above to the
+        {{ serviceName }} group.
+      </p>
+
+      <p class="govuk-body govuk-hint">
+        We've recorded this attempt in the service's audit log, {{ auditedAt | formatDate("d MMMM yyyy 'at' HH:mm") }}.
+      </p>
+    </div>
+  </div>
+{% endblock %}

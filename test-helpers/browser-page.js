@@ -16,7 +16,7 @@ const windowListeners = []
  * Only for tests running in the jsdom environment.
  */
 export async function loadPage({
-  path = '/',
+  path = '/auth/sign-in',
   googleTagManagerKey = '',
   consent
 } = {}) {

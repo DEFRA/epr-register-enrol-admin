@@ -4,6 +4,21 @@ services:
     networks:
       - cdp-tenant
 
+  # Stands in for Entra ID. Sign in as support.readonly@test.gov.uk (has the
+  # role) or no.role@test.gov.uk (doesn't); the password is "pass".
+  epr-register-enrol-entra-stub:
+    image: defradigital/epr-register-enrol-entra-stub:${EPR_REGISTER_ENROL_ENTRA_STUB:-latest}
+    ports:
+      - '3010:3010'
+    environment:
+      # The browser reaches the stub on localhost; this service reaches it by
+      # its Compose name.
+      STUB_EXTERNAL_URL: http://localhost:3010
+      STUB_INTERNAL_URL: http://epr-register-enrol-entra-stub:3010
+      CALLBACK_ADMIN_URL: http://localhost:${ADMIN_PORT:-3000}
+    networks:
+      - cdp-tenant
+
   epr-register-enrol-admin:
     build: ./
     ports:
@@ -11,6 +26,8 @@ services:
       - '${ADMIN_PORT:-3000}:3000'
     depends_on:
       redis:
+        condition: service_started
+      epr-register-enrol-entra-stub:
         condition: service_started
     environment:
       PORT: 3000
@@ -20,6 +37,9 @@ services:
       SESSION_COOKIE_SECURE: false
       USE_SINGLE_INSTANCE_CACHE: true
       REDIS_TLS: false
+      AUTH_PROVIDER: defra-stub
+      ENTRA_STUB_URL: http://epr-register-enrol-entra-stub:3010
+      APP_BASE_URL: http://localhost:${ADMIN_PORT:-3000}
     networks:
       - cdp-tenant
 

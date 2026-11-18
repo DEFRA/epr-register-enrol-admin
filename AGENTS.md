@@ -94,21 +94,24 @@ admin-services guide lists forwarding the user's Entra token to the backend.
 We have chosen HMAC deliberately, so the backends never have to accept or
 validate a user token.
 
-Neither is built yet: user auth arrives with RA-738, service-to-service auth
-with the first backend integration.
+**User auth is built** (RA-738):
 
-Reuse what the team already has before writing new code. When building either
-side, start from these and copy or extract them, rather than writing a second
-version that will drift:
+- `openid-client` runs the sign-in (authorisation code with PKCE, state and
+  nonce) and token refresh. It checks the ID token; the user's roles come
+  from its `roles` claim.
+- The session lives in Redis through yar. `src/server/plugins/auth.js` makes
+  every route need the role by default.
+- `AUTH_PROVIDER` picks the stub, the Defra Dev tenant or the Defra tenant;
+  see [docs/environments.md](docs/environments.md).
+- A new route needs nothing to be protected. Making one public means
+  `auth: false` (or `publicRoute`, to show who is signed in) plus an entry,
+  with its reason, in `route-protection.test.js`.
 
-- HMAC request signing and the backend client:
-  `epr-register-enrol-management-fe`,
-  `src/server/common/helpers/backend-api/` (`sign-request.js`,
-  `backend-api.js`).
-- Entra ID sign-in, and its stub for local use:
-  `epr-register-enrol-management-fe`, `src/server/common/helpers/auth/`.
-- A stand-in Entra ID for local and non-production use:
-  `DEFRA/epr-register-enrol-entra-stub`.
+Service-to-service auth arrives with the first backend integration. Reuse what
+the team already has rather than writing a second version that will drift:
+HMAC request signing and the backend client in
+`epr-register-enrol-management-fe`, `src/server/common/helpers/backend-api/`
+(`sign-request.js`, `backend-api.js`).
 
 ## Errors: tell the user, keep them on the page
 
@@ -197,10 +200,16 @@ parsing or record linking, where the algorithm itself is the behaviour.
 Mock only what lies outside this application, and mock it at the outermost
 layer:
 
-- Backend APIs: mock at the HTTP layer with `vitest-fetch-mock`, so our own
-  API client code runs in every test.
-- Entra ID, `@defra/cdp-auditing`, `@defra/cdp-metrics`, Redis: mock the
-  dependency itself.
+- Outbound HTTP (backend APIs, Entra ID): mock at the network with `msw`, so
+  our own client code runs in every test. The shared server is
+  `test-helpers/msw-server.js`, and any request a test hasn't set up fails the
+  test. For sign-in, `test-helpers/fake-entra.js` serves a fake provider and
+  `signIn()` signs a user in through the real routes.
+- `@defra/cdp-auditing`, `@defra/cdp-metrics`, Redis: mock the dependency
+  itself.
+
+msw, not a `fetch` mock, because it also catches requests made with Node's
+`http` module, which some libraries use instead of `fetch`.
 
 Every module inside this repo runs for real in new tests. If one genuinely
 cannot, mock it and leave a comment saying why. Some tests that came with the

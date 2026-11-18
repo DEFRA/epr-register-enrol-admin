@@ -42,9 +42,9 @@ export const config = convict({
     env: 'STATIC_CACHE_TIMEOUT'
   },
   serviceName: {
-    doc: 'Applications Service Name',
+    doc: 'Service name shown in the GOV.UK service navigation and page titles',
     format: String,
-    default: 'epr-register-enrol-admin'
+    default: 'EPR Registrations and Accreditations Admin'
   },
   root: {
     doc: 'Project root',
@@ -106,12 +106,6 @@ export const config = convict({
     nullable: true,
     default: null,
     env: 'HTTP_PROXY'
-  },
-  isSecureContextEnabled: {
-    doc: 'Enable Secure Context',
-    format: Boolean,
-    default: isProduction,
-    env: 'ENABLE_SECURE_CONTEXT'
   },
   session: {
     cache: {

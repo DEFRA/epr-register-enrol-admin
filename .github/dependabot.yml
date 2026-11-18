@@ -6,52 +6,58 @@ updates:
     directory: /
     open-pull-requests-limit: 10
 
-    # Group packages into shared PR
+    # Group packages into shared PRs
     groups:
       build:
         patterns:
           - '@babel/*'
-          - 'autoprefixer'
-          - 'babel-plugin-module-resolver'
-          - 'babel-loader'
-          - 'babel-plugin-transform-import-meta'
-          - 'tsx'
-          - 'webpack'
-          - 'webpack-*'
-          - 'terser-webpack-plugin'
+          - 'cssnano'
+          - 'cssnano-*'
+          - 'sass-embedded'
+          - 'vite'
+          - 'vite-*'
+
+      defra:
+        patterns:
+          - '@defra/*'
+
+      govuk:
+        patterns:
+          - 'govuk-frontend'
+
+      hapi:
+        patterns:
+          - '@hapi/*'
+          - 'hapi-*'
+          - 'blankie'
 
       lint:
         patterns:
+          - 'audit-ci'
+          - 'eslint'
+          - 'eslint-*'
+          - 'neostandard'
           - 'prettier'
           - 'stylelint'
           - 'stylelint-*'
 
       logging:
         patterns:
-          - '*-pino'
-          - '*-pino-format'
+          - '@elastic/ecs-pino-format'
+          - 'hapi-pino'
           - 'pino'
           - 'pino-*'
 
       tools:
         patterns:
+          - 'cheerio'
           - 'husky'
-          - 'vitest'
-          - 'vitest-*'
+          - 'jsdom'
           - 'nodemon'
           - 'npm-run-all'
-          - 'lodash'
-          - 'source-map-loader'
-          - 'sass-*'
-          - 'postcss-*'
-
-      types:
-        patterns:
-          - '@types/*'
-
-    ignore:
-      - dependency-name: 'eslint-*'
-      - dependency-name: 'eslint'
+          - 'vitest'
+          - 'vitest-*'
+          - '@vitest/*'
 
     # Schedule run every Monday, local time
     schedule:

@@ -3,17 +3,20 @@ import { vi } from 'vitest'
 import { Cluster, Redis } from 'ioredis'
 
 import { config } from '#/config/config.js'
+import { createLogger } from './logging/logger.js'
 import { buildRedisClient } from './redis-client.js'
 
-vi.mock('ioredis', () => ({
-  ...vi.importActual('ioredis'),
-  Cluster: vi.fn(function () {
-    return { on: () => ({}) }
-  }),
-  Redis: vi.fn(function () {
-    return { on: () => ({}) }
-  })
-}))
+vi.mock('ioredis', async () => {
+  const { EventEmitter } = await import('node:events')
+  return {
+    Cluster: vi.fn(function () {
+      return new EventEmitter()
+    }),
+    Redis: vi.fn(function () {
+      return new EventEmitter()
+    })
+  }
+})
 
 describe('#buildRedisClient', () => {
   describe('When Redis Single InstanceCache is requested', () => {
@@ -58,6 +61,56 @@ describe('#buildRedisClient', () => {
           },
           slotsRefreshTimeout: 10000
         }
+      )
+    })
+  })
+
+  describe('Connection events', () => {
+    let client
+    const logger = createLogger()
+
+    beforeEach(() => {
+      client = buildRedisClient(config.get('redis'))
+    })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    test('a connection error is logged as an error, not thrown', () => {
+      const logError = vi.spyOn(logger, 'error')
+
+      expect(() =>
+        client.emit('error', new Error('ECONNREFUSED'))
+      ).not.toThrow()
+      expect(logError).toHaveBeenCalledWith(
+        'Redis connection error Error: ECONNREFUSED'
+      )
+    })
+
+    test('a successful connection is logged', () => {
+      const logInfo = vi.spyOn(logger, 'info')
+
+      client.emit('connect')
+
+      expect(logInfo).toHaveBeenCalledWith('Connected to Redis server')
+    })
+  })
+
+  describe('Cluster DNS lookup', () => {
+    test('passes the configured host straight through, as ElastiCache TLS requires', () => {
+      buildRedisClient({
+        ...config.get('redis'),
+        useSingleInstanceCache: false
+      })
+      const { dnsLookup } = Cluster.mock.lastCall[1]
+      const callback = vi.fn()
+
+      dnsLookup('my-cluster.cache.amazonaws.com', callback)
+
+      expect(callback).toHaveBeenCalledWith(
+        null,
+        'my-cluster.cache.amazonaws.com'
       )
     })
   })

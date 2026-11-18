@@ -60,7 +60,7 @@ export const cookieConsent = {
           request.response.source.context.cookiesPolicy = cookiesPolicy
 
           // Pass the current URL so the banner form can redirect back
-          request.response.source.context.currentPath = `${request.path}${request.url.search ?? ''}`
+          request.response.source.context.currentPath = `${request.path}${request.url.search}`
 
           // Server-side removal of GA cookies when analytics is rejected.
           // This is essential for users without JavaScript.

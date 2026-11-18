@@ -20,7 +20,9 @@ vi.mock(import('#/config/config.js'), async (importOriginal) => {
   return {
     config: {
       get(key) {
-        if (key === 'isProduction') return true
+        if (key === 'isProduction') {
+          return true
+        }
         return originalModule.config.get(key)
       }
     }
@@ -72,7 +74,7 @@ describe('context and cache', () => {
               href: '/about'
             }
           ],
-          serviceName: 'epr-register-enrol-admin',
+          serviceName: 'EPR Registrations and Accreditations Admin',
           serviceUrl: '/'
         })
       })
@@ -161,7 +163,7 @@ describe('context and cache', () => {
               href: '/about'
             }
           ],
-          serviceName: 'epr-register-enrol-admin',
+          serviceName: 'EPR Registrations and Accreditations Admin',
           serviceUrl: '/'
         })
       })

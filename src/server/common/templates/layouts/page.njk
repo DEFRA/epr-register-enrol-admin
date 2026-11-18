@@ -39,17 +39,17 @@
 {% endblock %}
 
 {% block header %}
-  {# serviceName being used in govukHeader will be @deprecated in v6. It has moved to govukServiceNavigation - https://github.com/alphagov/govuk-frontend/blob/main/CHANGELOG.md#move-service-name-and-navigation-links-from-the-govuk-header-to-service-navigation-component #}
   {{ govukHeader({
     homepageUrl: "https://www.gov.uk/",
     classes: "app-header",
     containerClasses: "govuk-width-container",
-    serviceName: serviceName,
-    serviceUrl: serviceUrl,
     useTudorCrown: true
   }) }}
 
+  {# GOV.UK Frontend v6 shows the service name in service navigation, not the header #}
   {{ govukServiceNavigation({
+    serviceName: serviceName,
+    serviceUrl: serviceUrl,
     navigation: navigation
   }) }}
 {% endblock %}

@@ -1,10 +1,4 @@
 {
   "high": true,
-  "allowlist": [
-    // picomatch: ReDoS on repeated extglobs (high). No upstream fix as of
-    // 2026-11-18 (every release up to 4.0.7 affected). Reached only through
-    // build, lint and template-watch tooling, with glob patterns we write,
-    // never user input. Remove this entry once a patched picomatch exists.
-    "GHSA-fc5q-39xc-vjpf"
-  ]
+  "allowlist": []
 }

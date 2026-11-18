@@ -1,10 +1,9 @@
-import { EventEmitter } from 'node:events'
-
 import { vi } from 'vitest'
 
 import { Cluster, Redis } from 'ioredis'
 
 import { config } from '#/config/config.js'
+import { createLogger } from './logging/logger.js'
 import { buildRedisClient } from './redis-client.js'
 
 vi.mock('ioredis', async () => {
@@ -68,20 +67,33 @@ describe('#buildRedisClient', () => {
 
   describe('Connection events', () => {
     let client
+    const logger = createLogger()
 
     beforeEach(() => {
       client = buildRedisClient(config.get('redis'))
     })
 
-    test('a connection error is handled rather than crashing the service', () => {
-      expect(client).toBeInstanceOf(EventEmitter)
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    test('a connection error is logged as an error, not thrown', () => {
+      const logError = vi.spyOn(logger, 'error')
+
       expect(() =>
         client.emit('error', new Error('ECONNREFUSED'))
       ).not.toThrow()
+      expect(logError).toHaveBeenCalledWith(
+        'Redis connection error Error: ECONNREFUSED'
+      )
     })
 
-    test('a successful connection is handled', () => {
-      expect(client.emit('connect')).toBe(true)
+    test('a successful connection is logged', () => {
+      const logInfo = vi.spyOn(logger, 'info')
+
+      client.emit('connect')
+
+      expect(logInfo).toHaveBeenCalledWith('Connected to Redis server')
     })
   })
 

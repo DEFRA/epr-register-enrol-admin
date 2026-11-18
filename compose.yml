@@ -20,7 +20,6 @@ services:
       SESSION_COOKIE_SECURE: false
       USE_SINGLE_INSTANCE_CACHE: true
       REDIS_TLS: false
-      ENABLE_SECURE_CONTEXT: false
     networks:
       - cdp-tenant
 

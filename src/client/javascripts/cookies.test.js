@@ -2,7 +2,7 @@
 // @vitest-environment-options { "url": "https://admin.service.example.gov.uk/" }
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { loadPage } from '#/test-helpers/browser-page.js'
+import { closePage, loadPage } from '#/test-helpers/browser-page.js'
 
 // The browser's network: the banner posts the user's choice with XHR.
 class FakeXhr {
@@ -82,6 +82,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  closePage()
   for (const name of cookieNames()) {
     document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
   }

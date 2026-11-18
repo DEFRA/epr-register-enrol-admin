@@ -24,7 +24,7 @@ describe('Home page', () => {
     await server.stop({ timeout: 0 })
   })
 
-  test('names the service in the GOV.UK header, heading and page title', () => {
+  test('names the service in the service navigation, heading and page title', () => {
     expect($('.govuk-service-navigation__service-name').text().trim()).toBe(
       serviceName
     )

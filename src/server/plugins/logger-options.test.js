@@ -39,19 +39,35 @@ describe('logger destination', () => {
 })
 
 describe('trace id on log lines', () => {
-  test('each log line carries the trace id of the request it belongs to', async () => {
+  // Write one real log line with the service's logger options and return it.
+  async function logOneLine(traceId) {
+    process.env.LOG_FORMAT = 'ecs'
     const { getTraceId } = await import('@defra/hapi-tracing')
-    vi.mocked(getTraceId).mockReturnValue('trace-abc-123')
+    vi.mocked(getTraceId).mockReturnValue(traceId)
     const { loggerOptions } = await import('./logger-options.js')
+    const { pino } = await import('pino')
 
-    expect(loggerOptions.mixin()).toEqual({ trace: { id: 'trace-abc-123' } })
+    const lines = []
+    const logger = pino(
+      { ...loggerOptions, enabled: true },
+      { write: (line) => lines.push(JSON.parse(line)) }
+    )
+    logger.info('something happened')
+
+    return lines[0]
+  }
+
+  test('a line logged during a request carries that request’s trace id', async () => {
+    const line = await logOneLine('trace-abc-123')
+
+    expect(line.message).toBe('something happened')
+    expect(line.trace).toEqual({ id: 'trace-abc-123' })
   })
 
-  test('log lines outside a request carry no trace id', async () => {
-    const { getTraceId } = await import('@defra/hapi-tracing')
-    vi.mocked(getTraceId).mockReturnValue(null)
-    const { loggerOptions } = await import('./logger-options.js')
+  test('a line logged outside a request carries no trace id', async () => {
+    const line = await logOneLine(null)
 
-    expect(loggerOptions.mixin()).toEqual({})
+    expect(line.message).toBe('something happened')
+    expect(line).not.toHaveProperty('trace')
   })
 })

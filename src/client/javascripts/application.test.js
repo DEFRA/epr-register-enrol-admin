@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 
-import { loadPage } from '#/test-helpers/browser-page.js'
+import { closePage, loadPage } from '#/test-helpers/browser-page.js'
 
 // The browser's network: accepting cookies posts the choice with XHR.
 class SilentXhr {
@@ -15,6 +15,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  closePage()
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
 })

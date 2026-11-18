@@ -28,13 +28,12 @@ describe('Config defaults in production', () => {
     ])
   })
 
-  test('uses Redis for sessions, secure cookies and the secure context', async () => {
+  test('uses Redis for sessions and secure cookies', async () => {
     const config = await loadConfig('production')
 
     expect(config.get('session.cache.engine')).toBe('redis')
     expect(config.get('session.cookie.secure')).toBe(true)
     expect(config.get('cookieConsent.policy.isSecure')).toBe(true)
-    expect(config.get('isSecureContextEnabled')).toBe(true)
   })
 })
 
@@ -47,6 +46,5 @@ describe('Config defaults in local development', () => {
     expect(config.get('log.redact')).toEqual([])
     expect(config.get('session.cache.engine')).toBe('memory')
     expect(config.get('session.cookie.secure')).toBe(false)
-    expect(config.get('isSecureContextEnabled')).toBe(false)
   })
 })

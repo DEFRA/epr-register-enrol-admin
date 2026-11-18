@@ -22,15 +22,15 @@ npm run dev
 
 The app runs on <http://localhost:3000> with vite serving front-end assets, sessions held in memory and readable logs.
 
-To run it as it runs on CDP (production build, Redis sessions):
+To run the production build with Redis sessions, closer to how it runs on CDP:
 
 ```bash
 docker compose up --build
 ```
 
-Compose starts Redis and this service. If port 3000 is taken, set `ADMIN_PORT`, for example `ADMIN_PORT=3010 docker compose up --build`.
+Compose starts Redis and this service. If port 3000 is taken, set `ADMIN_PORT`, for example `ADMIN_PORT=3010 docker compose up --build`. It differs from CDP in a few ways so it works on a laptop: readable logs instead of ECS, cookies allowed over plain HTTP, and Redis without TLS or a cluster.
 
-To run against real Accreditation API and Case Management API instances, start them from the [`epr-register-enrol`](https://github.com/DEFRA/epr-register-enrol) umbrella repo's Compose stack. See [docs/environments.md](docs/environments.md).
+The app doesn't call the Accreditation API or Case Management API yet. When it does, real local instances will come from the [`epr-register-enrol`](https://github.com/DEFRA/epr-register-enrol) umbrella repo's Compose stack. See [docs/environments.md](docs/environments.md).
 
 ## Checks
 
@@ -38,7 +38,7 @@ To run against real Accreditation API and Case Management API instances, start t
 npm run git:pre-commit-hook
 ```
 
-This runs what CI runs: the security audit (fails on high vulnerabilities), format check, lint, and the tests with coverage (100% required). The husky pre-commit hook runs it on every commit.
+This runs the security audit (fails on high vulnerabilities), format check, lint, and the tests with coverage (100% required). The husky pre-commit hook runs it on every commit. CI runs the same checks, and also builds the front end, runs the SonarCloud scan and builds the Docker image.
 
 All npm scripts are in [package.json](package.json); `npm run` lists them.
 
@@ -55,7 +55,8 @@ Deployments to each environment are made from the [CDP Portal](https://portal.cd
 ## Platform notes
 
 - **Sessions:** Redis when deployed, in memory locally. Override with `SESSION_CACHE_ENGINE` (`redis` or `memory`). Memory is not suitable for deployed environments: it is not shared between instances.
-- **Outbound proxy:** CDP sets `HTTPS_PROXY`, `NO_PROXY` and `NODE_USE_ENV_PROXY` when deployed, and Node.js routes outbound requests through it. Nothing to configure in the service.
+- **Outbound proxy:** CDP sets `HTTP_PROXY` when deployed. This service's `defaults.env` in [`cdp-app-config`](https://github.com/DEFRA/cdp-app-config) sets `NODE_USE_ENV_PROXY`, `HTTPS_PROXY` and `NO_PROXY`, so Node.js routes outbound requests through the proxy with no code. Change `NO_PROXY` there, not in the service.
+- **Dependency overrides:** `overrides` in `package.json` force patched versions of `joi` into `blankie` (which depends on the old `@hapi/joi`) and `hapi-pulse`, to fix high-severity advisories in the versions they ask for. Remove each one once that package depends on a patched `joi` itself.
 - **Windows line endings:** if Prettier reports line-ending changes, run `git config --global core.autocrlf false`.
 
 ## Licence

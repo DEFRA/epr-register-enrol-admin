@@ -20,6 +20,7 @@ follow it. The docs repo is often cloned beside this one at
 
 | Working on                     | Read                                                   |
 | ------------------------------ | ------------------------------------------------------ |
+| Admin service setup, auth      | `how-to/admin-services.md`                             |
 | Audit events                   | `how-to/auditing.md`, `faq/soc-audit-logging.md`       |
 | Logging, personal data in logs | `how-to/logging.md`, `how-to/pii-exposure-in-logs.md`  |
 | Dashboards, alerts             | `how-to/monitoring.md`, `faq/monitoring-alerting.md`   |
@@ -41,13 +42,14 @@ picking one silently.
 
 - Server-side rendered hapi frontend: Nunjucks views, GOV.UK Frontend, sessions
   in Redis. No client-side app.
-- It reads from two Reg-Accred backends. More may follow.
+- It will read from two Reg-Accred backends (no backend client exists yet).
+  More may follow.
   - **Accreditation API**: `DEFRA/epr-register-enrol-backend` (operator journey data).
   - **Case Management API**: `DEFRA/epr-register-enrol-management-be`.
 - Internal only: served on `*.cdp-int.defra.cloud` URLs, reachable over the
   CDP VPN. There is no public route.
 - Users hold SC clearance. That is a people and process control; the code
-  enforces sign-in and Entra group membership (below).
+  must enforce sign-in and Entra group membership (below).
 
 ### Read-only in production
 
@@ -56,7 +58,8 @@ non-production environments only, to help testing and support rehearsals.
 Every write path is:
 
 1. behind a config flag that defaults to off, and
-2. guarded server-side so it refuses in production whatever the flag says, and
+2. guarded server-side so it refuses in production whatever the flag says
+   (decided from CDP's `ENVIRONMENT`, never `NODE_ENV`), and
 3. audited.
 
 Each of the three has a test. The full rules are in
@@ -75,7 +78,7 @@ Keep the two apart in code, config and conversation.
 
 - **User auth** answers "who is using the Admin UI?". Microsoft Entra ID
   sign-in, app role `Waste.SupportUser.ReadOnly`, group `AG-EPR-SUPPORT`.
-  Every route requires an authenticated user with the role; access is denied
+  Every route must require an authenticated user with the role; access is denied
   by default and a route opts out only for platform needs (`/health`, static
   assets).
 - **Service-to-service auth** answers "is this caller the Admin UI?". The
@@ -86,11 +89,26 @@ Keep the two apart in code, config and conversation.
   value.
 
 HMAC is the agreed choice for this service (epic RA-639). CDP's
-service-to-service guide also describes AWS web identity tokens; we have
-chosen HMAC deliberately.
+service-to-service guide also describes AWS web identity tokens, and its
+admin-services guide lists forwarding the user's Entra token to the backend.
+We have chosen HMAC deliberately, so the backends never have to accept or
+validate a user token.
 
 Neither is built yet: user auth arrives with RA-738, service-to-service auth
 with the first backend integration.
+
+Reuse what the team already has before writing new code. When building either
+side, start from these and copy or extract them, rather than writing a second
+version that will drift:
+
+- HMAC request signing and the backend client:
+  `epr-register-enrol-management-fe`,
+  `src/server/common/helpers/backend-api/` (`sign-request.js`,
+  `backend-api.js`).
+- Entra ID sign-in, and its stub for local use:
+  `epr-register-enrol-management-fe`, `src/server/common/helpers/auth/`.
+- A stand-in Entra ID for local and non-production use:
+  `DEFRA/epr-register-enrol-entra-stub`.
 
 ## Errors: tell the user, keep them on the page
 
@@ -101,12 +119,16 @@ Load is low, so every error matters and every error is visible.
   right now"), and keep the rest of the page working. The user stays where
   they are.
 - Log every failure at `error` level, with the upstream service named and the
-  trace ID carried by `@defra/hapi-tracing`. An `error` log is what raises an
-  alert.
+  trace ID carried by `@defra/hapi-tracing`. A failure shown in a banner still
+  returns a 200, so CDP's default metric alerts (status codes, response time,
+  tasks, CPU, memory) won't see it. An OpenSearch alert matching `error` logs
+  is what catches it; that alert is built in Grafana (see below), not
+  automatic.
 - Banners and error pages show our own wording only: stack traces and upstream
   response bodies stay in the logs.
-- The catch-all error page (`src/server/common/helpers/errors.js`) is the last
-  resort for unhandled exceptions. Reaching it is itself a bug to fix.
+- The catch-all error page (`src/server/common/helpers/errors.js`) renders
+  every error response: 404s, 401s, 403s and CSRF 400s, and, as a last resort,
+  unhandled exceptions. A 5xx reaching it is a bug to fix.
 
 ## Monitoring and alerting
 
@@ -116,8 +138,10 @@ Any error, 5xx, upstream failure or timeout should reach the team.
   the dev `Playground/epr-register-enrol-admin-monitoring` folder and ask
   `#cdp-support` to promote them. Check the CDP monitoring docs before adding
   anything alerting-related to the repo.
-- Alert channels follow CDP naming: `epr-register-enrol-admin-team-alerts-non-prod`
-  and `epr-register-enrol-admin-team-alerts-prod`.
+- Alerts go to the team's shared Slack channels,
+  `epr-register-enrol-team-alerts-non-prod` and
+  `epr-register-enrol-team-alerts-prod`, as for the other `epr-register-enrol-*`
+  services. They are set in `cdp-tenant-config`, not in this repo.
 - Custom metrics are unlikely to be needed. If they are, use `request.metrics`
   from `@defra/cdp-metrics` with low-cardinality dimensions (route, outcome),
   never user or record IDs.
@@ -125,8 +149,8 @@ Any error, 5xx, upstream failure or timeout should reach the team.
 ## Auditing
 
 Use `audit()` from `@defra/cdp-auditing`. Audit events go to the CDP SOC
-pipeline, not OpenSearch, and can be read from CDP Terminal in dev and test
-only.
+pipeline, not OpenSearch, and can be read from CDP Terminal in dev, test and
+perf-test only.
 
 Audit these events:
 
@@ -145,6 +169,14 @@ and the minimum context needed; agree any personal data with SOC first.
 Unit test coverage is 100% for statements, branches, functions and lines, and
 the build fails below that. There are no coverage exclusions for source code:
 code that cannot be run by a test is dead, and gets deleted.
+
+Coverage comes from tests that would fail if the code were wrong. Every test
+asserts an outcome someone relies on: what the user sees, what is logged or
+audited, what is sent to another service. A test that only runs a line
+(checking a listener exists, that a call doesn't throw, or that a config value
+is set when nothing reads it) is not a test. Write a real assertion, or, if the
+code has no observable effect, delete the code. Name each test for the
+behaviour it checks.
 
 ### Test behaviour from the user's view
 
@@ -165,13 +197,16 @@ parsing or record linking, where the algorithm itself is the behaviour.
 Mock only what lies outside this application, and mock it at the outermost
 layer:
 
-- Backend APIs: mock at the HTTP layer (undici `MockAgent` or
-  `vitest-fetch-mock`), so our own API client code runs in every test.
+- Backend APIs: mock at the HTTP layer with `vitest-fetch-mock`, so our own
+  API client code runs in every test.
 - Entra ID, `@defra/cdp-auditing`, `@defra/cdp-metrics`, Redis: mock the
   dependency itself.
 
-Every module inside this repo runs for real in tests. If one genuinely cannot,
-mock it and leave a comment saying why.
+Every module inside this repo runs for real in new tests. If one genuinely
+cannot, mock it and leave a comment saying why. Some tests that came with the
+CDP template mock in-repo modules (`context.test.js`, `cache-engine.test.js`,
+`start-server.test.js`); don't copy them, and bring them into line when you
+touch them.
 
 > **Deliberate contradiction:** `epr-register-enrol-frontend`'s `CLAUDE.md`
 > tells agents to mock `apiClient` with `vi.spyOn`. This repo does not follow
@@ -216,6 +251,7 @@ cleared for display.
 
 ## Quality gates
 
-Before pushing, run what CI runs: `npm run git:pre-commit-hook` (security
-audit, format check, lint, tests with coverage). The husky pre-commit hook runs
+Before pushing, run `npm run git:pre-commit-hook` (security audit, format
+check, lint, tests with coverage). CI also builds the front end, runs the
+SonarCloud scan and builds the Docker image. The husky pre-commit hook runs
 it on every commit.

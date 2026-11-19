@@ -32,6 +32,17 @@ Every page needs you to sign in. Locally you sign in through [`epr-register-enro
 
 The stub issues no refresh tokens, so you sign in again after about an hour. Who users sign in with in each environment, and the settings for it, are in [docs/environments.md](docs/environments.md#signing-in).
 
+To sign in through real Entra ID on the Defra Dev tenant instead, with a Defra Dev account in `AG-EPR-SUPPORT`:
+
+```bash
+AUTH_PROVIDER=defra-dev \
+ENTRA_CLIENT_ID=<the Defra Dev app registration's client ID> \
+ENTRA_CLIENT_SECRET=<its client secret> \
+npm run dev
+```
+
+The registration accepts `http://localhost:3000`, so run on port 3000.
+
 To run the production build with Redis sessions, closer to how it runs on CDP:
 
 ```bash

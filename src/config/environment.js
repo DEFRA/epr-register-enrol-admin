@@ -56,8 +56,9 @@ export function productionConfigProblems(config) {
 export function assertSafeForEnvironment(config) {
   const problems = productionConfigProblems(config)
   if (problems.length > 0) {
+    const environment = config.get('environment') || 'an unknown environment'
     throw new Error(
-      `Refusing to start in ${config.get('environment')}: ${problems.join('; ')}`
+      `Refusing to start in ${environment}: ${problems.join('; ')}`
     )
   }
 }

@@ -3,6 +3,7 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   test,
@@ -23,11 +24,30 @@ const minutes = (n) => n * 60 * 1000
 
 describe('A signed-in session', () => {
   let server
+  let logged
 
   beforeAll(async () => {
     server = await createServer()
+    // Record what each request logs, as it would reach OpenSearch.
+    server.ext('onRequest', (request, h) => {
+      for (const level of ['info', 'error']) {
+        const log = request.logger[level].bind(request.logger)
+        request.logger[level] = (message, ...rest) => {
+          logged.push({ level, message })
+          return log(message, ...rest)
+        }
+      }
+      return h.continue
+    })
     await server.initialize()
   })
+
+  beforeEach(() => {
+    logged = []
+  })
+
+  const sessionEnded = () =>
+    logged.filter(({ message }) => String(message).startsWith('Session ended'))
 
   afterAll(async () => {
     await server.stop({ timeout: 0 })
@@ -107,6 +127,12 @@ describe('A signed-in session', () => {
     expect(first.headers.location).toBe('/auth/sign-in?returnTo=%2Fsearch')
     expect(second.headers.location).toBe('/auth/sign-in?returnTo=%2Fsearch')
     expect(refreshes(fakeEntra)).toHaveLength(1)
+    expect(sessionEnded()).toEqual([
+      {
+        level: 'error',
+        message: `Session ended for user ${supportUser.oid}, token not refreshed: invalid_grant`
+      }
+    ])
   })
 
   test('with the stub, which issues no refresh tokens, ends after about an hour', async () => {
@@ -115,5 +141,6 @@ describe('A signed-in session', () => {
 
     expect((await view(cookie)).statusCode).toBe(302)
     expect(refreshes(fakeEntra)).toHaveLength(0)
+    expect(sessionEnded().map(({ level }) => level)).toEqual(['info'])
   })
 })

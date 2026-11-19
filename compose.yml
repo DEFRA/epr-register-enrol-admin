@@ -32,6 +32,9 @@ services:
     environment:
       PORT: 3000
       NODE_ENV: production
+      # A production build with no ENVIRONMENT counts as production, and
+      # refuses the stub and the default secrets.
+      ENVIRONMENT: local
       REDIS_HOST: redis
       LOG_FORMAT: pino-pretty
       SESSION_COOKIE_SECURE: false

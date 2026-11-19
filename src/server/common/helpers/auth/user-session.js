@@ -3,6 +3,12 @@ import * as client from 'openid-client'
 import { config } from '#/config/config.js'
 import { getOidcConfig } from './oidc.js'
 
+class NoRefreshToken extends Error {
+  constructor() {
+    super('no refresh token')
+  }
+}
+
 const SESSION_KEY = 'auth'
 
 // Entra ID tokens last an hour. Refreshing a little early means a page
@@ -72,7 +78,7 @@ export async function currentUserSession(request) {
 
   try {
     if (!session.refreshToken) {
-      throw new Error('no refresh token')
+      throw new NoRefreshToken()
     }
     const tokens = await client.refreshTokenGrant(
       await getOidcConfig(),
@@ -82,7 +88,19 @@ export async function currentUserSession(request) {
     request.yar.set(SESSION_KEY, refreshed)
     return refreshed
   } catch (error) {
-    request.logger.info(`Session ended, token not refreshed: ${error.message}`)
+    // The stub issues no refresh tokens, so its sessions end this way every
+    // hour. Anywhere else a refresh token was asked for (offline_access), so a
+    // missing one, or a refresh that fails, is a fault someone needs to see.
+    // error.error is the provider's OAuth error code, such as invalid_grant.
+    const routine =
+      error instanceof NoRefreshToken &&
+      config.get('auth.provider') === 'defra-stub'
+    const message = `Session ended for user ${session.user.id}, token not refreshed: ${error.error ?? error.message}`
+    if (routine) {
+      request.logger.info(message)
+    } else {
+      request.logger.error(message)
+    }
     request.yar.clear(SESSION_KEY)
     return null
   }

@@ -70,6 +70,30 @@ describe('Settings for each environment', () => {
     ).toContain('AUTH_PROVIDER must be defra-prod')
   })
 
+  test('a production build with no ENVIRONMENT counts as production', async () => {
+    vi.stubEnv('ENVIRONMENT', undefined)
+
+    expect(
+      await problemsWith({
+        NODE_ENV: 'production',
+        AUTH_PROVIDER: 'defra-stub'
+      })
+    ).toContain('AUTH_PROVIDER must be defra-prod')
+  })
+
+  test('a production build with no ENVIRONMENT refuses to start, naming no environment', async () => {
+    vi.resetModules()
+    vi.stubEnv('ENVIRONMENT', undefined)
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('PORT', '3099')
+    const { startServer } =
+      await import('#/server/common/helpers/start-server.js')
+
+    await expect(startServer()).rejects.toThrow(
+      'Refusing to start in an unknown environment: AUTH_PROVIDER must be defra-prod'
+    )
+  })
+
   test('the server refuses to start in production with development settings', async () => {
     vi.resetModules()
     vi.stubEnv('ENVIRONMENT', 'prod')

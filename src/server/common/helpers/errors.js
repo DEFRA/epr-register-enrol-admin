@@ -35,13 +35,17 @@ export function catchAll(request, h) {
       method: request.method,
       path: request.path
     })
-    return h
-      .view('auth/access-denied', {
-        pageTitle: 'You do not have access',
-        email: user.email,
-        auditedAt: new Date()
-      })
-      .code(statusCode)
+    return (
+      h
+        .view('auth/access-denied', {
+          pageTitle: 'You do not have access',
+          email: user.email,
+          auditedAt: new Date()
+        })
+        .code(statusCode)
+        // The page shows the user's email (AGENTS.md, Security).
+        .header('cache-control', 'no-store')
+    )
   }
 
   const errorMessage = statusCodeMessage(statusCode)

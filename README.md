@@ -38,7 +38,7 @@ To run the production build with Redis sessions, closer to how it runs on CDP:
 docker compose up --build
 ```
 
-Compose starts Redis, the Entra ID stub and this service. If port 3000 is taken, set `ADMIN_PORT`, for example `ADMIN_PORT=3010 docker compose up --build`. It differs from CDP in a few ways so it works on a laptop: readable logs instead of ECS, cookies allowed over plain HTTP, and Redis without TLS or a cluster.
+Compose starts Redis, the Entra ID stub and this service. If port 3000 is taken, set `ADMIN_PORT`, for example `ADMIN_PORT=3001 docker compose up --build`. It differs from CDP in a few ways so it works on a laptop: readable logs instead of ECS, cookies allowed over plain HTTP, and Redis without TLS or a cluster.
 
 The app doesn't call the Accreditation API or Case Management API yet. When it does, real local instances will come from the [`epr-register-enrol`](https://github.com/DEFRA/epr-register-enrol) umbrella repo's Compose stack. See [docs/environments.md](docs/environments.md).
 

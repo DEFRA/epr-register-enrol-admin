@@ -198,6 +198,7 @@ describe('Signing in', () => {
       const $ = cheerio.load(page.payload)
 
       expect(page.statusCode).toBe(403)
+      expect(page.headers['cache-control']).toBe('no-store')
       expect($('h1').text()).toBe('You do not have access to RREPW Reg-Accred')
       expect($('[data-testid="signed-in-as"]').text()).toBe(
         'no.role@test.gov.uk'

@@ -47,9 +47,9 @@ export const config = convict({
     default: 'RREPW Reg-Accred'
   },
   environment: {
-    doc: 'The CDP environment the service runs in. CDP sets ENVIRONMENT; anything else is local.',
+    doc: 'The CDP environment the service runs in; CDP sets ENVIRONMENT. Without it, a production build (NODE_ENV=production) counts as production, so a deployed service can never fall back to local.',
     format: String,
-    default: 'local',
+    default: isProduction ? '' : 'local',
     env: 'ENVIRONMENT'
   },
   appBaseUrl: {

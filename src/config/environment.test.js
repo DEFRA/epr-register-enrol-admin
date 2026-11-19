@@ -6,7 +6,9 @@ const productionValues = {
   ENTRA_CLIENT_ID: '31c3c7b9-0000-4000-8000-000000000000',
   ENTRA_CLIENT_SECRET: 'a-real-secret',
   SESSION_COOKIE_PASSWORD: 'a-real-cookie-password-of-32-or-more-chars',
-  APP_BASE_URL: 'https://epr-register-enrol-admin.prod.cdp-int.defra.cloud'
+  APP_BASE_URL: 'https://admin.example.com',
+  SESSION_COOKIE_SECURE: 'true',
+  SESSION_CACHE_ENGINE: 'redis'
 }
 
 async function problemsWith(env) {
@@ -51,7 +53,9 @@ describe('Settings for each environment', () => {
       'ENTRA_CLIENT_ID must be set',
       'ENTRA_CLIENT_SECRET must be set',
       'SESSION_COOKIE_PASSWORD must be set',
-      'APP_BASE_URL must be https'
+      'APP_BASE_URL must be https',
+      'SESSION_COOKIE_SECURE must be true',
+      'SESSION_CACHE_ENGINE must be redis'
     ])
   })
 

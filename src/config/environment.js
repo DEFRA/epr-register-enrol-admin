@@ -46,6 +46,12 @@ export function productionConfigProblems(config) {
   if (!config.get('appBaseUrl').startsWith('https://')) {
     problems.push('APP_BASE_URL must be https')
   }
+  if (!config.get('session.cookie.secure')) {
+    problems.push('SESSION_COOKIE_SECURE must be true')
+  }
+  if (config.get('session.cache.engine') !== 'redis') {
+    problems.push('SESSION_CACHE_ENGINE must be redis')
+  }
 
   return problems
 }

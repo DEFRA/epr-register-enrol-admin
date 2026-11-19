@@ -22,8 +22,8 @@ export function isSafeRedirect(url) {
   return url.startsWith('/') && !url.startsWith('//')
 }
 
-// Where to go after signing in: a page in this service, never back into
-// sign-in itself.
+// Where to go after signing in: a page in this service, never one of the
+// sign-in or sign-out pages under /auth/.
 export function safeReturnTo(path) {
   return isSafeRedirect(path) && !path.startsWith('/auth/') ? path : undefined
 }

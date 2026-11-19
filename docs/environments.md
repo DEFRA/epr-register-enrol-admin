@@ -69,7 +69,9 @@ The Admin UI is read-only in production. Any feature that writes to a backend:
 Use CDP's `ENVIRONMENT` variable, which the platform sets to the environment's
 name (`dev`, `test`, `ext-test`, `perf-test`, `prod` and so on). Read it
 through a convict value, as `epr-register-enrol-management-fe` does
-(`environment`, default `local`).
+(`environment`). Its default is `local` for local development, but empty for
+a production build (`NODE_ENV=production`), which counts as production, so a
+deployed service can never fall back to `local`.
 
 - Don't use `isProduction`. It is `NODE_ENV === 'production'`, which is true in
   every deployed environment, dev included.

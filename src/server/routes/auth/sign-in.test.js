@@ -13,6 +13,7 @@ import {
 
 import { createServer } from '#/server/server.js'
 import { mswServer } from '#/test-helpers/msw-server.js'
+import { recordLogs } from '#/test-helpers/record-logs.js'
 import {
   ISSUER,
   sessionCookie,
@@ -30,9 +31,11 @@ const auditedActions = () =>
 describe('Signing in', () => {
   let server
   let fakeEntra
+  let logs
 
   beforeAll(async () => {
     server = await createServer()
+    logs = recordLogs(server)
     await server.initialize()
   })
 
@@ -42,7 +45,11 @@ describe('Signing in', () => {
 
   beforeEach(() => {
     fakeEntra = useFakeEntra()
+    logs.length = 0
   })
+
+  const signInFailures = () =>
+    logs.filter(({ message }) => message.startsWith('Sign-in failed'))
 
   const get = (url, cookie) =>
     server.inject({ url, headers: cookie ? { cookie } : {} })
@@ -206,12 +213,32 @@ describe('Signing in', () => {
       expect($('main a[href="/auth/sign-out"]').text()).toBe(
         'sign out and sign in again'
       )
+      expect($('main').text()).toContain(
+        'not in the AG-EPR-SUPPORT group in Entra ID'
+      )
       expect(auditedActions()).toEqual(['sign-in-denied', 'forbidden'])
       expect(vi.mocked(audit).mock.calls[1][0]).toMatchObject({
         event: { subCategory: 'authorisation', action: 'forbidden' },
         context: { method: 'get', path: '/search' },
         user: { email: 'no.role@test.gov.uk' }
       })
+    })
+
+    test('a failed CSRF check shows the error page, not access denied', async () => {
+      const { cookie } = await signIn(server, fakeEntra, userWithoutRole)
+      vi.mocked(audit).mockClear()
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/cookies',
+        headers: { cookie },
+        payload: { analytics: false }
+      })
+      const $ = cheerio.load(response.payload)
+
+      expect(response.statusCode).toBe(403)
+      expect($('h1').text()).not.toContain('You do not have access')
+      expect(auditedActions()).toEqual([])
     })
 
     test('the sign-in page still shows, so they can switch account', async () => {
@@ -241,6 +268,16 @@ describe('Signing in', () => {
           sessionCookie(start)
         )
       )
+      expect(signInFailures()).toEqual([
+        {
+          level: 'warn',
+          fields: { error: { code: 'access_denied' } },
+          message: 'Sign-in failed: access_denied'
+        }
+      ])
+      expect(vi.mocked(audit).mock.calls[0][0].context).toEqual({
+        reason: 'access_denied'
+      })
     })
 
     test('the state does not match the one we sent', async () => {
@@ -272,7 +309,7 @@ describe('Signing in', () => {
       )
     })
 
-    test('the code has already been used', async () => {
+    test('the provider refuses the code', async () => {
       const start = await get('/auth/sign-in/entra')
       const authorizeUrl = new URL(start.headers.location)
 
@@ -282,6 +319,13 @@ describe('Signing in', () => {
           sessionCookie(start)
         )
       )
+      expect(signInFailures()).toEqual([
+        {
+          level: 'error',
+          fields: { error: { code: 'invalid_grant' } },
+          message: 'Sign-in failed: invalid_grant'
+        }
+      ])
     })
   })
 
@@ -372,5 +416,72 @@ describe('Signing in when the provider is unreachable', () => {
       cheerio.load(unavailable.payload)('.govuk-error-summary').text()
     ).toContain('Signing in is unavailable right now. Try again later.')
     expect(retry.statusCode).toBe(302)
+  })
+})
+
+describe('Signing out when the provider cannot end its session', () => {
+  let server
+  let logs
+
+  beforeAll(async () => {
+    vi.resetModules()
+    const { createServer: createFreshServer } =
+      await import('#/server/server.js')
+    server = await createFreshServer()
+    logs = recordLogs(server)
+    await server.initialize()
+  })
+
+  afterAll(async () => {
+    await server.stop({ timeout: 0 })
+  })
+
+  test('finishes signing out here and logs the failure', async () => {
+    const fakeEntra = useFakeEntra({ endSession: false })
+    const { cookie } = await signIn(server, fakeEntra, supportUser)
+
+    const signOut = await server.inject({
+      url: '/auth/sign-out',
+      headers: { cookie }
+    })
+    const afterwards = await server.inject({
+      url: '/search',
+      headers: { cookie }
+    })
+
+    expect(signOut.headers.location).toBe('/auth/signed-out')
+    expect(afterwards.headers.location).toMatch(/^\/auth\/sign-in/)
+    expect(
+      logs.map(({ level, message }) => ({ level, message }))
+    ).toContainEqual({
+      level: 'error',
+      message: expect.stringMatching(/^Sign-out at defra-stub failed: /)
+    })
+  })
+})
+
+describe('The session cookie in a deployed environment', () => {
+  let server
+
+  beforeAll(async () => {
+    vi.resetModules()
+    vi.stubEnv('SESSION_COOKIE_SECURE', 'true')
+    const { createServer: createFreshServer } =
+      await import('#/server/server.js')
+    server = await createFreshServer()
+    await server.initialize()
+  })
+
+  afterAll(async () => {
+    await server.stop({ timeout: 0 })
+    vi.unstubAllEnvs()
+  })
+
+  test('is Secure', async () => {
+    const { callback } = await signIn(server, useFakeEntra(), supportUser)
+
+    expect(
+      callback.headers['set-cookie'].find((c) => c.startsWith('session='))
+    ).toContain('Secure')
   })
 })

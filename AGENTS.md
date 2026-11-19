@@ -81,7 +81,8 @@ Keep the two apart in code, config and conversation.
   Every route must require an authenticated user with the role; access is denied
   by default. The only exceptions are the reviewed public list in
   `src/server/plugins/route-protection.test.js`: platform needs (`/health`,
-  static assets), the sign-in and sign-out pages, and the cookie pages.
+  static assets, the favicon), home (which only redirects), the sign-in and
+  sign-out pages, and the cookie pages.
 - **Service-to-service auth** answers "is this caller the Admin UI?". The
   Admin UI calls each backend as itself, using a client ID and an HMAC
   signature, with read-only credentials in production. The user's Entra token

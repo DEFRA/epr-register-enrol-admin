@@ -17,9 +17,11 @@ How we build this service (architecture, auth, testing, errors, monitoring, audi
 
 ```bash
 npm install
-docker compose up -d epr-register-enrol-entra-stub
+STUB_INTERNAL_URL=http://localhost:3010 docker compose up -d epr-register-enrol-entra-stub
 npm run dev
 ```
+
+`STUB_INTERNAL_URL` tells the stub to give out its token endpoint on `localhost`, which the app on your machine can reach. Leave it out when running the whole stack with Compose.
 
 The app runs on <http://localhost:3000> with vite serving front-end assets, sessions held in memory and readable logs.
 
@@ -30,7 +32,9 @@ Every page needs you to sign in. Locally you sign in through [`epr-register-enro
 - `support.readonly@test.gov.uk` has the `Waste.SupportUser.ReadOnly` role and can use the service.
 - `no.role@test.gov.uk` has no role and sees the "You do not have access" page.
 
-The stub issues no refresh tokens, so you sign in again after about an hour. Who users sign in with in each environment, and the settings for it, are in [docs/environments.md](docs/environments.md#signing-in).
+The stub issues no refresh tokens, so you sign in again after about an hour.
+
+The stub only knows this service once [DEFRA/epr-register-enrol-entra-stub#25](https://github.com/DEFRA/epr-register-enrol-entra-stub/pull/25) is released. Until then, build the stub from that branch and run it with `EPR_REGISTER_ENROL_ENTRA_STUB=<your tag> docker compose up …`. Who users sign in with in each environment, and the settings for it, are in [docs/environments.md](docs/environments.md#signing-in).
 
 To run the production build with Redis sessions, closer to how it runs on CDP:
 

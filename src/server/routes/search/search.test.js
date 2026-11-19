@@ -145,7 +145,7 @@ describe('Searching Legacy accreditation applications', () => {
         $('input[name="year"]')
           .map((_i, input) => text($, `label[for="${input.attribs.id}"]`))
           .get()
-      ).toEqual(['Any year', '2027', '2028'])
+      ).toEqual(['Any year', '2026', '2027', '2028'])
       expect(checked($, 'year')).toEqual([''])
       expect(checked($, 'status')).toEqual([])
       expect(checked($, 'searchFields')).toEqual([])
@@ -193,7 +193,7 @@ describe('Searching Legacy accreditation applications', () => {
           .get()
       ).toEqual([
         ...Array(10).fill('status'),
-        ...Array(3).fill('year'),
+        ...Array(4).fill('year'),
         'q',
         ...Array(4).fill('searchFields')
       ])
@@ -450,7 +450,7 @@ describe('Searching Legacy accreditation applications', () => {
         $('input[name="year"]')
           .map((_i, input) => input.attribs.value)
           .get()
-      ).toEqual(['', '2027', '2028', '2031'])
+      ).toEqual(['', '2026', '2027', '2028', '2031'])
       expect(checked($, 'year')).toEqual(['2031'])
     })
   })
@@ -708,7 +708,7 @@ describe('Searching Legacy accreditation applications', () => {
         $('input[name="year"]')
           .map((_i, input) => input.attribs.value)
           .get()
-      ).toEqual(['', '2027', '2028'])
+      ).toEqual(['', '2026', '2027', '2028'])
       expect(checked($, 'year')).toEqual([])
       expect($('#q').val()).toBe('')
       expect(requests).toEqual([])

@@ -18,13 +18,15 @@ describe('Config defaults in production', () => {
     expect(config.get('log.enabled')).toBe(true)
   })
 
-  test('removes credentials and cookies from request logs', async () => {
+  test('removes credentials, cookies and search terms from request logs', async () => {
     const config = await loadConfig('production')
 
     expect(config.get('log.redact')).toEqual([
       'req.headers.authorization',
       'req.headers.cookie',
-      'res.headers'
+      'res.headers',
+      'req.query.q',
+      'req.query.returnTo'
     ])
   })
 
@@ -43,7 +45,10 @@ describe('Config defaults in local development', () => {
 
     expect(config.get('isDevelopment')).toBe(true)
     expect(config.get('log.format')).toBe('pino-pretty')
-    expect(config.get('log.redact')).toEqual([])
+    expect(config.get('log.redact')).toEqual([
+      'req.query.q',
+      'req.query.returnTo'
+    ])
     expect(config.get('session.cache.engine')).toBe('memory')
     expect(config.get('session.cookie.secure')).toBe(false)
   })

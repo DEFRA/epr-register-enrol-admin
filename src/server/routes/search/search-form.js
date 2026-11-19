@@ -29,9 +29,10 @@ export const STATUSES = [
   { value: 'Withdrawn', text: 'Withdrawn', classes: 'govuk-tag--grey' }
 ]
 
-// The accreditation years offered as filters. A year in a shared URL that
-// isn't listed here still filters, and shows as a tag.
-export const YEARS = [2027, 2028]
+// The accreditation years offered as filters: the Legacy collection holds
+// 2026 applications as well as 2027 and 2028 ones. A year in a shared URL
+// that isn't listed here still filters, and shows as a tag.
+export const YEARS = [2026, 2027, 2028]
 
 const labelOf = (options, value) =>
   options.find((option) => option.value === value).text

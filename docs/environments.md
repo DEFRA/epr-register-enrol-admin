@@ -13,8 +13,8 @@ are not yet: the rules below are for when they are.
 | ----------- | ------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------ |
 | Local       | `defra-stub`, or `defra-dev`   | Stubbed, or real services run from the `DEFRA/epr-register-enrol` umbrella repo's Docker Compose | Allowed            |
 | Dev         | `defra-stub`                   | Real, deployed                                                                                   | Allowed            |
-| Test        | `defra-stub`                   | Real, deployed                                                                                   | Allowed            |
-| Ext-test    | `defra-stub`                   | Real, deployed. As close to production as possible                                               | Allowed            |
+| Test        | `defra-dev`                    | Real, deployed                                                                                   | Allowed            |
+| Ext-test    | `defra-dev`                    | Real, deployed. As close to production as possible                                               | Allowed            |
 | Perf-test   | TBC                            | TBC                                                                                              | TBC                |
 | Prod        | `defra-prod`, and nothing else | Real, deployed                                                                                   | Refused            |
 
@@ -47,11 +47,10 @@ any provider may be used.
 - Stubs are for non-production environments only. The app refuses to start
   in production with any stub enabled (see "Telling environments apart"), and
   that guard has a test.
-- Test and ext-test sign in through the Entra stub until they move to the
-  Defra Dev tenant
-  ([RA-798](https://eaflood.atlassian.net/browse/RA-798)). After that,
-  ext-test uses the Defra Dev tenant only, to stay as close to production as
-  possible.
+- Test and ext-test sign in through the Defra Dev tenant, so they behave
+  like production. Ext-test uses it only, to stay as close to production as
+  possible. Test can be switched back to the stub with `AUTH_PROVIDER` if
+  needed.
 
 ## Writes
 

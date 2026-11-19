@@ -32,3 +32,27 @@ export const sessionCache = {
     }
   }
 }
+
+/**
+ * Our session cookie carries only the session ID. yar would still accept a
+ * session packed inside a sealed cookie, so anyone who knew the cookie
+ * password could make one that is already signed in. Drop any such cookie
+ * before yar reads it: the request then starts a new, empty session.
+ */
+export const sessionIdOnly = {
+  plugin: {
+    name: 'session-id-only',
+    register(server) {
+      server.ext(
+        'onPreAuth',
+        (request, h) => {
+          if (request.state[sessionConfig.cache.name]?._store) {
+            delete request.state[sessionConfig.cache.name]
+          }
+          return h.continue
+        },
+        { before: ['@hapi/yar'] }
+      )
+    }
+  }
+}

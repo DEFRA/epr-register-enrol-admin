@@ -126,6 +126,7 @@ describe('Signing in', () => {
 
       expect(callback.headers.location).toBe('/search')
       expect(searchPage.statusCode).toBe(200)
+      expect(searchPage.headers['cache-control']).toBe('no-store')
       expect($('h1').text()).toBe('Search')
       expect($('[data-testid="signed-in-user"]').text().trim()).toBe(
         'Signed in as Support User'
@@ -370,6 +371,32 @@ describe('Signing in', () => {
 
       expect(header).toContain('HttpOnly')
       expect(header).toContain('SameSite=Lax')
+    })
+
+    test('a cookie with a session packed inside it is ignored, not trusted', async () => {
+      // What someone who knew the cookie password could make: a cookie that
+      // claims a signed-in session with the role, without signing in.
+      const forged = await server.states.format({
+        name: 'session',
+        value: {
+          id: 'forged',
+          _store: {
+            auth: {
+              user: {
+                id: 'x',
+                email: 'x@example.com',
+                roles: supportUser.roles
+              },
+              expiresAt: Date.now() + 3_600_000
+            }
+          }
+        }
+      })
+
+      const response = await get('/search', [].concat(forged)[0].split(';')[0])
+
+      expect(response.statusCode).toBe(302)
+      expect(response.headers.location).toMatch(/^\/auth\/sign-in/)
     })
 
     test('carries only a session ID: the session itself is held on the server', async () => {

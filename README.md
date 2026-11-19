@@ -40,6 +40,7 @@ To sign in through real Entra ID on the Defra Dev tenant instead, with a Defra D
 
 ```bash
 AUTH_PROVIDER=defra-dev \
+ENTRA_TENANT_ID=<the Defra Dev tenant ID, as in cdp-app-config> \
 ENTRA_CLIENT_ID=<the Defra Dev app registration's client ID> \
 ENTRA_CLIENT_SECRET=<its client secret> \
 npm run dev

@@ -37,8 +37,9 @@ export const auth = {
 }
 
 /**
- * For pages anyone can see that still show who is signed in: the sign-in,
- * sign-out and cookie pages.
+ * For public routes that still need to know who is signed in: home (to send
+ * a signed-in user to search), the sign-in page and the cookie pages. Public
+ * routes that don't care use `auth: false`.
  */
 export const publicRoute = {
   strategy: 'session',

@@ -114,8 +114,15 @@ const callback = {
       )
       session = sessionFromTokens(tokens)
     } catch (error) {
-      request.logger.error(`Sign-in failed: ${error.message}`)
-      auditAccess('sign-in-failed', undefined, { reason: error.message })
+      // error.error is the provider's OAuth error code, such as access_denied
+      // or invalid_grant; openid-client's message is the same for all of them.
+      const code = error.error ?? error.message
+      // The provider sending the user back with an error (they cancelled, or
+      // were refused) is routine. Anything else is a fault someone should see.
+      const level =
+        error instanceof client.AuthorizationResponseError ? 'warn' : 'error'
+      request.logger[level]({ error: { code } }, `Sign-in failed: ${code}`)
+      auditAccess('sign-in-failed', undefined, { reason: code })
       return signInPage(h, {
         returnTo: pending?.returnTo,
         error: 'We could not sign you in. Try again.'
@@ -147,11 +154,22 @@ const signOut = {
     }
 
     auditAccess('sign-out', session.user)
-    const url = client.buildEndSessionUrl(await getOidcConfig(), {
-      post_logout_redirect_uri: signedOutUrl(),
-      id_token_hint: session.idToken
-    })
-    return h.redirect(url.href)
+    try {
+      const url = client.buildEndSessionUrl(await getOidcConfig(), {
+        post_logout_redirect_uri: signedOutUrl(),
+        id_token_hint: session.idToken
+      })
+      return h.redirect(url.href)
+    } catch (error) {
+      // Signed out here already. The provider's session can't be ended (it
+      // is unreachable, or has no end-session endpoint), so say so in the
+      // logs and finish signing out here.
+      request.logger.error(
+        { error: { code: error.message } },
+        `Sign-out at ${config.get('auth.provider')} failed: ${error.message}`
+      )
+      return h.redirect('/auth/signed-out')
+    }
   }
 }
 

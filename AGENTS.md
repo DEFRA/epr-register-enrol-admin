@@ -79,8 +79,10 @@ Keep the two apart in code, config and conversation.
 - **User auth** answers "who is using the Admin UI?". Microsoft Entra ID
   sign-in, app role `Waste.SupportUser.ReadOnly`, group `AG-EPR-SUPPORT`.
   Every route must require an authenticated user with the role; access is denied
-  by default and a route opts out only for platform needs (`/health`, static
-  assets).
+  by default. The only exceptions are the reviewed public list in
+  `src/server/plugins/route-protection.test.js`: platform needs (`/health`,
+  static assets, the favicon), home (which only redirects), the sign-in and
+  sign-out pages, and the cookie pages.
 - **Service-to-service auth** answers "is this caller the Admin UI?". The
   Admin UI calls each backend as itself, using a client ID and an HMAC
   signature, with read-only credentials in production. The user's Entra token
@@ -129,9 +131,12 @@ Load is low, so every error matters and every error is visible.
   automatic.
 - Banners and error pages show our own wording only: stack traces and upstream
   response bodies stay in the logs.
-- The catch-all error page (`src/server/common/helpers/errors.js`) renders
-  every error response: 404s, 401s, 403s and CSRF 400s, and, as a last resort,
-  unhandled exceptions. A 5xx reaching it is a bug to fix.
+- The catch-all error handler (`src/server/common/helpers/errors.js`) handles
+  every error response. A 401 goes to sign-in, coming back to the page
+  afterwards. A 403 for a signed-in user without the role is the access-denied
+  page. Anything else (404s, other 403s, CSRF 400s and, as a last resort,
+  unhandled exceptions) renders the error page. A 5xx reaching it is a bug to
+  fix.
 
 ## Monitoring and alerting
 
@@ -225,8 +230,9 @@ touch them.
 ### Test against deployed services
 
 Prefer real integrations wherever an environment has them. What the Admin UI
-talks to changes by environment (stubs locally, real backends from dev, real
-Entra from test). See [docs/environments.md](docs/environments.md).
+talks to changes by environment (stubs locally, real backends from dev, the
+Entra stub up to ext-test until RA-798 moves test and ext-test to the Defra Dev
+tenant). See [docs/environments.md](docs/environments.md).
 
 ## Security
 
@@ -251,6 +257,10 @@ cleared for display.
   that might contain them. When unsure whether a field is personal, mask it.
 - Mask on the server, before rendering. The full value never reaches the HTML,
   hidden fields, data attributes, browser-side scripts or the session.
+- **Exception: the signed-in user's own name and email.** They are kept in the
+  session and shown unmasked in the header and on the access-denied page
+  (RA-738, AC06 and AC08), because they tell users which account they are
+  using and need no protection from the person they belong to.
 - All masking goes through one shared helper, used by views and by anything
   that logs or audits a value, so the rules live in one place and are tested
   there.

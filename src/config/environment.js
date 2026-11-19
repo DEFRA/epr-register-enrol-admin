@@ -34,6 +34,9 @@ export function productionConfigProblems(config) {
   if (config.get('auth.provider') !== 'defra-prod') {
     problems.push('AUTH_PROVIDER must be defra-prod')
   }
+  if (!config.get('auth.tenantId')) {
+    problems.push('ENTRA_TENANT_ID must be set')
+  }
   if (defaults('auth.clientId')) {
     problems.push('ENTRA_CLIENT_ID must be set')
   }
@@ -46,6 +49,12 @@ export function productionConfigProblems(config) {
   if (!config.get('appBaseUrl').startsWith('https://')) {
     problems.push('APP_BASE_URL must be https')
   }
+  if (!config.get('session.cookie.secure')) {
+    problems.push('SESSION_COOKIE_SECURE must be true')
+  }
+  if (config.get('session.cache.engine') !== 'redis') {
+    problems.push('SESSION_CACHE_ENGINE must be redis')
+  }
 
   return problems
 }
@@ -56,8 +65,9 @@ export function productionConfigProblems(config) {
 export function assertSafeForEnvironment(config) {
   const problems = productionConfigProblems(config)
   if (problems.length > 0) {
+    const environment = config.get('environment') || 'an unknown environment'
     throw new Error(
-      `Refusing to start in ${config.get('environment')}: ${problems.join('; ')}`
+      `Refusing to start in ${environment}: ${problems.join('; ')}`
     )
   }
 }

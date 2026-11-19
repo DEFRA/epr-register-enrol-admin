@@ -64,6 +64,13 @@ describe('trace id on log lines', () => {
     expect(line.trace).toEqual({ id: 'trace-abc-123' })
   })
 
+  test('a line names the service by its CDP name, not its display name', async () => {
+    const line = await logOneLine(null)
+
+    expect(line['service.name']).toBe('epr-register-enrol-admin')
+    expect(line['event.dataset']).toBe('epr-register-enrol-admin')
+  })
+
   test('a line logged outside a request carries no trace id', async () => {
     const line = await logOneLine(null)
 

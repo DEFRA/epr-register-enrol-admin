@@ -1,6 +1,5 @@
 import { statusCodes } from '../constants/status-codes.js'
 import { auditAccess } from './audit.js'
-import { hasRequiredRole } from './auth/user-session.js'
 import { safeReturnTo } from './is-safe-redirect.js'
 
 function statusCodeMessage(statusCode) {
@@ -29,19 +28,28 @@ export function catchAll(request, h) {
     return h.redirect(signInFor(request)).takeover()
   }
 
+  // hapi's own refusal when the user lacks the role, not any other 403 (such
+  // as a CSRF check failing).
   const user = request.auth?.credentials?.user
-  if (statusCode === statusCodes.forbidden && user && !hasRequiredRole(user)) {
+  if (
+    statusCode === statusCodes.forbidden &&
+    response.message === 'Insufficient scope'
+  ) {
     auditAccess('forbidden', user, {
       method: request.method,
       path: request.path
     })
-    return h
-      .view('auth/access-denied', {
-        pageTitle: 'You do not have access',
-        email: user.email,
-        auditedAt: new Date()
-      })
-      .code(statusCode)
+    return (
+      h
+        .view('auth/access-denied', {
+          pageTitle: 'You do not have access',
+          email: user.email,
+          auditedAt: new Date()
+        })
+        .code(statusCode)
+        // The page shows the user's email (AGENTS.md, Security).
+        .header('cache-control', 'no-store')
+    )
   }
 
   const errorMessage = statusCodeMessage(statusCode)

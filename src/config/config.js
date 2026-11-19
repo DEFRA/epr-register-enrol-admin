@@ -47,9 +47,9 @@ export const config = convict({
     default: 'RREPW Reg-Accred'
   },
   environment: {
-    doc: 'The CDP environment the service runs in. CDP sets ENVIRONMENT; anything else is local.',
+    doc: 'The CDP environment the service runs in; CDP sets ENVIRONMENT. Without it, a production build (NODE_ENV=production) counts as production, so a deployed service can never fall back to local.',
     format: String,
-    default: 'local',
+    default: isProduction ? '' : 'local',
     env: 'ENVIRONMENT'
   },
   appBaseUrl: {
@@ -124,6 +124,12 @@ export const config = convict({
       format: String,
       default: 'http://localhost:3010',
       env: 'ENTRA_STUB_URL'
+    },
+    tenantId: {
+      doc: 'The Entra ID tenant users sign in to, when AUTH_PROVIDER is defra-dev or defra-prod. Set per environment in cdp-app-config.',
+      format: String,
+      default: '',
+      env: 'ENTRA_TENANT_ID'
     },
     clientId: {
       doc: "This service's client ID in the provider. The default is the stub's client.",

@@ -29,10 +29,10 @@ const jwks = {
   keys: [{ ...(await exportJWK(publicKey)), kid: 'test', alg: 'RS256' }]
 }
 
-const idToken = ({ roles, ...user }, nonce) =>
+const idToken = (issuer, { roles, ...user }, nonce) =>
   new SignJWT({ ...user, ...(roles?.length && { roles }), nonce })
     .setProtectedHeader({ alg: 'RS256', kid: 'test' })
-    .setIssuer(ISSUER)
+    .setIssuer(issuer)
     .setAudience(CLIENT_ID)
     .setSubject(user.oid)
     .setIssuedAt()
@@ -43,28 +43,35 @@ const idToken = ({ roles, ...user }, nonce) =>
  * Serve the provider's endpoints for this test.
  *
  * @param {object} [options]
+ * @param {string} [options.issuer] where it is served, the stub's address by default
  * @param {boolean} [options.issueRefreshTokens] like Entra ID (true) or the stub (false)
+ * @param {boolean} [options.endSession] whether it has an end-session endpoint
  * @param {object | null} [options.onRefresh] who a refresh returns, or null to refuse it
  */
-export function useFakeEntra({ issueRefreshTokens = true, onRefresh } = {}) {
+export function useFakeEntra({
+  issuer = ISSUER,
+  issueRefreshTokens = true,
+  onRefresh,
+  endSession = true
+} = {}) {
   const codes = new Map()
   const tokenRequests = []
 
   mswServer.use(
-    http.get(`${ISSUER}/.well-known/openid-configuration`, () =>
+    http.get(`${issuer}/.well-known/openid-configuration`, () =>
       HttpResponse.json({
-        issuer: ISSUER,
-        authorization_endpoint: `${ISSUER}/authorize`,
-        token_endpoint: `${ISSUER}/token`,
-        jwks_uri: `${ISSUER}/jwks`,
-        end_session_endpoint: `${ISSUER}/logout`,
+        issuer,
+        authorization_endpoint: `${issuer}/authorize`,
+        token_endpoint: `${issuer}/token`,
+        jwks_uri: `${issuer}/jwks`,
+        ...(endSession && { end_session_endpoint: `${issuer}/logout` }),
         response_types_supported: ['code'],
         subject_types_supported: ['public'],
         id_token_signing_alg_values_supported: ['RS256']
       })
     ),
-    http.get(`${ISSUER}/jwks`, () => HttpResponse.json(jwks)),
-    http.post(`${ISSUER}/token`, async ({ request }) => {
+    http.get(`${issuer}/jwks`, () => HttpResponse.json(jwks)),
+    http.post(`${issuer}/token`, async ({ request }) => {
       const form = new URLSearchParams(await request.text())
       tokenRequests.push(form)
       if (
@@ -94,7 +101,7 @@ export function useFakeEntra({ issueRefreshTokens = true, onRefresh } = {}) {
         token_type: 'Bearer',
         expires_in: 3600,
         access_token: randomUUID(),
-        id_token: await idToken(user, nonce),
+        id_token: await idToken(issuer, user, nonce),
         ...(issueRefreshTokens && { refresh_token: randomUUID() })
       })
     })

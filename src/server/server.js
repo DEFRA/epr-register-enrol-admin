@@ -9,7 +9,7 @@ import { catchAll } from './common/helpers/errors.js'
 import { nunjucksConfig } from '#/config/nunjucks/nunjucks.js'
 import { requestTracing } from './plugins/request-tracing.js'
 import { requestLogger } from './plugins/request-logger.js'
-import { sessionCache } from './plugins/session-cache.js'
+import { sessionCache, sessionIdOnly } from './plugins/session-cache.js'
 import { getCacheEngine } from './common/helpers/session-cache/cache-engine.js'
 import { secureContext } from '@defra/hapi-secure-context'
 import { contentSecurityPolicy } from './plugins/content-security-policy.js'
@@ -63,6 +63,7 @@ export async function createServer() {
     pulse,
     contentSecurityPolicy,
     sessionCache,
+    sessionIdOnly,
     auth,
     nunjucksConfig,
     Scooter,

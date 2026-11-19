@@ -23,9 +23,10 @@ function useEntraTenant(tenantId) {
   return `${base}/oauth2/v2.0/authorize`
 }
 
-async function startSignIn(provider) {
+async function startSignIn(provider, tenantId) {
   vi.resetModules()
   vi.stubEnv('AUTH_PROVIDER', provider)
+  vi.stubEnv('ENTRA_TENANT_ID', tenantId)
   vi.stubEnv('ENTRA_CLIENT_ID', 'a-registered-client-id')
   const { createServer } = await import('#/server/server.js')
   const server = await createServer()
@@ -40,19 +41,17 @@ describe('Each provider', () => {
     vi.unstubAllEnvs()
   })
 
+  // Made-up tenant IDs: the real ones are set per environment in
+  // cdp-app-config.
   test.each([
-    [
-      'defra-dev',
-      'the Defra Dev tenant',
-      '6f504113-6b64-43f2-ade9-242e05780007'
-    ],
-    ['defra-prod', 'the Defra tenant', '770a2450-0227-4c62-90c7-4e38537f1102']
+    ['defra-dev', '00000000-0000-4000-8000-00000000d0d0'],
+    ['defra-prod', '00000000-0000-4000-8000-00000000f0f0']
   ])(
-    '%s signs users in at %s, asking for a refresh token',
-    async (provider, _tenant, tenantId) => {
+    '%s signs users in at the Entra ID tenant ENTRA_TENANT_ID names, asking for a refresh token',
+    async (provider, tenantId) => {
       const authorizeEndpoint = useEntraTenant(tenantId)
 
-      const authorizeUrl = await startSignIn(provider)
+      const authorizeUrl = await startSignIn(provider, tenantId)
 
       expect(authorizeUrl.origin + authorizeUrl.pathname).toBe(
         authorizeEndpoint

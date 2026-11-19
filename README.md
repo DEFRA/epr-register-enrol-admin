@@ -44,7 +44,25 @@ docker compose up --build
 
 Compose starts Redis, the Entra ID stub and this service. If port 3000 is taken, set `ADMIN_PORT`, for example `ADMIN_PORT=3001 docker compose up --build`. It differs from CDP in a few ways so it works on a laptop: readable logs instead of ECS, cookies allowed over plain HTTP, and Redis without TLS or a cluster.
 
-The app doesn't call the Accreditation API or Case Management API yet. When it does, real local instances will come from the [`epr-register-enrol`](https://github.com/DEFRA/epr-register-enrol) umbrella repo's Compose stack. See [docs/environments.md](docs/environments.md).
+### Running against a local backend
+
+The search page reads Legacy accreditation applications from [`epr-register-enrol-backend`](https://github.com/DEFRA/epr-register-enrol-backend) (`GET /admin/accreditation-applications`, specified in its `docs/openapi/admin-api.yaml`). Run the backend from the [`epr-register-enrol`](https://github.com/DEFRA/epr-register-enrol) umbrella repo's Compose stack, which serves it on <http://localhost:8080>, the default `BACKEND_URL`.
+
+The backend only answers clients it knows, and checks each call's HMAC signature, even locally. Give both sides the same secret:
+
+- the backend: `ServiceClients__Clients__0__Name=admin`, `ServiceClients__Clients__0__ClientId=epr-register-enrol-admin` and `AUTH_SHARED_SECRET__ADMIN=<a local secret>` (use the next free client index if the stack already lists ReEx);
+- this service, in `.env` or the shell: `BACKEND_API_SHARED_SECRET=<the same secret>`.
+
+Without a backend, or with a mismatched secret, the search page stays up and shows "Legacy accreditation application data is unavailable right now", and the reason is logged at `error`.
+
+| Variable                    | Default                    | What it is                                                                                        |
+| --------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------- |
+| `BACKEND_URL`               | `http://localhost:8080`    | Where `epr-register-enrol-backend` is. Set per environment in `cdp-app-config`.                   |
+| `BACKEND_API_SHARED_SECRET` | empty (calls go unsigned)  | Secret. The HMAC secret the backend knows as `AUTH_SHARED_SECRET__ADMIN`. Required in production. |
+| `BACKEND_API_CLIENT_ID`     | `epr-register-enrol-admin` | The `x-cdp-client-id` sent; matches the admin entry in the backend's `ServiceClients`.            |
+| `BACKEND_API_TIMEOUT_MS`    | `10000`                    | How long to wait for the backend before showing the banner.                                       |
+
+The Case Management API is not called yet. See [docs/environments.md](docs/environments.md) for what each environment talks to.
 
 ## Checks
 

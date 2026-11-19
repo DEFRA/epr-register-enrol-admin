@@ -42,10 +42,11 @@ picking one silently.
 
 - Server-side rendered hapi frontend: Nunjucks views, GOV.UK Frontend, sessions
   in Redis. No client-side app.
-- It will read from two Reg-Accred backends (no backend client exists yet).
-  More may follow.
-  - **Accreditation API**: `DEFRA/epr-register-enrol-backend` (operator journey data).
-  - **Case Management API**: `DEFRA/epr-register-enrol-management-be`.
+- It reads from two Reg-Accred backends. More may follow.
+  - **Accreditation API**: `DEFRA/epr-register-enrol-backend` (operator journey
+    data). The client is `src/server/common/helpers/backend-api/` (RA-740).
+  - **Case Management API**: `DEFRA/epr-register-enrol-management-be` (no
+    client yet).
 - Internal only: served on `*.cdp-int.defra.cloud` URLs, reachable over the
   CDP VPN. There is no public route.
 - Users hold SC clearance. That is a people and process control; the code
@@ -71,6 +72,11 @@ The data this app needs may not be exposed by any endpoint yet. When that
 happens, add the endpoint to the backend that owns the data, designed as a
 general read endpoint that other consumers can use later. Name it for what it
 returns, not for the Admin UI.
+
+An endpoint that only internal tooling such as this one should call (for
+example, one returning records as stored, personal data included) goes under
+`/admin/` on the backend, with its own OpenAPI spec, apart from the API other
+services use. `epr-register-enrol-backend`'s is `docs/openapi/admin-api.yaml`.
 
 ## Auth: user auth and service-to-service auth are separate
 
@@ -109,11 +115,16 @@ validate a user token.
   `auth: false` (or `publicRoute`, to show who is signed in) plus an entry,
   with its reason, in `route-protection.test.js`.
 
-Service-to-service auth arrives with the first backend integration. Reuse what
-the team already has rather than writing a second version that will drift:
-HMAC request signing and the backend client in
-`epr-register-enrol-management-fe`, `src/server/common/helpers/backend-api/`
-(`sign-request.js`, `backend-api.js`).
+**Service-to-service auth is built** for the Accreditation API (RA-740), in
+`src/server/common/helpers/backend-api/`. It is copied from
+`epr-register-enrol-management-fe`'s `src/server/common/helpers/backend-api/`
+(`sign-request.js`, `backend-api.js`), not written afresh, with one deliberate
+difference: management-be's signed payload also carries the user's role and
+nation, and `epr-register-enrol-backend`'s does not. Each backend's payload
+must match what that backend verifies; for this one that is
+`ServiceClientAuthenticationHandler`, and `sign-request.test.js` pins the
+backend's own known signature. Reuse the same approach for the Case Management
+API.
 
 ## Errors: tell the user, keep them on the page
 

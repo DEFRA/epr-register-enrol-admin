@@ -8,7 +8,8 @@ const SIGNATURE_HEADER = 'x-cdp-auth-signature'
 
 /**
  * The HMAC-SHA256 auth headers for a call to epr-register-enrol-backend, or
- * none when no shared secret is configured (a local backend).
+ * none when no shared secret is configured (only a fake backend accepts
+ * unsigned calls).
  *
  * Follows epr-register-enrol-management-fe's signing
  * (src/server/common/helpers/backend-api/sign-request.js), with one change:

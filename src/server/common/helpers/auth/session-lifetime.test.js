@@ -36,7 +36,7 @@ describe('A signed-in session', () => {
 
   beforeEach(() => {
     logs.length = 0
-    // Each page view searches the backend.
+    // /search, which these tests view, calls the backend.
     useFakeBackend(() => resultsPage([]))
   })
 

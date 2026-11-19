@@ -197,8 +197,9 @@ export function pagination(criteria, totalItems) {
 // (AccreditationApiMapper.IsExporter): the stored wasteProcessingType when
 // there is one, isExporter otherwise.
 function isExporter({ wasteProcessingType, isExporter }) {
-  const stored = wasteProcessingType?.trim()
-  return stored ? stored.toLowerCase() === 'exporter' : isExporter === true
+  return wasteProcessingType?.trim()
+    ? wasteProcessingType.toLowerCase() === 'exporter'
+    : isExporter === true
 }
 
 /**

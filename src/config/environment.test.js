@@ -10,7 +10,7 @@ const productionValues = {
   APP_BASE_URL: 'https://admin.example.com',
   SESSION_COOKIE_SECURE: 'true',
   SESSION_CACHE_ENGINE: 'redis',
-  BACKEND_URL: 'https://epr-register-enrol-backend.prod.cdp-int.defra.cloud',
+  BACKEND_URL: 'https://backend.example.com',
   BACKEND_API_SHARED_SECRET: 'a-real-hmac-secret'
 }
 

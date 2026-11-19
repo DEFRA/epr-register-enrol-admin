@@ -46,7 +46,7 @@ Compose starts Redis, the Entra ID stub and this service. If port 3000 is taken,
 
 ### Running against a local backend
 
-The search page reads Legacy accreditation applications from [`epr-register-enrol-backend`](https://github.com/DEFRA/epr-register-enrol-backend) (`GET /admin/accreditation-applications`, specified in its `docs/openapi/admin-api.yaml`). Run the backend from the [`epr-register-enrol`](https://github.com/DEFRA/epr-register-enrol) umbrella repo's Compose stack, which serves it on <http://localhost:8080>, the default `BACKEND_URL`.
+The search page reads Legacy accreditation applications from [`epr-register-enrol-backend`](https://github.com/DEFRA/epr-register-enrol-backend) (`GET /admin/accreditation-applications`, specified in its `docs/openapi/admin-api.yaml`). Run the backend from the [`epr-register-enrol`](https://github.com/DEFRA/epr-register-enrol) umbrella repo's Compose stack, which serves it on <http://localhost:8080>, the default `BACKEND_URL`, and run this service with `npm run dev`. Inside this repo's Compose stack, `localhost` is the admin container itself, so the default doesn't reach the backend.
 
 The backend only answers clients it knows, and checks each call's HMAC signature, even locally. Give both sides the same secret:
 
@@ -60,7 +60,7 @@ Without a backend, or with a mismatched secret, the search page stays up and sho
 | `BACKEND_URL`               | `http://localhost:8080`    | Where `epr-register-enrol-backend` is. Set per environment in `cdp-app-config`.                   |
 | `BACKEND_API_SHARED_SECRET` | empty (calls go unsigned)  | Secret. The HMAC secret the backend knows as `AUTH_SHARED_SECRET__ADMIN`. Required in production. |
 | `BACKEND_API_CLIENT_ID`     | `epr-register-enrol-admin` | The `x-cdp-client-id` sent; matches the admin entry in the backend's `ServiceClients`.            |
-| `BACKEND_API_TIMEOUT_MS`    | `10000`                    | How long to wait for the backend before showing the banner.                                       |
+| `BACKEND_API_TIMEOUT_MS`    | `12000`                    | How long to wait for the backend before showing the banner.                                       |
 
 The Case Management API is not called yet. See [docs/environments.md](docs/environments.md) for what each environment talks to.
 

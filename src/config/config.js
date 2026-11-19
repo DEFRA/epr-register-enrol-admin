@@ -170,9 +170,9 @@ export const config = convict({
       env: 'BACKEND_URL'
     },
     timeoutMs: {
-      doc: 'How long to wait for epr-register-enrol-backend before showing the "unavailable" banner, in milliseconds. Longer than the backend stops its own queries after (5 seconds), so its 503 arrives first.',
+      doc: 'How long to wait for epr-register-enrol-backend before showing the "unavailable" banner, in milliseconds. A search is two backend queries (a count, then a page), each stopped after 5 seconds, so this is longer than both.',
       format: 'nat',
-      default: 10000,
+      default: 12000,
       env: 'BACKEND_API_TIMEOUT_MS'
     },
     clientId: {

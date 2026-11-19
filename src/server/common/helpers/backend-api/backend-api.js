@@ -87,7 +87,12 @@ async function getJson(path, params, logger) {
   } catch (error) {
     return error.name === 'TimeoutError'
       ? fail({ error: { code: error.name } }, `timed out after ${timeoutMs}ms`)
-      : fail({ error: { code: error.name } }, `failed: ${error.message}`)
+      : // Not error.message: for some failures it holds the full URL, and so
+        // the search term. The code (e.g. ECONNREFUSED) says enough.
+        fail(
+          { error: { code: error.cause?.code ?? error.name } },
+          `failed (${error.cause?.code ?? error.name})`
+        )
   }
 
   const httpFields = { http: { response: { status_code: response.status } } }

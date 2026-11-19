@@ -26,7 +26,8 @@ describe('Config defaults in production', () => {
       'req.headers.cookie',
       'res.headers',
       'req.query.q',
-      'req.query.returnTo'
+      'req.query.returnTo',
+      'req.headers.referer'
     ])
   })
 
@@ -47,7 +48,9 @@ describe('Config defaults in local development', () => {
     expect(config.get('log.format')).toBe('pino-pretty')
     expect(config.get('log.redact')).toEqual([
       'req.query.q',
-      'req.query.returnTo'
+      'req.query.returnTo',
+      'req.headers.referer',
+      'res.headers.location'
     ])
     expect(config.get('session.cache.engine')).toBe('memory')
     expect(config.get('session.cookie.secure')).toBe(false)

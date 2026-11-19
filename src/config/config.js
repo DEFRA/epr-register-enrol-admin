@@ -104,7 +104,7 @@ export const config = convict({
       env: 'LOG_FORMAT'
     },
     redact: {
-      doc: 'Log paths to redact. The search term is always removed, as req.query.q and inside the sign-in page’s req.query.returnTo: it can be a person’s name, and hapi-pino puts the query on every log line of a request.',
+      doc: 'Log paths to redact. A search term can be a person’s name, so it never reaches the logs: it is removed from the query (req.query.q, and inside the sign-in page’s req.query.returnTo) and from the headers that can carry a search page’s address (req.headers.referer, res.headers.location).',
       format: Array,
       default: isProduction
         ? [
@@ -112,9 +112,15 @@ export const config = convict({
             'req.headers.cookie',
             'res.headers',
             'req.query.q',
-            'req.query.returnTo'
+            'req.query.returnTo',
+            'req.headers.referer'
           ]
-        : ['req.query.q', 'req.query.returnTo'],
+        : [
+            'req.query.q',
+            'req.query.returnTo',
+            'req.headers.referer',
+            'res.headers.location'
+          ],
       env: 'LOG_REDACT'
     }
   },

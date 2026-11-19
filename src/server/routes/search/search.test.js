@@ -198,6 +198,14 @@ describe('Searching Legacy accreditation applications', () => {
         ...Array(4).fill('searchFields')
       ])
     })
+
+    test('tells the browser not to pass the address, with its search, on to the next page', async () => {
+      useFakeBackend(() => resultsPage([]))
+
+      const { response } = await get('/search?q=calder')
+
+      expect(response.headers['referrer-policy']).toBe('no-referrer')
+    })
   })
 
   describe('each result (AC11)', () => {
@@ -762,7 +770,7 @@ describe('Searching Legacy accreditation applications', () => {
           level: 'error',
           fields: { error: { code: 'TypeError' } },
           message:
-            'epr-register-enrol-backend GET /admin/accreditation-applications failed: fetch failed'
+            'epr-register-enrol-backend GET /admin/accreditation-applications failed (TypeError)'
         }
       ])
     })

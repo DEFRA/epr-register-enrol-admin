@@ -86,3 +86,8 @@
 .app-results .govuk-tag {
   @include govuk-font($size: 16);
 }
+
+// The organisation number, on its own line under the name.
+.app-results .govuk-hint {
+  display: block;
+}

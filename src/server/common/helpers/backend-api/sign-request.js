@@ -10,7 +10,7 @@ const SIGNATURE_HEADER = 'x-cdp-auth-signature'
  * The HMAC-SHA256 auth headers for a call to epr-register-enrol-backend, or
  * none when no shared secret is configured (a local backend).
  *
- * Copied from epr-register-enrol-management-fe
+ * Follows epr-register-enrol-management-fe's signing
  * (src/server/common/helpers/backend-api/sign-request.js), with one change:
  * management-fe signs management-be's payload, which also carries the user's
  * role and nation. epr-register-enrol-backend's ServiceClientAuthenticationHandler

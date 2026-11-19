@@ -7,8 +7,8 @@ import { signRequestHeaders } from './sign-request.js'
 // Named in every failure log, so an alert says which service failed.
 const UPSTREAM = 'epr-register-enrol-backend'
 
-// Only what the Admin UI reads from a page of results. Items are checked
-// further where they are used.
+// Only the page around the results. Items are not checked: the search page
+// shows whatever fields an item has, and a missing one as "None" or blank.
 const pageSchema = Joi.object({
   pageNumber: Joi.number().integer().min(1).required(),
   limit: Joi.number().integer().min(1).required(),

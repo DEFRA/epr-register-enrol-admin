@@ -2,11 +2,13 @@ import Joi from 'joi'
 import { config } from '#/config/config.js'
 import { isSafeRedirect } from '#/server/common/helpers/is-safe-redirect.js'
 import { updatePolicy } from '#/server/common/helpers/cookie-policy-manager.js'
+import { publicRoute } from '#/server/plugins/auth.js'
 
 export const cookiePolicyController = {
   method: 'GET',
   path: '/cookies',
   options: {
+    auth: publicRoute,
     validate: {
       query: Joi.object({
         updated: Joi.boolean().default(false)
@@ -28,6 +30,7 @@ export const updateCookiePreferencesController = {
   method: 'POST',
   path: '/cookies',
   options: {
+    auth: publicRoute,
     validate: {
       payload: Joi.object().keys({
         analytics: Joi.boolean().required(),

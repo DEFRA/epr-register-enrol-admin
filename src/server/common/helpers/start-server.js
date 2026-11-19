@@ -1,7 +1,9 @@
 import { createServer } from '../../server.js'
 import { config } from '#/config/config.js'
+import { assertSafeForEnvironment } from '#/config/environment.js'
 
 async function startServer() {
+  assertSafeForEnvironment(config)
   const server = await createServer()
   await server.start()
 

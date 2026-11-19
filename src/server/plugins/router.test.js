@@ -29,4 +29,19 @@ describe('Front-end assets in local development', () => {
     expect(headers['content-type']).toContain('javascript')
     expect(payload).toContain('cookies.init()')
   })
+
+  test('are public, so the sign-in page can load them', async () => {
+    const { statusCode } = await server.inject(
+      '/public/src/client/javascripts/application.js'
+    )
+
+    expect(statusCode).not.toBe(statusCodes.unauthorized)
+    expect(statusCode).toBe(statusCodes.ok)
+  })
+
+  test("that don't exist are not found", async () => {
+    const { statusCode } = await server.inject('/public/no-such-file.js')
+
+    expect(statusCode).toBe(statusCodes.notFound)
+  })
 })

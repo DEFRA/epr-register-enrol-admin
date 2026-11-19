@@ -2,7 +2,6 @@ import path from 'node:path'
 import { readFileSync } from 'node:fs'
 
 import { config } from '#/config/config.js'
-import { buildNavigation } from './build-navigation.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
 
 const logger = createLogger()
@@ -35,7 +34,11 @@ export function context(request) {
     cookieName: config.get('cookieConsent.name'),
     googleTagManagerKey,
     breadcrumbs: [],
-    navigation: buildNavigation(request),
+    // Only what the header shows: never tokens.
+    user: request?.auth?.credentials?.user && {
+      name: request.auth.credentials.user.name,
+      email: request.auth.credentials.user.email
+    },
     getAssetPath(asset) {
       if (!config.get('isProduction')) {
         return `${assetPath}/${asset}`

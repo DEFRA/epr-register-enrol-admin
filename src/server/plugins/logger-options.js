@@ -6,7 +6,9 @@ import { getTraceId } from '@defra/hapi-tracing'
 import { config } from '#/config/config.js'
 
 const logConfig = config.get('log')
-const serviceName = config.get('serviceName')
+// Logs name the service by its CDP name, not its display name, so OpenSearch
+// and Grafana filters don't change when the display name does.
+const serviceName = 'epr-register-enrol-admin'
 const serviceVersion = config.get('serviceVersion')
 
 const formatters = {

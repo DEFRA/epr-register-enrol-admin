@@ -62,19 +62,7 @@ describe('context and cache', () => {
           assetPath: '/public/assets',
           breadcrumbs: [],
           getAssetPath: expect.any(Function),
-          navigation: [
-            {
-              current: true,
-              text: 'Home',
-              href: '/'
-            },
-            {
-              current: false,
-              text: 'About',
-              href: '/about'
-            }
-          ],
-          serviceName: 'EPR Registrations and Accreditations Admin',
+          serviceName: 'RREPW Reg-Accred',
           serviceUrl: '/'
         })
       })
@@ -151,19 +139,7 @@ describe('context and cache', () => {
           assetPath: '/public/assets',
           breadcrumbs: [],
           getAssetPath: expect.any(Function),
-          navigation: [
-            {
-              current: true,
-              text: 'Home',
-              href: '/'
-            },
-            {
-              current: false,
-              text: 'About',
-              href: '/about'
-            }
-          ],
-          serviceName: 'EPR Registrations and Accreditations Admin',
+          serviceName: 'RREPW Reg-Accred',
           serviceUrl: '/'
         })
       })

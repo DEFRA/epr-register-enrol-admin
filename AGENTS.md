@@ -79,8 +79,10 @@ Keep the two apart in code, config and conversation.
 - **User auth** answers "who is using the Admin UI?". Microsoft Entra ID
   sign-in, app role `Waste.SupportUser.ReadOnly`, group `AG-EPR-SUPPORT`.
   Every route must require an authenticated user with the role; access is denied
-  by default and a route opts out only for platform needs (`/health`, static
-  assets).
+  by default. The only exceptions are the reviewed public list in
+  `src/server/plugins/route-protection.test.js`: platform needs (`/health`,
+  static assets, the favicon), home (which only redirects), the sign-in and
+  sign-out pages, and the cookie pages.
 - **Service-to-service auth** answers "is this caller the Admin UI?". The
   Admin UI calls each backend as itself, using a client ID and an HMAC
   signature, with read-only credentials in production. The user's Entra token
@@ -94,21 +96,24 @@ admin-services guide lists forwarding the user's Entra token to the backend.
 We have chosen HMAC deliberately, so the backends never have to accept or
 validate a user token.
 
-Neither is built yet: user auth arrives with RA-738, service-to-service auth
-with the first backend integration.
+**User auth is built** (RA-738):
 
-Reuse what the team already has before writing new code. When building either
-side, start from these and copy or extract them, rather than writing a second
-version that will drift:
+- `openid-client` runs the sign-in (authorisation code with PKCE, state and
+  nonce) and token refresh. It checks the ID token; the user's roles come
+  from its `roles` claim.
+- The session lives in Redis through yar. `src/server/plugins/auth.js` makes
+  every route need the role by default.
+- `AUTH_PROVIDER` picks the stub, the Defra Dev tenant or the Defra tenant;
+  see [docs/environments.md](docs/environments.md).
+- A new route needs nothing to be protected. Making one public means
+  `auth: false` (or `publicRoute`, to show who is signed in) plus an entry,
+  with its reason, in `route-protection.test.js`.
 
-- HMAC request signing and the backend client:
-  `epr-register-enrol-management-fe`,
-  `src/server/common/helpers/backend-api/` (`sign-request.js`,
-  `backend-api.js`).
-- Entra ID sign-in, and its stub for local use:
-  `epr-register-enrol-management-fe`, `src/server/common/helpers/auth/`.
-- A stand-in Entra ID for local and non-production use:
-  `DEFRA/epr-register-enrol-entra-stub`.
+Service-to-service auth arrives with the first backend integration. Reuse what
+the team already has rather than writing a second version that will drift:
+HMAC request signing and the backend client in
+`epr-register-enrol-management-fe`, `src/server/common/helpers/backend-api/`
+(`sign-request.js`, `backend-api.js`).
 
 ## Errors: tell the user, keep them on the page
 
@@ -126,9 +131,12 @@ Load is low, so every error matters and every error is visible.
   automatic.
 - Banners and error pages show our own wording only: stack traces and upstream
   response bodies stay in the logs.
-- The catch-all error page (`src/server/common/helpers/errors.js`) renders
-  every error response: 404s, 401s, 403s and CSRF 400s, and, as a last resort,
-  unhandled exceptions. A 5xx reaching it is a bug to fix.
+- The catch-all error handler (`src/server/common/helpers/errors.js`) handles
+  every error response. A 401 goes to sign-in, coming back to the page
+  afterwards. A 403 for a signed-in user without the role is the access-denied
+  page. Anything else (404s, other 403s, CSRF 400s and, as a last resort,
+  unhandled exceptions) renders the error page. A 5xx reaching it is a bug to
+  fix.
 
 ## Monitoring and alerting
 
@@ -197,10 +205,16 @@ parsing or record linking, where the algorithm itself is the behaviour.
 Mock only what lies outside this application, and mock it at the outermost
 layer:
 
-- Backend APIs: mock at the HTTP layer with `vitest-fetch-mock`, so our own
-  API client code runs in every test.
-- Entra ID, `@defra/cdp-auditing`, `@defra/cdp-metrics`, Redis: mock the
-  dependency itself.
+- Outbound HTTP (backend APIs, Entra ID): mock at the network with `msw`, so
+  our own client code runs in every test. The shared server is
+  `test-helpers/msw-server.js`, and any request a test hasn't set up fails the
+  test. For sign-in, `test-helpers/fake-entra.js` serves a fake provider and
+  `signIn()` signs a user in through the real routes.
+- `@defra/cdp-auditing`, `@defra/cdp-metrics`, Redis: mock the dependency
+  itself.
+
+msw, not a `fetch` mock, because it also catches requests made with Node's
+`http` module, which some libraries use instead of `fetch`.
 
 Every module inside this repo runs for real in new tests. If one genuinely
 cannot, mock it and leave a comment saying why. Some tests that came with the
@@ -216,8 +230,9 @@ touch them.
 ### Test against deployed services
 
 Prefer real integrations wherever an environment has them. What the Admin UI
-talks to changes by environment (stubs locally, real backends from dev, real
-Entra from test). See [docs/environments.md](docs/environments.md).
+talks to changes by environment (stubs locally, real backends from dev, the
+Entra stub up to ext-test until RA-798 moves test and ext-test to the Defra Dev
+tenant). See [docs/environments.md](docs/environments.md).
 
 ## Security
 
@@ -242,6 +257,10 @@ cleared for display.
   that might contain them. When unsure whether a field is personal, mask it.
 - Mask on the server, before rendering. The full value never reaches the HTML,
   hidden fields, data attributes, browser-side scripts or the session.
+- **Exception: the signed-in user's own name and email.** They are kept in the
+  session and shown unmasked in the header and on the access-denied page
+  (RA-738, AC06 and AC08), because they tell users which account they are
+  using and need no protection from the person they belong to.
 - All masking goes through one shared helper, used by views and by anything
   that logs or audits a value, so the rules live in one place and are tested
   there.

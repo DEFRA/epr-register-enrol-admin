@@ -18,6 +18,16 @@ describe('isSafeRedirect', () => {
     expect(isSafeRedirect('//evil.example.com')).toBe(false)
   })
 
+  test.each([
+    ['a backslash after the slash', '/\\evil.example.com'],
+    ['a backslash anywhere', '/search\\..\\evil'],
+    ['a tab', '/\t/evil.example.com'],
+    ['a newline', '/search\nSet-Cookie: x=y'],
+    ['a path over 2048 characters', `/${'a'.repeat(2048)}`]
+  ])('returns false for %s', (_label, url) => {
+    expect(isSafeRedirect(url)).toBe(false)
+  })
+
   test('returns false for null', () => {
     expect(isSafeRedirect(null)).toBe(false)
   })

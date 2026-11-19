@@ -44,7 +44,19 @@ export const config = convict({
   serviceName: {
     doc: 'Service name shown in the GOV.UK service navigation and page titles',
     format: String,
-    default: 'EPR Registrations and Accreditations Admin'
+    default: 'RREPW Reg-Accred'
+  },
+  environment: {
+    doc: 'The CDP environment the service runs in; CDP sets ENVIRONMENT. Without it, a production build (NODE_ENV=production) counts as production, so a deployed service can never fall back to local.',
+    format: String,
+    default: isProduction ? '' : 'local',
+    env: 'ENVIRONMENT'
+  },
+  appBaseUrl: {
+    doc: 'The URL users reach this service on. Entra ID sends them back to it after signing in and out.',
+    format: String,
+    default: 'http://localhost:3000',
+    env: 'APP_BASE_URL'
   },
   root: {
     doc: 'Project root',
@@ -98,6 +110,44 @@ export const config = convict({
         ? ['req.headers.authorization', 'req.headers.cookie', 'res.headers']
         : [],
       env: 'LOG_REDACT'
+    }
+  },
+  auth: {
+    provider: {
+      doc: 'Who users sign in with: defra-stub (epr-register-enrol-entra-stub), defra-dev (the Defra Dev Entra ID tenant) or defra-prod (the Defra Entra ID tenant). Only defra-prod is allowed in production.',
+      format: ['defra-stub', 'defra-dev', 'defra-prod'],
+      default: 'defra-stub',
+      env: 'AUTH_PROVIDER'
+    },
+    stubUrl: {
+      doc: 'Base URL this service calls epr-register-enrol-entra-stub on, when AUTH_PROVIDER is defra-stub.',
+      format: String,
+      default: 'http://localhost:3010',
+      env: 'ENTRA_STUB_URL'
+    },
+    tenantId: {
+      doc: 'The Entra ID tenant users sign in to, when AUTH_PROVIDER is defra-dev or defra-prod. Set per environment in cdp-app-config.',
+      format: String,
+      default: '',
+      env: 'ENTRA_TENANT_ID'
+    },
+    clientId: {
+      doc: "This service's client ID in the provider. The default is the stub's client.",
+      format: String,
+      default: 'epr-register-enrol-admin',
+      env: 'ENTRA_CLIENT_ID'
+    },
+    clientSecret: {
+      doc: "This service's client secret in the provider. The default is the stub's client secret.",
+      format: String,
+      default: 'admin-stub-secret',
+      sensitive: true,
+      env: 'ENTRA_CLIENT_SECRET'
+    },
+    requiredRole: {
+      doc: 'The Entra ID app role every page needs.',
+      format: String,
+      default: 'Waste.SupportUser.ReadOnly'
     }
   },
   httpProxy: {

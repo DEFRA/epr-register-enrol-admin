@@ -159,14 +159,15 @@ describe('A signed-in session', () => {
 })
 
 describe('A signed-in session with Entra ID', () => {
-  const tenant =
-    'https://login.microsoftonline.com/6f504113-6b64-43f2-ade9-242e05780007/v2.0'
+  const tenantId = '00000000-0000-4000-8000-00000000d0d0'
+  const tenant = `https://login.microsoftonline.com/${tenantId}/v2.0`
   let server
   let logs
 
   beforeAll(async () => {
     vi.resetModules()
     vi.stubEnv('AUTH_PROVIDER', 'defra-dev')
+    vi.stubEnv('ENTRA_TENANT_ID', tenantId)
     const { createServer: createDevServer } = await import('#/server/server.js')
     server = await createDevServer()
     logs = recordLogs(server)

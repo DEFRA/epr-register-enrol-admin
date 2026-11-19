@@ -27,14 +27,14 @@ runs `epr-register-enrol-backend` (Accreditation API) and
 `AUTH_PROVIDER` says who users sign in with. Every provider runs the same
 code (OpenID Connect through `openid-client`); only where it points changes.
 
-| `AUTH_PROVIDER` | Signs users in with                                                               | Set as well                                                       |
-| --------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `defra-stub`    | `DEFRA/epr-register-enrol-entra-stub` (the default)                               | `ENTRA_STUB_URL`, `APP_BASE_URL`                                  |
-| `defra-dev`     | The Defra Dev Entra ID tenant                                                     | `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET` (secret), `APP_BASE_URL` |
-| `defra-prod`    | The Defra Entra ID tenant ([RA-757](https://eaflood.atlassian.net/browse/RA-757)) | `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET` (secret), `APP_BASE_URL` |
+| `AUTH_PROVIDER` | Signs users in with                                                               | Set as well                                                                          |
+| --------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `defra-stub`    | `DEFRA/epr-register-enrol-entra-stub` (the default)                               | `ENTRA_STUB_URL`, `APP_BASE_URL`                                                     |
+| `defra-dev`     | The Defra Dev Entra ID tenant                                                     | `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET` (secret), `APP_BASE_URL` |
+| `defra-prod`    | The Defra Entra ID tenant ([RA-757](https://eaflood.atlassian.net/browse/RA-757)) | `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET` (secret), `APP_BASE_URL` |
 
 In production (see "Telling environments apart") the service refuses to start
-unless `AUTH_PROVIDER` is `defra-prod` and the client ID, client secret,
+unless `AUTH_PROVIDER` is `defra-prod` and the tenant ID, client ID, client secret,
 session cookie password and an `https` `APP_BASE_URL` are all set. Elsewhere,
 any provider may be used.
 

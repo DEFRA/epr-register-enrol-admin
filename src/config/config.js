@@ -125,6 +125,12 @@ export const config = convict({
       default: 'http://localhost:3010',
       env: 'ENTRA_STUB_URL'
     },
+    tenantId: {
+      doc: 'The Entra ID tenant users sign in to, when AUTH_PROVIDER is defra-dev or defra-prod. Set per environment in cdp-app-config.',
+      format: String,
+      default: '',
+      env: 'ENTRA_TENANT_ID'
+    },
     clientId: {
       doc: "This service's client ID in the provider. The default is the stub's client.",
       format: String,

@@ -34,6 +34,9 @@ export function productionConfigProblems(config) {
   if (config.get('auth.provider') !== 'defra-prod') {
     problems.push('AUTH_PROVIDER must be defra-prod')
   }
+  if (!config.get('auth.tenantId')) {
+    problems.push('ENTRA_TENANT_ID must be set')
+  }
   if (defaults('auth.clientId')) {
     problems.push('ENTRA_CLIENT_ID must be set')
   }

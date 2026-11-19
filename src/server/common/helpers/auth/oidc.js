@@ -2,11 +2,6 @@ import * as client from 'openid-client'
 
 import { config } from '#/config/config.js'
 
-const entraTenantIds = {
-  'defra-dev': '6f504113-6b64-43f2-ade9-242e05780007',
-  'defra-prod': '770a2450-0227-4c62-90c7-4e38537f1102'
-}
-
 const provider = () => config.get('auth.provider')
 const isStub = () => provider() === 'defra-stub'
 
@@ -14,7 +9,9 @@ function wellKnownUrl() {
   if (isStub()) {
     return `${config.get('auth.stubUrl')}/.well-known/openid-configuration`
   }
-  return `https://login.microsoftonline.com/${entraTenantIds[provider()]}/v2.0/.well-known/openid-configuration`
+  // defra-dev and defra-prod differ only in the tenant, which each
+  // environment sets in cdp-app-config (ENTRA_TENANT_ID).
+  return `https://login.microsoftonline.com/${config.get('auth.tenantId')}/v2.0/.well-known/openid-configuration`
 }
 
 /**

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 const productionValues = {
   ENVIRONMENT: 'prod',
   AUTH_PROVIDER: 'defra-prod',
+  ENTRA_TENANT_ID: '00000000-0000-4000-8000-0000000000aa',
   ENTRA_CLIENT_ID: '31c3c7b9-0000-4000-8000-000000000000',
   ENTRA_CLIENT_SECRET: 'a-real-secret',
   SESSION_COOKIE_PASSWORD: 'a-real-cookie-password-of-32-or-more-chars',
@@ -50,6 +51,7 @@ describe('Settings for each environment', () => {
   test('production refuses the stub and every development default', async () => {
     expect(await problemsWith({ ENVIRONMENT: 'prod' })).toEqual([
       'AUTH_PROVIDER must be defra-prod',
+      'ENTRA_TENANT_ID must be set',
       'ENTRA_CLIENT_ID must be set',
       'ENTRA_CLIENT_SECRET must be set',
       'SESSION_COOKIE_PASSWORD must be set',

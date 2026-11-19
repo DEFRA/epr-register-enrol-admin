@@ -22,6 +22,7 @@ import {
   useFakeEntra,
   userWithoutRole
 } from '#/test-helpers/fake-entra.js'
+import { resultsPage, useFakeBackend } from '#/test-helpers/fake-backend.js'
 
 vi.mock('@defra/cdp-auditing', () => ({ audit: vi.fn() }))
 
@@ -120,6 +121,7 @@ describe('Signing in', () => {
     })
 
     test('lands a user with the role on the search page, with their name in the header', async () => {
+      useFakeBackend(() => resultsPage([]))
       const { callback, cookie } = await signIn(server, fakeEntra, supportUser)
       const searchPage = await get(callback.headers.location, cookie)
       const $ = cheerio.load(searchPage.payload)
@@ -127,12 +129,15 @@ describe('Signing in', () => {
       expect(callback.headers.location).toBe('/search')
       expect(searchPage.statusCode).toBe(200)
       expect(searchPage.headers['cache-control']).toBe('no-store')
-      expect($('h1').text()).toBe('Search')
+      expect($('h1').text()).toBe('Search accreditation applications')
       expect($('[data-testid="signed-in-user"]').text().trim()).toBe(
         'Signed in as Support User'
       )
       expect($('a[href="/auth/sign-out"]').text()).toBe('Sign out')
-      expect(auditedActions()).toEqual(['sign-in'])
+      expect(auditedActions()).toEqual([
+        'sign-in',
+        'search-legacy-accreditation-applications'
+      ])
       expect(vi.mocked(audit).mock.calls[0][0]).toEqual({
         event: { category: 'access', subCategory: 'sso', action: 'sign-in' },
         context: {},

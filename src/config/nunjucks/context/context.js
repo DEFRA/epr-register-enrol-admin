@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 
 import { config } from '#/config/config.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
+import { hasRequiredRole } from '#/server/common/helpers/auth/user-session.js'
 
 const logger = createLogger()
 const assetPath = config.get('assetPath')
@@ -39,6 +40,16 @@ export function context(request) {
       name: request.auth.credentials.user.name,
       email: request.auth.credentials.user.email
     },
+    // Only for someone who can use the pages it links to.
+    navigation: hasRequiredRole(request?.auth?.credentials?.user)
+      ? [
+          {
+            href: '/search',
+            text: 'Operator journey',
+            current: request.path === '/search'
+          }
+        ]
+      : [],
     getAssetPath(asset) {
       if (!config.get('isProduction')) {
         return `${assetPath}/${asset}`

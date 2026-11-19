@@ -9,7 +9,9 @@ const productionValues = {
   SESSION_COOKIE_PASSWORD: 'a-real-cookie-password-of-32-or-more-chars',
   APP_BASE_URL: 'https://admin.example.com',
   SESSION_COOKIE_SECURE: 'true',
-  SESSION_CACHE_ENGINE: 'redis'
+  SESSION_CACHE_ENGINE: 'redis',
+  BACKEND_URL: 'https://epr-register-enrol-backend.prod.cdp-int.defra.cloud',
+  BACKEND_API_SHARED_SECRET: 'a-real-hmac-secret'
 }
 
 async function problemsWith(env) {
@@ -57,7 +59,9 @@ describe('Settings for each environment', () => {
       'SESSION_COOKIE_PASSWORD must be set',
       'APP_BASE_URL must be https',
       'SESSION_COOKIE_SECURE must be true',
-      'SESSION_CACHE_ENGINE must be redis'
+      'SESSION_CACHE_ENGINE must be redis',
+      'BACKEND_URL must be set',
+      'BACKEND_API_SHARED_SECRET must be set'
     ])
   })
 

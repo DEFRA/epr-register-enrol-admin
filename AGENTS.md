@@ -115,18 +115,23 @@ validate a user token.
   `auth: false` (or `publicRoute`, to show who is signed in) plus an entry,
   with its reason, in `route-protection.test.js`.
 
+Reuse what the team already has rather than writing a second version that will
+drift: HMAC request signing and the backend client in
+`epr-register-enrol-management-fe`, `src/server/common/helpers/backend-api/`
+(`sign-request.js`, `backend-api.js`).
+
 **Service-to-service auth is built** for the Accreditation API (RA-740), in
 `src/server/common/helpers/backend-api/`. The signing in `sign-request.js`
-follows `epr-register-enrol-management-fe`'s
-(`src/server/common/helpers/backend-api/sign-request.js`), with one deliberate
-difference: management-be's signed payload also carries the user's role and
-nation, and `epr-register-enrol-backend`'s does not. Each backend's payload
-must match what that backend verifies; for this one that is
-`ServiceClientAuthenticationHandler`, and `sign-request.test.js` pins the
-backend's own known signature. The client in `backend-api.js` is a smaller,
-separate implementation, not a copy of management-fe's, so a fix there needs
-checking against this one by hand. Reuse the same signing for the Case
-Management API.
+follows management-fe's, with one difference: management-be's signed payload
+also carries the user's role and nation, and `epr-register-enrol-backend`'s
+does not. Each backend's payload must match what that backend verifies; for
+this one that is `ServiceClientAuthenticationHandler`, and
+`sign-request.test.js` pins the backend's own known signature.
+
+`sign-request.js` takes only the client ID and signs empty user lines, so it
+cannot call the Case Management API as it stands. Before it can, it has to
+sign the signed-in user's ID, name, role and nation, as management-fe's does,
+and be checked against what management-be verifies.
 
 ## Errors: tell the user, keep them on the page
 

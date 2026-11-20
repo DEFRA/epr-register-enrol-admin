@@ -55,6 +55,12 @@ export function productionConfigProblems(config) {
   if (config.get('session.cache.engine') !== 'redis') {
     problems.push('SESSION_CACHE_ENGINE must be redis')
   }
+  if (defaults('backendApi.url')) {
+    problems.push('BACKEND_URL must be set')
+  }
+  if (!config.get('backendApi.sharedSecret')) {
+    problems.push('BACKEND_API_SHARED_SECRET must be set')
+  }
 
   return problems
 }

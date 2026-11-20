@@ -1,0 +1,101 @@
+@use "govuk-frontend" as *;
+
+// The search box with its button beside it.
+.app-search {
+  display: flex;
+  align-items: flex-end;
+  gap: govuk-spacing(2);
+
+  .govuk-form-group {
+    flex-grow: 1;
+  }
+
+  .app-search__button {
+    margin-bottom: govuk-spacing(6);
+  }
+}
+
+.app-search-fields .govuk-checkboxes__item {
+  float: left;
+  margin-right: govuk-spacing(4);
+}
+
+.app-search-fields::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
+// Each search term, ticked field and filter in force, as a tag that removes it.
+.app-selected-filters {
+  margin-bottom: govuk-spacing(4);
+}
+
+.app-selected-filters__tags {
+  margin: 0 0 govuk-spacing(2);
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: inline-block;
+    margin: 0 govuk-spacing(1) govuk-spacing(1) 0;
+  }
+}
+
+.app-filter-tag {
+  @include govuk-font($size: 16);
+  display: inline-block;
+  padding: govuk-spacing(1) govuk-spacing(2);
+  border: 1px solid $govuk-border-colour;
+  color: $govuk-text-colour;
+  background-color: govuk-colour("white");
+  text-decoration: none;
+
+  &::after {
+    content: "\00d7";
+    margin-left: govuk-spacing(1);
+    font-weight: $govuk-font-weight-bold;
+  }
+
+  &:hover {
+    color: $govuk-text-colour;
+    background-color: $govuk-hover-colour;
+  }
+
+  &:focus {
+    @include govuk-focused-text;
+  }
+}
+
+.app-results-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+// Seven columns in three-quarters of the page: smaller text so they fit.
+.app-results {
+  @include govuk-font($size: 16);
+}
+
+.app-results__reference {
+  overflow-wrap: anywhere;
+}
+
+.app-results .govuk-hint,
+.app-results .govuk-tag {
+  @include govuk-font($size: 16);
+}
+
+// The organisation number, on its own line under the name.
+.app-results .govuk-hint {
+  display: block;
+}
+
+// The search comes before the filters in the page, so it is first on a narrow
+// screen. From tablet up it sits to the right of the filters column.
+.app-search-layout__main {
+  @include govuk-media-query($from: tablet) {
+    float: right;
+  }
+}

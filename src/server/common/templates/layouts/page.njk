@@ -61,7 +61,7 @@
   {{ govukServiceNavigation({
     serviceName: serviceName,
     serviceUrl: serviceUrl,
-    navigation: [],
+    navigation: navigation,
     slots: ({ navigationEnd: signedInAs } if user else {})
   }) }}
 {% endblock %}

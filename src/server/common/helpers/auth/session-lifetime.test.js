@@ -18,6 +18,7 @@ import {
   useFakeEntra,
   userWithoutRole
 } from '#/test-helpers/fake-entra.js'
+import { resultsPage, useFakeBackend } from '#/test-helpers/fake-backend.js'
 
 vi.mock('@defra/cdp-auditing', () => ({ audit: vi.fn() }))
 
@@ -35,6 +36,8 @@ describe('A signed-in session', () => {
 
   beforeEach(() => {
     logs.length = 0
+    // /search, which these tests view, calls the backend.
+    useFakeBackend(() => resultsPage([]))
   })
 
   const sessionEnded = () =>

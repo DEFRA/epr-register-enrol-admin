@@ -15,6 +15,15 @@ const isDevelopment = process.env.NODE_ENV === 'development'
 
 convict.addFormats(convictFormatWithValidator)
 
+// An absolute http or https URL. Caught at start-up, not on the first call:
+// fetch can't use a value without a scheme, and its error would hold the URL.
+function httpUrl(value) {
+  const protocol = URL.canParse(value) ? new URL(value).protocol : undefined
+  if (protocol !== 'http:' && protocol !== 'https:') {
+    throw new Error('must be an http or https URL')
+  }
+}
+
 export const config = convict({
   serviceVersion: {
     doc: 'The service version, this variable is injected into your docker container in CDP environments',
@@ -104,11 +113,23 @@ export const config = convict({
       env: 'LOG_FORMAT'
     },
     redact: {
-      doc: 'Log paths to redact',
+      doc: 'Log paths to redact. A search term can be a person’s name, so it never reaches the logs: it is removed from the query (req.query.q, and inside the sign-in page’s req.query.returnTo) and from the headers that can carry a search page’s address (req.headers.referer, res.headers.location).',
       format: Array,
       default: isProduction
-        ? ['req.headers.authorization', 'req.headers.cookie', 'res.headers']
-        : [],
+        ? [
+            'req.headers.authorization',
+            'req.headers.cookie',
+            'res.headers',
+            'req.query.q',
+            'req.query.returnTo',
+            'req.headers.referer'
+          ]
+        : [
+            'req.query.q',
+            'req.query.returnTo',
+            'req.headers.referer',
+            'res.headers.location'
+          ],
       env: 'LOG_REDACT'
     }
   },
@@ -148,6 +169,33 @@ export const config = convict({
       doc: 'The Entra ID app role every page needs.',
       format: String,
       default: 'Waste.SupportUser.ReadOnly'
+    }
+  },
+  backendApi: {
+    url: {
+      doc: 'Base URL of epr-register-enrol-backend (the Accreditation API). Set per environment in cdp-app-config. The default is where the epr-register-enrol umbrella Compose stack serves it.',
+      format: httpUrl,
+      default: 'http://localhost:8080',
+      env: 'BACKEND_URL'
+    },
+    timeoutMs: {
+      doc: 'How long to wait for epr-register-enrol-backend before showing the "unavailable" banner, in milliseconds. A search is two backend queries (a count, then a page), each stopped after the backend\'s ServiceClients:QueryTimeoutSeconds (5 seconds), so this is longer than both. Raise it with that setting.',
+      format: 'nat',
+      default: 12000,
+      env: 'BACKEND_API_TIMEOUT_MS'
+    },
+    clientId: {
+      doc: 'Who this service is to epr-register-enrol-backend: the x-cdp-client-id it sends, and the ClientId of the admin entry in the backend’s ServiceClients config.',
+      format: String,
+      default: 'epr-register-enrol-admin',
+      env: 'BACKEND_API_CLIENT_ID'
+    },
+    sharedSecret: {
+      doc: 'HMAC-SHA256 secret this service signs its calls to epr-register-enrol-backend with. The backend verifies it as AUTH_SHARED_SECRET__ADMIN. Empty sends calls unsigned (a fake backend, or none); a real backend refuses them. Production refuses to start without it.',
+      format: String,
+      default: '',
+      sensitive: true,
+      env: 'BACKEND_API_SHARED_SECRET'
     }
   },
   httpProxy: {

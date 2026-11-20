@@ -18,3 +18,21 @@ export function auditAccess(action, user, context = {}) {
     user: user && { id: user.id, email: user.email }
   })
 }
+
+/**
+ * Record a search in CDP Audit: who searched, and for what. The results are
+ * not recorded.
+ *
+ * @param {{ id: string, email: string }} user who searched
+ * @param {object} criteria the search term, fields, filters and page
+ */
+export function auditSearch(user, criteria) {
+  audit({
+    event: {
+      category: 'search',
+      action: 'search-legacy-accreditation-applications'
+    },
+    context: criteria,
+    user: { id: user.id, email: user.email }
+  })
+}

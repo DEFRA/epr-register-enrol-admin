@@ -39,7 +39,10 @@ export async function createServer() {
         },
         xss: 'enabled',
         noSniff: true,
-        xframe: true
+        xframe: true,
+        // Search pages carry the search term in their address, which can be a
+        // person's name. Don't send it on to the next page or another site.
+        referrer: 'no-referrer'
       }
     },
     router: {

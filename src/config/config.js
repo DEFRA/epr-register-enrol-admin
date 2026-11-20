@@ -15,6 +15,15 @@ const isDevelopment = process.env.NODE_ENV === 'development'
 
 convict.addFormats(convictFormatWithValidator)
 
+// An absolute http or https URL. Caught at start-up, not on the first call:
+// fetch can't use a value without a scheme, and its error would hold the URL.
+function httpUrl(value) {
+  const protocol = URL.canParse(value) ? new URL(value).protocol : undefined
+  if (protocol !== 'http:' && protocol !== 'https:') {
+    throw new Error('must be an http or https URL')
+  }
+}
+
 export const config = convict({
   serviceVersion: {
     doc: 'The service version, this variable is injected into your docker container in CDP environments',
@@ -165,12 +174,12 @@ export const config = convict({
   backendApi: {
     url: {
       doc: 'Base URL of epr-register-enrol-backend (the Accreditation API). Set per environment in cdp-app-config. The default is where the epr-register-enrol umbrella Compose stack serves it.',
-      format: String,
+      format: httpUrl,
       default: 'http://localhost:8080',
       env: 'BACKEND_URL'
     },
     timeoutMs: {
-      doc: 'How long to wait for epr-register-enrol-backend before showing the "unavailable" banner, in milliseconds. A search is two backend queries (a count, then a page), each stopped after 5 seconds, so this is longer than both.',
+      doc: 'How long to wait for epr-register-enrol-backend before showing the "unavailable" banner, in milliseconds. A search is two backend queries (a count, then a page), each stopped after the backend\'s ServiceClients:QueryTimeoutSeconds (5 seconds), so this is longer than both. Raise it with that setting.',
       format: 'nat',
       default: 12000,
       env: 'BACKEND_API_TIMEOUT_MS'

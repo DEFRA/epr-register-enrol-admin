@@ -61,7 +61,10 @@ export async function searchLegacyAccreditationApplications(
 // wrong, and neither holds personal data. Only values shaped like those are
 // logged, never the body itself.
 const PROBLEM_CODE = /^[a-z][a-z_]{0,63}$/
-const TRACE_ID = /^[\w:.-]{1,128}$/
+// The backend's traceId is a W3C trace ID (00-<trace>-<span>-<flags>), or
+// Kestrel's connection:request identifier when there's no trace.
+const TRACE_ID =
+  /^(?:00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}|[\dA-Z]{13}:[\dA-F]{8})$/
 
 async function problemFields(response) {
   const body = await response.json().catch(() => undefined)

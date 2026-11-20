@@ -3,8 +3,8 @@ import { searchLegacyAccreditationApplications } from '#/server/common/helpers/b
 import {
   PAGE_SIZE,
   SEARCH_FIELDS,
+  accreditationYears,
   STATUSES,
-  YEARS,
   formFromRawQuery,
   pagination,
   resultRow,
@@ -29,7 +29,11 @@ const checkboxItems = (options, ticked) =>
 const yearItems = (year) => [
   { value: '', text: 'Any year', checked: !year },
   ...[
-    ...new Set([...YEARS.map(String), year].filter((v) => /^\d{4}$/.test(v)))
+    ...new Set(
+      [...accreditationYears().map(String), year].filter((v) =>
+        /^\d{4}$/.test(v)
+      )
+    )
   ].map((value) => ({ value, text: value, checked: value === year }))
 ]
 

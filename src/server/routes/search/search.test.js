@@ -1,3 +1,4 @@
+import { accreditationYears } from './search-form.js'
 import { createHmac } from 'node:crypto'
 
 import * as cheerio from 'cheerio'
@@ -145,7 +146,7 @@ describe('Searching Legacy accreditation applications', () => {
         $('input[name="year"]')
           .map((_i, input) => text($, `label[for="${input.attribs.id}"]`))
           .get()
-      ).toEqual(['Any year', '2026', '2027', '2028'])
+      ).toEqual(['Any year', ...accreditationYears().map(String)])
       expect(checked($, 'year')).toEqual([''])
       expect(checked($, 'status')).toEqual([])
       expect(checked($, 'searchFields')).toEqual([])
@@ -451,15 +452,15 @@ describe('Searching Legacy accreditation applications', () => {
     test('a year from a shared link that is not offered is still filtered on, and shown ticked', async () => {
       const requests = useFakeBackend(() => resultsPage([]))
 
-      const { $ } = await get('/search?year=2031')
+      const { $ } = await get('/search?year=2099')
 
-      expect(sentQuery(requests[0])).toContainEqual(['year', '2031'])
+      expect(sentQuery(requests[0])).toContainEqual(['year', '2099'])
       expect(
         $('input[name="year"]')
           .map((_i, input) => input.attribs.value)
           .get()
-      ).toEqual(['', '2026', '2027', '2028', '2031'])
-      expect(checked($, 'year')).toEqual(['2031'])
+      ).toEqual(['', ...accreditationYears().map(String), '2099'])
+      expect(checked($, 'year')).toEqual(['2099'])
     })
   })
 
@@ -797,7 +798,11 @@ describe('Searching Legacy accreditation applications', () => {
     test("logs the backend's problem code and trace ID, so a bad secret can be told from a bad request", async () => {
       useFakeBackend(() =>
         HttpResponse.json(
-          { code: 'invalid_signature', detail: 'Bad', traceId: 'abc123' },
+          {
+            code: 'invalid_signature',
+            detail: 'Bad',
+            traceId: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01'
+          },
           { status: 401 }
         )
       )
@@ -808,7 +813,10 @@ describe('Searching Legacy accreditation applications', () => {
         expect.objectContaining({
           fields: {
             http: { response: { status_code: 401 } },
-            error: { code: 'invalid_signature', id: 'abc123' }
+            error: {
+              code: 'invalid_signature',
+              id: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01'
+            }
           }
         })
       ])
@@ -817,7 +825,7 @@ describe('Searching Legacy accreditation applications', () => {
     test('logs nothing from a problem body that is not shaped like one', async () => {
       useFakeBackend(() =>
         HttpResponse.json(
-          { code: 'Jane Smith', traceId: 'a b c' },
+          { code: 'Jane Smith', traceId: 'JaneSmith' },
           { status: 400 }
         )
       )

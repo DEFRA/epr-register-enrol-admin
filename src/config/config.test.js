@@ -56,3 +56,21 @@ describe('Config defaults in local development', () => {
     expect(config.get('session.cookie.secure')).toBe(false)
   })
 })
+
+describe('The backend URL', () => {
+  test('without a scheme stops the service starting, not the first search', async () => {
+    vi.stubEnv('BACKEND_URL', 'backend.example.com')
+
+    await expect(loadConfig('development')).rejects.toThrow(
+      'must be an http or https URL'
+    )
+  })
+
+  test('with an http or https scheme is accepted', async () => {
+    vi.stubEnv('BACKEND_URL', 'https://backend.example.com')
+
+    const config = await loadConfig('development')
+
+    expect(config.get('backendApi.url')).toBe('https://backend.example.com')
+  })
+})

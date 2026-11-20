@@ -73,5 +73,5 @@ export function useFakeBackend(respond) {
 /** A page of results, as the backend sends it. */
 export const resultsPage = (
   items,
-  { totalItems = items.length, pageNumber = 1 } = {}
-) => HttpResponse.json({ pageNumber, limit: 50, totalItems, items })
+  { totalItems = items.length, pageNumber = 1, limit = 50 } = {}
+) => HttpResponse.json({ pageNumber, limit, totalItems, items })

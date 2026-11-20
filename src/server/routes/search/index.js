@@ -55,7 +55,7 @@ function searchPage(h, { form, errors = [], ...model }) {
 
 function results(criteria, page) {
   const from = (page.pageNumber - 1) * page.limit + 1
-  const lastPage = Math.ceil(page.totalItems / PAGE_SIZE)
+  const lastPage = Math.ceil(page.totalItems / page.limit)
   return {
     rows: page.items.map(resultRow),
     totalItems: page.totalItems,
@@ -66,7 +66,7 @@ function results(criteria, page) {
       page.items.length === 0 && page.totalItems > 0 && criteria.page > lastPage
         ? { lastPage, href: searchHref({ ...criteria, page: lastPage }) }
         : undefined,
-    pagination: pagination(criteria, page.totalItems)
+    pagination: pagination(criteria, page)
   }
 }
 

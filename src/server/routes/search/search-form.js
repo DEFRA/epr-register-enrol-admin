@@ -169,10 +169,11 @@ export function selectedFilters(criteria) {
 
 /**
  * GOV.UK pagination for the results: the first and last pages, the current
- * page and its neighbours, and an ellipsis for each gap.
+ * page and its neighbours, and an ellipsis for each gap. Pages are counted by
+ * the backend's page size (`limit`), which may not be the one asked for.
  */
-export function pagination(criteria, totalItems) {
-  const totalPages = Math.ceil(totalItems / PAGE_SIZE)
+export function pagination(criteria, { totalItems, limit }) {
+  const totalPages = Math.ceil(totalItems / limit)
   if (totalPages < 2) {
     return undefined
   }

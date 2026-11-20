@@ -623,6 +623,41 @@ describe('Searching Legacy accreditation applications', () => {
       ).toEqual(['1', '⋯', '4', '5', '6', '⋯', '10'])
     })
 
+    test("counts and links pages by the backend's page size, when it is not the one asked for", async () => {
+      useFakeBackend(() =>
+        resultsPage(Array(20).fill(legacyApplication()), {
+          totalItems: 45,
+          pageNumber: 2,
+          limit: 20
+        })
+      )
+
+      const { $ } = await get('/search?page=2')
+
+      expect(text($, '[data-testid="showing"]')).toBe(
+        'Showing 21 to 40 of 45 applications'
+      )
+      expect(
+        $('.govuk-pagination__item')
+          .map((_i, item) => $(item).text().trim())
+          .get()
+      ).toEqual(['1', '2', '3'])
+      expect($('.govuk-pagination__next a').attr('href')).toBe('/search?page=3')
+    })
+
+    test("a page past the last one counts the last page by the backend's page size", async () => {
+      useFakeBackend(() =>
+        resultsPage([], { totalItems: 45, pageNumber: 5, limit: 20 })
+      )
+
+      const { $ } = await get('/search?page=5')
+
+      expect(text($, '[data-testid="past-end"]')).toBe(
+        'There are only 3 pages of results. Go to page 3'
+      )
+      expect($('.govuk-pagination__prev a').attr('href')).toBe('/search?page=3')
+    })
+
     test('a page past the last one says how many pages there are, and links to the last', async () => {
       useFakeBackend(() => resultsPage([], { totalItems: 123, pageNumber: 5 }))
 

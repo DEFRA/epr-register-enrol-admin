@@ -57,6 +57,21 @@ export async function searchLegacyAccreditationApplications(
   return result.ok ? { ok: true, page: result.body } : result
 }
 
+// A problem body's code (e.g. invalid_signature) and traceId say what went
+// wrong, and neither holds personal data. Only values shaped like those are
+// logged, never the body itself.
+const PROBLEM_CODE = /^[a-z][a-z_]{0,63}$/
+const TRACE_ID = /^[\w:.-]{1,128}$/
+
+async function problemFields(response) {
+  const body = await response.json().catch(() => undefined)
+  const shaped = (value, pattern) =>
+    typeof value === 'string' && pattern.test(value) ? value : undefined
+  const code = shaped(body?.code, PROBLEM_CODE)
+  const id = shaped(body?.traceId, TRACE_ID)
+  return code || id ? { error: { code, id } } : {}
+}
+
 /**
  * GET a path on the backend as this service, signed. Failures are logged at
  * error (CDP's logger adds the trace ID) and returned as { ok: false }: the
@@ -97,7 +112,10 @@ async function getJson(path, params, logger) {
 
   const httpFields = { http: { response: { status_code: response.status } } }
   if (!response.ok) {
-    return fail(httpFields, `returned ${response.status}`)
+    return fail(
+      { ...httpFields, ...(await problemFields(response)) },
+      `returned ${response.status}`
+    )
   }
 
   const body = await response.json().catch(() => undefined)

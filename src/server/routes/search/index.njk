@@ -148,6 +148,11 @@
             <p class="govuk-body" data-testid="showing">
               Showing {{ results.from }} to {{ results.to }} of {{ results.totalItems }} application{{ "" if results.totalItems == 1 else "s" }}
             </p>
+          {% elif results.pastEnd %}
+            <p class="govuk-body" data-testid="past-end">
+              There {{ "is" if results.pastEnd.lastPage == 1 else "are" }} only {{ results.pastEnd.lastPage }} page{{ "" if results.pastEnd.lastPage == 1 else "s" }} of results.
+              <a class="govuk-link" href="{{ results.pastEnd.href }}">Go to page {{ results.pastEnd.lastPage }}</a>
+            </p>
           {% else %}
             <p class="govuk-body" data-testid="no-results">No accreditation applications found</p>
           {% endif %}

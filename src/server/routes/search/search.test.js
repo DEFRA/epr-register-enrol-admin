@@ -622,6 +622,39 @@ describe('Searching Legacy accreditation applications', () => {
       ).toEqual(['1', '⋯', '4', '5', '6', '⋯', '10'])
     })
 
+    test('a page past the last one says how many pages there are, and links to the last', async () => {
+      useFakeBackend(() => resultsPage([], { totalItems: 123, pageNumber: 5 }))
+
+      const { $ } = await get('/search?status=Approved&page=5')
+
+      expect(text($, '[data-testid="results-heading"]')).toBe(
+        '123 accreditation applications'
+      )
+      expect(text($, '[data-testid="past-end"]')).toBe(
+        'There are only 3 pages of results. Go to page 3'
+      )
+      expect($('[data-testid="past-end"] a').attr('href')).toBe(
+        '/search?status=Approved&page=3'
+      )
+      expect($('[data-testid="no-results"]')).toHaveLength(0)
+      expect($('.govuk-pagination__link[aria-current]')).toHaveLength(0)
+      expect($('.govuk-pagination__prev a').attr('href')).toBe(
+        '/search?status=Approved&page=3'
+      )
+      expect($('.govuk-pagination__next')).toHaveLength(0)
+    })
+
+    test('a page past the only page says so in the singular', async () => {
+      useFakeBackend(() => resultsPage([], { totalItems: 4, pageNumber: 2 }))
+
+      const { $ } = await get('/search?page=2')
+
+      expect(text($, '[data-testid="past-end"]')).toBe(
+        'There is only 1 page of results. Go to page 1'
+      )
+      expect($('[data-testid="past-end"] a').attr('href')).toBe('/search')
+    })
+
     test('with one application, says so in the singular, with no paging', async () => {
       useFakeBackend(() => resultsPage([legacyApplication()]))
 
@@ -749,13 +782,67 @@ describe('Searching Legacy accreditation applications', () => {
       expect(logs.filter(({ level }) => level === 'error')).toEqual([
         {
           level: 'error',
-          fields: { http: { response: { status_code: 503 } } },
+          fields: {
+            http: { response: { status_code: 503 } },
+            error: { code: 'query_timeout' }
+          },
           message:
             'epr-register-enrol-backend GET /admin/accreditation-applications returned 503'
         }
       ])
       expect(JSON.stringify(logs)).not.toContain('calder')
       expect(searchAudits()).toHaveLength(1)
+    })
+
+    test("logs the backend's problem code and trace ID, so a bad secret can be told from a bad request", async () => {
+      useFakeBackend(() =>
+        HttpResponse.json(
+          { code: 'invalid_signature', detail: 'Bad', traceId: 'abc123' },
+          { status: 401 }
+        )
+      )
+
+      await get('/search')
+
+      expect(logs.filter(({ level }) => level === 'error')).toEqual([
+        expect.objectContaining({
+          fields: {
+            http: { response: { status_code: 401 } },
+            error: { code: 'invalid_signature', id: 'abc123' }
+          }
+        })
+      ])
+    })
+
+    test('logs nothing from a problem body that is not shaped like one', async () => {
+      useFakeBackend(() =>
+        HttpResponse.json(
+          { code: 'Jane Smith', traceId: 'a b c' },
+          { status: 400 }
+        )
+      )
+
+      await get('/search')
+
+      expect(logs.filter(({ level }) => level === 'error')).toEqual([
+        expect.objectContaining({
+          fields: { http: { response: { status_code: 400 } } }
+        })
+      ])
+    })
+
+    test('an error page that is not JSON, from a gateway, logs only the status', async () => {
+      useFakeBackend(
+        () => new HttpResponse('<html>Bad gateway</html>', { status: 502 })
+      )
+
+      await get('/search')
+
+      expect(logs.filter(({ level }) => level === 'error')).toEqual([
+        expect.objectContaining({
+          fields: { http: { response: { status_code: 502 } } }
+        })
+      ])
     })
 
     test('a network failure shows the banner and logs an error', async () => {

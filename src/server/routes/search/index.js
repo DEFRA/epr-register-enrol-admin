@@ -9,6 +9,7 @@ import {
   pagination,
   resultRow,
   searchErrors,
+  searchHref,
   searchQuery,
   selectedFilters
 } from './search-form.js'
@@ -50,11 +51,17 @@ function searchPage(h, { form, errors = [], ...model }) {
 
 function results(criteria, page) {
   const from = (page.pageNumber - 1) * page.limit + 1
+  const lastPage = Math.ceil(page.totalItems / PAGE_SIZE)
   return {
     rows: page.items.map(resultRow),
     totalItems: page.totalItems,
     from,
     to: from + page.items.length - 1,
+    // A shared link to a page the results no longer reach.
+    pastEnd:
+      page.items.length === 0 && page.totalItems > 0 && criteria.page > lastPage
+        ? { lastPage, href: searchHref({ ...criteria, page: lastPage }) }
+        : undefined,
     pagination: pagination(criteria, page.totalItems)
   }
 }

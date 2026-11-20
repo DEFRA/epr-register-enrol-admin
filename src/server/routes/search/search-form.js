@@ -188,7 +188,10 @@ export function pagination(criteria, totalItems) {
   }
   return {
     items,
-    previous: current > 1 ? { href: hrefFor(current - 1) } : undefined,
+    previous:
+      current > 1
+        ? { href: hrefFor(Math.min(current - 1, totalPages)) }
+        : undefined,
     next: current < totalPages ? { href: hrefFor(current + 1) } : undefined
   }
 }

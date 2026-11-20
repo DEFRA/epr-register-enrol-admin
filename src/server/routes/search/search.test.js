@@ -762,6 +762,42 @@ describe('Searching Legacy accreditation applications', () => {
       expect(searchAudits()).toEqual([])
     })
 
+    test.each([
+      ['a line break', 'a%0Ab'],
+      ['a tab', 'a%09b'],
+      ['a NUL', 'a%00b'],
+      ['a DEL', 'a%7Fb']
+    ])(
+      'a search term with %s in it shows the form again with an error, and searches nothing',
+      async (_name, q) => {
+        const requests = useFakeBackend(() => resultsPage([]))
+
+        const { response, $ } = await get(`/search?q=${q}&status=Approved`)
+
+        expect(response.statusCode).toBe(400)
+        expect(text($, '.govuk-error-summary')).toBe(
+          'There is a problem Search must not include line breaks, tabs or other hidden characters'
+        )
+        expect($('.govuk-error-summary a').attr('href')).toBe('#q')
+        expect(text($, '#q-error')).toBe(
+          'Error: Search must not include line breaks, tabs or other hidden characters'
+        )
+        expect(checked($, 'status')).toEqual(['Approved'])
+        expect($('[data-testid="unavailable"]')).toHaveLength(0)
+        expect(requests).toEqual([])
+        expect(searchAudits()).toEqual([])
+      }
+    )
+
+    test('a line break before or after the search term is trimmed with the spaces, as the backend does', async () => {
+      const requests = useFakeBackend(() => resultsPage([]))
+
+      const { response } = await get('/search?q=%0A%20Calder%09')
+
+      expect(response.statusCode).toBe(200)
+      expect(sentQuery(requests[0])).toContainEqual(['q', 'Calder'])
+    })
+
     test('values that are not options each say what is wrong', async () => {
       const requests = useFakeBackend(() => resultsPage([]))
 

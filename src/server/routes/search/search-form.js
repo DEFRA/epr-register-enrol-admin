@@ -52,7 +52,14 @@ const listOf = (options) =>
     .default([])
 
 export const searchQuery = Joi.object({
-  q: Joi.string().trim().max(100).allow('').default(''),
+  // The backend refuses a control character (char.IsControl) in q, so it is
+  // a form error here rather than a failed search.
+  q: Joi.string()
+    .trim()
+    .max(100)
+    .pattern(/^\P{Cc}*$/u, 'no control characters')
+    .allow('')
+    .default(''),
   searchFields: listOf(SEARCH_FIELDS),
   status: listOf(STATUSES),
   year: Joi.number().integer().min(2000).max(9999).empty(''),
@@ -68,6 +75,12 @@ const ERROR_MESSAGES = {
   page: 'Page must be a whole number, 1 or more'
 }
 
+// Where one field can be wrong in more than one way, the message for each.
+const ERROR_MESSAGES_BY_TYPE = {
+  'q:string.pattern.name':
+    'Search must not include line breaks, tabs or other hidden characters'
+}
+
 // Where each error summary entry takes the user.
 const ERROR_TARGETS = {
   q: '#q',
@@ -77,14 +90,16 @@ const ERROR_TARGETS = {
 }
 
 export function searchErrors(validationError) {
-  const fields = new Set(
-    validationError.details.map((detail) => detail.path[0])
+  const typeOf = new Map(
+    validationError.details.map((detail) => [detail.path[0], detail.type])
   )
   return Object.keys(ERROR_MESSAGES)
-    .filter((field) => fields.has(field))
+    .filter((field) => typeOf.has(field))
     .map((field) => ({
       field,
-      text: ERROR_MESSAGES[field],
+      text:
+        ERROR_MESSAGES_BY_TYPE[`${field}:${typeOf.get(field)}`] ??
+        ERROR_MESSAGES[field],
       href: ERROR_TARGETS[field]
     }))
 }

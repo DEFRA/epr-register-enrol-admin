@@ -97,6 +97,20 @@ describe('Searching Legacy accreditation applications', () => {
   }
 
   describe('with no search or filters (AC01)', () => {
+    test('puts the search box before the filters, so it comes first on a narrow screen and in tab order', async () => {
+      useFakeBackend(() => resultsPage([]))
+
+      const { $ } = await get('/search')
+
+      const formFields = $('form input:not([type="hidden"])')
+        .map((_i, input) => input.attribs.name)
+        .get()
+      expect(formFields[0]).toBe('q')
+      expect(formFields.indexOf('status')).toBeGreaterThan(
+        formFields.indexOf('searchFields')
+      )
+    })
+
     test('lists every application, under the search box and both filters', async () => {
       const requests = useFakeBackend(() =>
         resultsPage([
@@ -193,10 +207,10 @@ describe('Searching Legacy accreditation applications', () => {
           .map((_i, field) => field.attribs.name)
           .get()
       ).toEqual([
-        ...Array(10).fill('status'),
-        ...Array(4).fill('year'),
         'q',
-        ...Array(4).fill('searchFields')
+        ...Array(4).fill('searchFields'),
+        ...Array(10).fill('status'),
+        ...Array(4).fill('year')
       ])
     })
 

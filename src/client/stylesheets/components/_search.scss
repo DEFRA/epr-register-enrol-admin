@@ -91,3 +91,11 @@
 .app-results .govuk-hint {
   display: block;
 }
+
+// The search comes before the filters in the page, so it is first on a narrow
+// screen. From tablet up it sits to the right of the filters column.
+.app-search-layout__main {
+  @include govuk-media-query($from: tablet) {
+    float: right;
+  }
+}

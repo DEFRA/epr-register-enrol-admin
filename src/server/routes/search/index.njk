@@ -29,35 +29,7 @@
 
   <form method="get" action="/search" novalidate>
     <div class="govuk-grid-row">
-      <div class="govuk-grid-column-one-quarter" data-testid="filters">
-        <h2 class="govuk-heading-m">Filters</h2>
-
-        {{ govukCheckboxes({
-          idPrefix: "status",
-          name: "status",
-          classes: "govuk-checkboxes--small",
-          fieldset: { legend: { text: "Status", classes: "govuk-fieldset__legend--s" } },
-          items: statusItems,
-          errorMessage: errorByField.status
-        }) }}
-
-        {{ govukRadios({
-          idPrefix: "year",
-          name: "year",
-          classes: "govuk-radios--small",
-          fieldset: { legend: { text: "Accreditation year", classes: "govuk-fieldset__legend--s" } },
-          items: yearItems,
-          errorMessage: errorByField.year
-        }) }}
-
-        {{ govukButton({
-          text: "Apply filters",
-          classes: "govuk-button--secondary",
-          attributes: { "data-testid": "apply-filters" }
-        }) }}
-      </div>
-
-      <div class="govuk-grid-column-three-quarters">
+      <div class="govuk-grid-column-three-quarters app-search-layout__main">
         <div class="app-search">
           {{ govukInput({
             id: "q",
@@ -161,6 +133,34 @@
             {{ govukPagination(results.pagination) }}
           {% endif %}
         {% endif %}
+      </div>
+
+      <div class="govuk-grid-column-one-quarter" data-testid="filters">
+        <h2 class="govuk-heading-m">Filters</h2>
+
+        {{ govukCheckboxes({
+          idPrefix: "status",
+          name: "status",
+          classes: "govuk-checkboxes--small",
+          fieldset: { legend: { text: "Status", classes: "govuk-fieldset__legend--s" } },
+          items: statusItems,
+          errorMessage: errorByField.status
+        }) }}
+
+        {{ govukRadios({
+          idPrefix: "year",
+          name: "year",
+          classes: "govuk-radios--small",
+          fieldset: { legend: { text: "Accreditation year", classes: "govuk-fieldset__legend--s" } },
+          items: yearItems,
+          errorMessage: errorByField.year
+        }) }}
+
+        {{ govukButton({
+          text: "Apply filters",
+          classes: "govuk-button--secondary",
+          attributes: { "data-testid": "apply-filters" }
+        }) }}
       </div>
     </div>
   </form>

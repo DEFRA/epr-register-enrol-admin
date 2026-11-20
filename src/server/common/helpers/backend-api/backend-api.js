@@ -19,6 +19,31 @@ const pageSchema = Joi.object({
   .required()
 
 /**
+ * The search term, fields and filters as query parameters. The Admin UI's own
+ * /search URLs use the same names as the backend, so its links and its calls
+ * build them here, in one place.
+ *
+ * @param {object} criteria
+ * @param {string} [criteria.q]
+ * @param {string[]} criteria.searchFields
+ * @param {string[]} criteria.status
+ * @param {number} [criteria.year]
+ * @returns {URLSearchParams}
+ */
+export function searchCriteriaParams({ q, searchFields, status, year }) {
+  const params = new URLSearchParams()
+  if (q) {
+    params.append('q', q)
+  }
+  searchFields.forEach((field) => params.append('searchFields', field))
+  status.forEach((value) => params.append('status', value))
+  if (year) {
+    params.append('year', String(year))
+  }
+  return params
+}
+
+/**
  * Search the Legacy accreditation applications
  * (`GET /admin/accreditation-applications`, docs/openapi/admin-api.yaml in
  * epr-register-enrol-backend).
@@ -37,19 +62,17 @@ export async function searchLegacyAccreditationApplications(
   { q, searchFields, status, year, page, limit },
   logger
 ) {
-  const params = new URLSearchParams()
-  if (q) {
-    params.append('q', q)
-    searchFields.forEach((field) => params.append('searchFields', field))
-  }
-  status.forEach((value) => params.append('status', value))
-  if (year) {
-    params.append('year', String(year))
-  }
+  // searchFields only narrows q, so it goes only with one.
+  const params = searchCriteriaParams({
+    q,
+    searchFields: q ? searchFields : [],
+    status,
+    year
+  })
   params.append('pageNumber', String(page))
   params.append('limit', String(limit))
 
-  const result = await getJson(
+  const result = await getValidatedPage(
     '/admin/accreditation-applications',
     params,
     logger
@@ -68,20 +91,21 @@ const TRACE_ID =
 
 async function problemFields(response) {
   const body = await response.json().catch(() => undefined)
-  const shaped = (value, pattern) =>
+  const ifMatches = (value, pattern) =>
     typeof value === 'string' && pattern.test(value) ? value : undefined
-  const code = shaped(body?.code, PROBLEM_CODE)
-  const id = shaped(body?.traceId, TRACE_ID)
+  const code = ifMatches(body?.code, PROBLEM_CODE)
+  const id = ifMatches(body?.traceId, TRACE_ID)
   return code || id ? { error: { code, id } } : {}
 }
 
 /**
- * GET a path on the backend as this service, signed. Failures are logged at
+ * GET a page of results from the backend as this service, signed, and check
+ * it has the page shape (pageSchema). Failures are logged at
  * error (CDP's logger adds the trace ID) and returned as { ok: false }: the
  * caller shows a banner and the page carries on. Nothing from the request's
  * query or the response body is logged, as either can hold personal data.
  */
-async function getJson(path, params, logger) {
+async function getValidatedPage(path, params, logger) {
   const url = `${config.get('backendApi.url').replace(/\/$/, '')}${path}?${params}`
   const clientId = config.get('backendApi.clientId')
   const timeoutMs = config.get('backendApi.timeoutMs')

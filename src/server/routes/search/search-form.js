@@ -1,5 +1,7 @@
 import Joi from 'joi'
 
+import { searchCriteriaParams } from '#/server/common/helpers/backend-api/backend-api.js'
+
 export const PAGE_SIZE = 50
 
 // The fields q can search, in the order the form shows them.
@@ -41,8 +43,10 @@ export function accreditationYears(today = new Date()) {
   return Array.from({ length: last - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i)
 }
 
-const labelOf = (options, value) =>
-  options.find((option) => option.value === value).text
+const optionFor = (options, value) =>
+  options.find((option) => option.value === value)
+
+const labelOf = (options, value) => optionFor(options, value).text
 
 const listOf = (options) =>
   Joi.array()
@@ -104,7 +108,7 @@ export function searchErrors(validationError) {
     }))
 }
 
-const values = (value) => [value ?? []].flat()
+const asList = (value) => [value ?? []].flat()
 
 /**
  * The form as the user sent it, to show it back to them when it was not
@@ -112,23 +116,15 @@ const values = (value) => [value ?? []].flat()
  */
 export function formFromRawQuery(query) {
   return {
-    q: values(query.q)[0] ?? '',
-    searchFields: values(query.searchFields),
-    status: values(query.status),
-    year: values(query.year)[0] ?? ''
+    q: asList(query.q)[0] ?? '',
+    searchFields: asList(query.searchFields),
+    status: asList(query.status),
+    year: asList(query.year)[0] ?? ''
   }
 }
 
-export function searchHref({ q, searchFields, status, year, page }) {
-  const params = new URLSearchParams()
-  if (q) {
-    params.append('q', q)
-  }
-  searchFields.forEach((field) => params.append('searchFields', field))
-  status.forEach((value) => params.append('status', value))
-  if (year) {
-    params.append('year', String(year))
-  }
+export function searchHref({ page, ...criteria }) {
+  const params = searchCriteriaParams(criteria)
   if (page > 1) {
     params.append('page', String(page))
   }
@@ -234,9 +230,10 @@ function isExporter({ wasteProcessingType, isExporter }) {
  * the page.
  */
 export function resultRow(application) {
-  const status = STATUSES.find(
-    (option) => option.value === application.applicationStatus
-  ) ?? { text: application.applicationStatus, classes: 'govuk-tag--grey' }
+  const status = optionFor(STATUSES, application.applicationStatus) ?? {
+    text: application.applicationStatus,
+    classes: 'govuk-tag--grey'
+  }
   return {
     accreditationNumber: application.accreditationReference,
     status: { text: status.text, classes: status.classes },

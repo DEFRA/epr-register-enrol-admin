@@ -210,6 +210,18 @@ describe('Searching Legacy accreditation applications', () => {
   })
 
   describe('each result (AC11)', () => {
+    test('shows None for a missing material or year, as for the other cells', async () => {
+      useFakeBackend(() =>
+        resultsPage([legacyApplication({ materialType: null, year: null })])
+      )
+
+      const { $ } = await get('/search')
+
+      const [row] = tableRows($)
+      expect(row[4]).toBe('None')
+      expect(row[6]).toBe('None')
+    })
+
     test('shows the accreditation number, status, organisation, registration number, material, type and year, in the order the backend gives', async () => {
       useFakeBackend(() =>
         resultsPage([

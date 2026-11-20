@@ -137,9 +137,9 @@
                       <span class="govuk-hint govuk-!-margin-bottom-0">{{ row.organisationNumber or "No number" }}</span>
                     </td>
                     <td class="govuk-table__cell app-results__reference">{{ row.registrationNumber or "None" }}</td>
-                    <td class="govuk-table__cell">{{ row.material }}</td>
+                    <td class="govuk-table__cell">{{ row.material or "None" }}</td>
                     <td class="govuk-table__cell">{{ row.type }}</td>
-                    <td class="govuk-table__cell">{{ row.year }}</td>
+                    <td class="govuk-table__cell">{{ row.year or "None" }}</td>
                   </tr>
                 {% endfor %}
               </tbody>

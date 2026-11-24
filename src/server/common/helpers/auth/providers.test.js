@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { mswServer } from '#/test-helpers/msw-server.js'
+import { signIn, supportUser, useFakeEntra } from '#/test-helpers/fake-entra.js'
 
 // Entra ID's real discovery documents, cut down to what sign-in reads.
 function useEntraTenant(tenantId) {
@@ -28,6 +29,7 @@ async function startSignIn(provider, tenantId) {
   vi.stubEnv('AUTH_PROVIDER', provider)
   vi.stubEnv('ENTRA_TENANT_ID', tenantId)
   vi.stubEnv('ENTRA_CLIENT_ID', 'a-registered-client-id')
+  vi.stubEnv('ENTRA_CLIENT_SECRET', 'a-registered-client-secret')
   const { createServer } = await import('#/server/server.js')
   const server = await createServer()
   await server.initialize()
@@ -64,4 +66,30 @@ describe('Each provider', () => {
       )
     }
   )
+
+  test("defra-stub signs in with the stub's own client, ignoring an Entra ID client ID and secret the environment sets", async () => {
+    vi.resetModules()
+    vi.stubEnv('AUTH_PROVIDER', 'defra-stub')
+    vi.stubEnv('ENTRA_CLIENT_ID', 'a-registered-client-id')
+    vi.stubEnv('ENTRA_CLIENT_SECRET', 'a-defra-dev-secret')
+    const fakeStub = useFakeEntra({ issueRefreshTokens: false })
+    const { createServer } = await import('#/server/server.js')
+    const server = await createServer()
+    await server.initialize()
+
+    const { authorizeUrl, callback } = await signIn(
+      server,
+      fakeStub,
+      supportUser
+    )
+    await server.stop({ timeout: 0 })
+
+    expect(authorizeUrl.searchParams.get('client_id')).toBe(
+      'epr-register-enrol-admin'
+    )
+    expect(fakeStub.tokenRequests[0].get('client_secret')).toBe(
+      'admin-stub-secret'
+    )
+    expect(callback.headers.location).toBe('/search')
+  })
 })

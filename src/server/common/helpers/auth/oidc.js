@@ -5,6 +5,24 @@ import { config } from '#/config/config.js'
 const provider = () => config.get('auth.provider')
 const isStub = () => provider() === 'defra-stub'
 
+// epr-register-enrol-entra-stub's client for this service. The stub hard-codes
+// it (src/server/common/clients.js there), so it is fixed here too, and the
+// ENTRA_CLIENT_ID and ENTRA_CLIENT_SECRET an environment sets for Entra ID are
+// not used with the stub. That lets an environment keep its Defra Dev secret
+// in the CDP Portal while it signs in through the stub.
+const STUB_CLIENT = {
+  id: 'epr-register-enrol-admin',
+  secret: 'admin-stub-secret'
+}
+
+const clientCredentials = () =>
+  isStub()
+    ? STUB_CLIENT
+    : {
+        id: config.get('auth.clientId'),
+        secret: config.get('auth.clientSecret')
+      }
+
 function wellKnownUrl() {
   if (isStub()) {
     return `${config.get('auth.stubUrl')}/.well-known/openid-configuration`
@@ -38,12 +56,13 @@ let discovered
  * different host from the browser (Docker Compose).
  */
 export function getOidcConfig() {
+  const { id, secret } = clientCredentials()
   discovered ??= client
     .discovery(
       new URL(wellKnownUrl()),
-      config.get('auth.clientId'),
+      id,
       undefined,
-      client.ClientSecretPost(config.get('auth.clientSecret')),
+      client.ClientSecretPost(secret),
       isStub() ? { execute: [client.allowInsecureRequests] } : undefined
     )
     .catch((error) => {

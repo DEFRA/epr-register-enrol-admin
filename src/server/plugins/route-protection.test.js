@@ -7,7 +7,13 @@ import {
   useFakeEntra,
   userWithoutRole
 } from '#/test-helpers/fake-entra.js'
-import { resultsPage, useFakeBackend } from '#/test-helpers/fake-backend.js'
+import { HttpResponse } from 'msw'
+import {
+  resultsPage,
+  storedApplication,
+  useFakeBackend,
+  useFakeRecord
+} from '#/test-helpers/fake-backend.js'
 
 // The only routes anyone can reach without the role, and why. Adding a route
 // here is a decision for review: everything else needs a signed-in user with
@@ -96,6 +102,7 @@ describe('Every route', () => {
 
     test('serves a signed-in user with the role', async () => {
       useFakeBackend(() => resultsPage([]))
+      useFakeRecord(() => HttpResponse.json(storedApplication()))
       const { cookie } = await signIn(server, useFakeEntra(), supportUser)
       for (const path of protectedPages()) {
         const response = await server.inject({ url: path, headers: { cookie } })

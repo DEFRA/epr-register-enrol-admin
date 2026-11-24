@@ -224,39 +224,68 @@ describe('Searching Legacy accreditation applications', () => {
   })
 
   describe('each result (AC11)', () => {
-    test('shows None for a missing material or year, as for the other cells', async () => {
+    test('shows None for a missing material, year or update time, as for the other cells', async () => {
       useFakeBackend(() =>
-        resultsPage([legacyApplication({ materialType: null, year: null })])
+        resultsPage([
+          legacyApplication({ materialType: null, year: null, updatedAt: null })
+        ])
       )
 
       const { $ } = await get('/search')
 
       const [row] = tableRows($)
-      expect(row[4]).toBe('None')
+      expect(row[4]).toBe('None Reprocessor · England')
+      expect(row[5]).toBe('None')
       expect(row[6]).toBe('None')
     })
 
-    test('shows the accreditation number, status, organisation, registration number, material, type and year, in the order the backend gives', async () => {
+    test('shows None for an update time it cannot read', async () => {
+      useFakeBackend(() =>
+        resultsPage([legacyApplication({ updatedAt: 'not a date' })])
+      )
+
+      const { $ } = await get('/search')
+
+      expect(tableRows($)[0][6]).toBe('None')
+    })
+
+    test('writes Northern Ireland as words, as the status is', async () => {
+      useFakeBackend(() =>
+        resultsPage([legacyApplication({ nation: 'NorthernIreland' })])
+      )
+
+      const { $ } = await get('/search')
+
+      expect(tableRows($)[0][4]).toContain('Reprocessor · Northern Ireland')
+    })
+
+    test('shows the most specific reference, status, organisation, registration number, material with type and nation, year and last update, in the order the backend gives', async () => {
       useFakeBackend(() =>
         resultsPage([
-          legacyApplication(),
+          legacyApplication({ applicationReference: 'AP27EA500112PL' }),
           legacyApplication({
-            accreditationReference: 'A27EX5006410022PL',
+            accreditationReference: null,
+            applicationReference: 'AP27EA500641PL',
             registrationReference: 'R25EX5006410022PL',
             organisationName: 'Mersey Plastics Ltd',
             orgId: 500641,
             wasteProcessingType: 'Exporter',
             isExporter: false,
+            nation: 'Wales',
             applicationStatus: 'AwaitingDecision',
-            year: 2028
+            year: 2028,
+            // British Summer Time: shown an hour ahead of UTC.
+            updatedAt: '2026-07-01T23:30:00Z'
           }),
           legacyApplication({
             accreditationReference: 'A27EX5003180009GL',
-            organisationName: 'Glenmore Glass Ltd',
+            applicationReference: null,
+            organisationName: 'Testmore Glass Ltd',
             orgId: 500318,
             materialType: 'Glass',
             wasteProcessingType: null,
             isExporter: true,
+            nation: 'Scotland',
             applicationStatus: 'DulyMade'
           }),
           legacyApplication({
@@ -267,7 +296,13 @@ describe('Searching Legacy accreditation applications', () => {
             materialType: 'Wood',
             wasteProcessingType: '  ',
             isExporter: false,
+            nation: null,
             applicationStatus: 'Started'
+          }),
+          legacyApplication({
+            accreditationReference: null,
+            applicationReference: null,
+            applicationStatus: 'Approved'
           })
         ])
       )
@@ -275,7 +310,7 @@ describe('Searching Legacy accreditation applications', () => {
       const { $ } = await get('/search')
 
       expect(text($, '[data-testid="results"] thead')).toBe(
-        'Accreditation number Status Organisation Registration number Material Type Year'
+        'Reference Status Organisation Registration number Material Year Updated'
       )
       expect(tableRows($)).toEqual([
         [
@@ -283,36 +318,45 @@ describe('Searching Legacy accreditation applications', () => {
           'Approved',
           'Calder Valley Recycling Ltd 500112',
           'R25ER5001120018PL',
-          'Plastic',
-          'Reprocessor',
-          '2027'
+          'Plastic Reprocessor · England',
+          '2027',
+          '18 Nov 2026 10:00'
         ],
         [
-          'A27EX5006410022PL',
+          'AP27EA500641PL',
           'Awaiting decision',
           'Mersey Plastics Ltd 500641',
           'R25EX5006410022PL',
-          'Plastic',
-          'Exporter',
-          '2028'
+          'Plastic Exporter · Wales',
+          '2028',
+          '2 Jul 2026 00:30'
         ],
         [
           'A27EX5003180009GL',
           'Duly made',
-          'Glenmore Glass Ltd 500318',
+          'Testmore Glass Ltd 500318',
           'R25ER5001120018PL',
-          'Glass',
-          'Exporter',
-          '2027'
+          'Glass Exporter · Scotland',
+          '2027',
+          '18 Nov 2026 10:00'
         ],
         [
-          'None',
+          '1c3e5a7b9d0f4b2c8e4a6c8e',
           'Started',
           'No name No number',
           'None',
-          'Wood',
-          'Reprocessor',
-          '2027'
+          'Wood Reprocessor',
+          '2027',
+          '18 Nov 2026 10:00'
+        ],
+        [
+          'R25ER5001120018PL',
+          'Approved',
+          'Calder Valley Recycling Ltd 500112',
+          'R25ER5001120018PL',
+          'Plastic Reprocessor · England',
+          '2027',
+          '18 Nov 2026 10:00'
         ]
       ])
       expect(
@@ -323,9 +367,22 @@ describe('Searching Legacy accreditation applications', () => {
         'govuk-tag govuk-tag--green',
         'govuk-tag govuk-tag--purple',
         'govuk-tag govuk-tag--turquoise',
-        'govuk-tag govuk-tag--light-blue'
+        'govuk-tag govuk-tag--light-blue',
+        'govuk-tag govuk-tag--green'
       ])
-      expect($('[data-testid="results"] a')).toHaveLength(0)
+      // Each row's reference links to its Record page, and nothing
+      // else links.
+      expect(
+        $('[data-testid="results"] a')
+          .map((_i, link) => $(link).attr('data-testid'))
+          .get()
+      ).toEqual([
+        'record-link',
+        'record-link',
+        'record-link',
+        'record-link',
+        'record-link'
+      ])
     })
 
     test('shows a status the Admin UI does not know yet as it is stored', async () => {
@@ -361,11 +418,15 @@ describe('Searching Legacy accreditation applications', () => {
         'PAY-SECRET-REF',
         'EPR/AB1234CD',
         '01234567',
-        '1c3e5a7b9d0f4b2c8e4a6c8e',
         'f0e1d2c3-0000-4000-8000-000000000112'
       ]) {
         expect(response.payload).not.toContain(value)
       }
+      // The id appears only in the link to the Record page.
+      expect(response.payload.split('1c3e5a7b9d0f4b2c8e4a6c8e')).toHaveLength(2)
+      expect(response.payload).toContain(
+        'href="/accreditation-applications/1c3e5a7b9d0f4b2c8e4a6c8e"'
+      )
       expect(JSON.stringify(searchAudits())).not.toContain('Priya')
       expect(JSON.stringify(logs)).not.toContain('Priya')
     })

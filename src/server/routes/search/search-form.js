@@ -1,6 +1,14 @@
 import Joi from 'joi'
 
 import { searchCriteriaParams } from '#/server/common/helpers/backend-api/backend-api.js'
+import {
+  STATUSES,
+  applicationType,
+  mostSpecificReference,
+  nationName,
+  recordHref,
+  statusTag
+} from '#/server/common/helpers/legacy-application.js'
 
 export const PAGE_SIZE = 50
 
@@ -10,25 +18,6 @@ export const SEARCH_FIELDS = [
   { value: 'registrationNumber', text: 'Registration number' },
   { value: 'organisationNumber', text: 'Organisation number' },
   { value: 'organisationName', text: 'Organisation name' }
-]
-
-// The Legacy ApplicationStatus values, in the order an application moves
-// through them, with the GOV.UK tag colour each is shown in.
-export const STATUSES = [
-  { value: 'Saved', text: 'Saved', classes: 'govuk-tag--grey' },
-  { value: 'Started', text: 'Started', classes: 'govuk-tag--light-blue' },
-  { value: 'Submitted', text: 'Submitted', classes: 'govuk-tag--blue' },
-  { value: 'DulyMade', text: 'Duly made', classes: 'govuk-tag--turquoise' },
-  { value: 'Queried', text: 'Queried', classes: 'govuk-tag--orange' },
-  { value: 'Updated', text: 'Updated', classes: 'govuk-tag--yellow' },
-  {
-    value: 'AwaitingDecision',
-    text: 'Awaiting decision',
-    classes: 'govuk-tag--purple'
-  },
-  { value: 'Approved', text: 'Approved', classes: 'govuk-tag--green' },
-  { value: 'Rejected', text: 'Rejected', classes: 'govuk-tag--red' },
-  { value: 'Withdrawn', text: 'Withdrawn', classes: 'govuk-tag--grey' }
 ]
 
 // The accreditation years offered as filters: from 2026, the first the Legacy
@@ -215,33 +204,49 @@ export function pagination(criteria, { totalItems, limit }) {
   }
 }
 
-// Reprocessor or exporter, decided as epr-register-enrol-backend does
-// (AccreditationApiMapper.IsExporter): the stored wasteProcessingType when
-// there is one, isExporter otherwise.
-function isExporter({ wasteProcessingType, isExporter }) {
-  return wasteProcessingType?.trim()
-    ? wasteProcessingType.toLowerCase() === 'exporter'
-    : isExporter === true
+// When the application was last updated, in UK time (the service runs in
+// UTC), as a date and a time.
+const ukDate = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/London',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric'
+})
+const ukTime = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/London',
+  hour: '2-digit',
+  minute: '2-digit'
+})
+
+function updated(value) {
+  if (!value) {
+    return undefined
+  }
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? undefined
+    : { date: ukDate.format(date), time: ukTime.format(date) }
 }
 
 /**
- * One results row: only the columns AC11 lists. Nothing else from the stored
- * application (contacts, addresses, signatories, the business plan) reaches
- * the page.
+ * One results row: its reference, status, organisation, registration number,
+ * material (with type and nation), year and when it was last updated. Nothing
+ * else from the stored application (contacts, addresses, signatories, the
+ * business plan) reaches the page.
  */
 export function resultRow(application) {
-  const status = optionFor(STATUSES, application.applicationStatus) ?? {
-    text: application.applicationStatus,
-    classes: 'govuk-tag--grey'
-  }
   return {
-    accreditationNumber: application.accreditationReference,
-    status: { text: status.text, classes: status.classes },
+    reference: mostSpecificReference(application) || application.applicationId,
+    href: recordHref(application),
+    status: statusTag(application.applicationStatus),
     organisationName: application.organisationName,
     organisationNumber: application.orgId,
     registrationNumber: application.registrationReference,
     material: application.materialType,
-    type: isExporter(application) ? 'Exporter' : 'Reprocessor',
-    year: application.year
+    materialHint: [applicationType(application), nationName(application.nation)]
+      .filter(Boolean)
+      .join(' · '),
+    year: application.year,
+    updated: updated(application.updatedAt)
   }
 }

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { config } from '#/config/config.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
 import { hasRequiredRole } from '#/server/common/helpers/auth/user-session.js'
+import { RECORD_PATH } from '#/server/common/helpers/legacy-application.js'
 
 const logger = createLogger()
 const assetPath = config.get('assetPath')
@@ -46,7 +47,9 @@ export function context(request) {
           {
             href: '/search',
             text: 'Operator journey',
-            current: request.path === '/search'
+            current:
+              request.path === '/search' ||
+              request.path.startsWith(`${RECORD_PATH}/`)
           }
         ]
       : [],

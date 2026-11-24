@@ -18,6 +18,18 @@ const pageSchema = Joi.object({
   .unknown(true)
   .required()
 
+// A stored document: an object with an _id, whatever else it holds. A
+// response without one is not an application, so it is a failure, not a page.
+const applicationSchema = Joi.object({
+  _id: Joi.object({ $oid: Joi.string().required() }).unknown(true).required()
+})
+  .unknown(true)
+  .required()
+
+// The backend's code for "no record has that reference", as opposed to a
+// route it doesn't have.
+const NOT_FOUND_CODE = 'application_not_found'
+
 /**
  * The search term, fields and filters as query parameters. The Admin UI's own
  * /search URLs use the same names as the backend, so its links and its calls
@@ -72,12 +84,34 @@ export async function searchLegacyAccreditationApplications(
   params.append('pageNumber', String(page))
   params.append('limit', String(limit))
 
-  const result = await getValidatedPage(
-    '/admin/accreditation-applications',
+  const result = await signedGet('/admin/accreditation-applications', logger, {
     params,
-    logger
-  )
+    schema: pageSchema
+  })
   return result.ok ? { ok: true, page: result.body } : result
+}
+
+/**
+ * Read one Legacy accreditation application, exactly as stored
+ * (`GET /admin/accreditation-applications/{reference}`), by its application
+ * reference, or by its `_id` when it has none (a draft). The document is
+ * relaxed extended JSON and holds personal data: never log it.
+ *
+ * @param {string} reference the application reference or `_id`
+ * @param {import('pino').Logger} logger the request's logger, for failures
+ * @returns {Promise<{ ok: true, application: object } | { ok: false, notFound?: true }>}
+ */
+export async function getLegacyAccreditationApplication(reference, logger) {
+  const result = await signedGet(
+    `/admin/accreditation-applications/${encodeURIComponent(reference)}`,
+    logger,
+    {
+      logPath: '/admin/accreditation-applications/{reference}',
+      schema: applicationSchema,
+      notFoundCode: NOT_FOUND_CODE
+    }
+  )
+  return result.ok ? { ok: true, application: result.body } : result
 }
 
 // A problem body's code (e.g. invalid_signature) and traceId say what went
@@ -99,14 +133,31 @@ async function problemFields(response) {
 }
 
 /**
- * GET a page of results from the backend as this service, signed, and check
- * it has the page shape (pageSchema). Failures are logged at
- * error (CDP's logger adds the trace ID) and returned as { ok: false }: the
- * caller shows a banner and the page carries on. Nothing from the request's
- * query or the response body is logged, as either can hold personal data.
+ * GET from the backend as this service, signed, and check the body against
+ * `schema`. Every failure (no response, an error status, or a body that isn't
+ * JSON or doesn't match) is logged at error (CDP's logger adds the trace ID)
+ * and returned as { ok: false }: the caller shows a banner and the page
+ * carries on. A 404 whose problem code is `notFoundCode` is the record not
+ * existing, not a failure: it is returned as { ok: false, notFound: true } and
+ * not logged. Nothing from the request's path or query, or from the response
+ * body, is logged, as any of them can hold personal data.
+ *
+ * @param {string} path
+ * @param {import('pino').Logger} logger
+ * @param {object} options
+ * @param {import('joi').Schema} options.schema what the body must be
+ * @param {URLSearchParams} [options.params] the query
+ * @param {string} [options.logPath] the path as logged, when the real one holds an ID
+ * @param {string} [options.notFoundCode] the problem code that means "no such record"
+ * @returns {Promise<{ ok: true, body: any } | { ok: false, notFound?: true }>}
  */
-async function getValidatedPage(path, params, logger) {
-  const url = `${config.get('backendApi.url').replace(/\/$/, '')}${path}?${params}`
+async function signedGet(
+  path,
+  logger,
+  { schema, params, logPath = path, notFoundCode }
+) {
+  const query = params ? `?${params}` : ''
+  const url = `${config.get('backendApi.url').replace(/\/$/, '')}${path}${query}`
   const clientId = config.get('backendApi.clientId')
   const timeoutMs = config.get('backendApi.timeoutMs')
   const headers = withTraceId(config.get('tracing.header'), {
@@ -116,7 +167,7 @@ async function getValidatedPage(path, params, logger) {
   })
 
   const fail = (fields, reason) => {
-    logger.error(fields, `${UPSTREAM} GET ${path} ${reason}`)
+    logger.error(fields, `${UPSTREAM} GET ${logPath} ${reason}`)
     return { ok: false }
   }
 
@@ -130,7 +181,8 @@ async function getValidatedPage(path, params, logger) {
     return error.name === 'TimeoutError'
       ? fail({ error: { code: error.name } }, `timed out after ${timeoutMs}ms`)
       : // Not error.message: for some failures it holds the full URL, and so
-        // the search term. The code (e.g. ECONNREFUSED) says enough.
+        // the search term or application reference. The code (e.g.
+        // ECONNREFUSED) says enough.
         fail(
           { error: { code: error.cause?.code ?? error.name } },
           `failed (${error.cause?.code ?? error.name})`
@@ -139,16 +191,21 @@ async function getValidatedPage(path, params, logger) {
 
   const httpFields = { http: { response: { status_code: response.status } } }
   if (!response.ok) {
-    return fail(
-      { ...httpFields, ...(await problemFields(response)) },
-      `returned ${response.status}`
-    )
+    const problem = await problemFields(response)
+    if (
+      notFoundCode &&
+      response.status === 404 &&
+      problem.error?.code === notFoundCode
+    ) {
+      return { ok: false, notFound: true }
+    }
+    return fail({ ...httpFields, ...problem }, `returned ${response.status}`)
   }
 
-  const body = await response.json().catch(() => undefined)
-  const { error, value } = pageSchema.validate(body)
-  if (error) {
-    return fail(httpFields, 'returned a response it could not read')
-  }
-  return { ok: true, body: value }
+  const { error, value } = schema.validate(
+    await response.json().catch(() => undefined)
+  )
+  return error
+    ? fail(httpFields, 'returned a response it could not read')
+    : { ok: true, body: value }
 }

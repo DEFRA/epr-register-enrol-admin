@@ -7,8 +7,10 @@ import {
   SkipLink
 } from 'govuk-frontend'
 import cookies from './cookies.js'
+import { initCopyButtons } from './copy.js'
 
 cookies.init()
+initCopyButtons()
 
 createAll(Button)
 createAll(Checkboxes)

@@ -90,28 +90,44 @@
             <table class="govuk-table app-results" data-testid="results">
               <thead class="govuk-table__head">
                 <tr class="govuk-table__row">
-                  <th scope="col" class="govuk-table__header">Accreditation number</th>
+                  <th scope="col" class="govuk-table__header">Reference</th>
                   <th scope="col" class="govuk-table__header">Status</th>
                   <th scope="col" class="govuk-table__header">Organisation</th>
                   <th scope="col" class="govuk-table__header">Registration number</th>
                   <th scope="col" class="govuk-table__header">Material</th>
-                  <th scope="col" class="govuk-table__header">Type</th>
                   <th scope="col" class="govuk-table__header">Year</th>
+                  <th scope="col" class="govuk-table__header">Updated</th>
                 </tr>
               </thead>
               <tbody class="govuk-table__body">
                 {% for row in results.rows %}
                   <tr class="govuk-table__row">
-                    <td class="govuk-table__cell app-results__reference">{{ row.accreditationNumber or "None" }}</td>
+                    <td class="govuk-table__cell app-results__ref-cell">
+                      {%- if row.href -%}
+                        <a class="govuk-link" href="{{ row.href }}" data-testid="record-link">{{ row.reference or "None" }}</a>
+                      {%- else -%}
+                        {{ row.reference or "None" }}
+                      {%- endif -%}
+                    </td>
                     <td class="govuk-table__cell">{{ govukTag({ text: row.status.text, classes: row.status.classes }) }}</td>
                     <td class="govuk-table__cell">
                       {{ row.organisationName or "No name" }}
                       <span class="govuk-hint govuk-!-margin-bottom-0">{{ row.organisationNumber or "No number" }}</span>
                     </td>
                     <td class="govuk-table__cell app-results__reference">{{ row.registrationNumber or "None" }}</td>
-                    <td class="govuk-table__cell">{{ row.material or "None" }}</td>
-                    <td class="govuk-table__cell">{{ row.type }}</td>
+                    <td class="govuk-table__cell">
+                      {{ row.material or "None" }}
+                      <span class="govuk-hint govuk-!-margin-bottom-0">{{ row.materialHint }}</span>
+                    </td>
                     <td class="govuk-table__cell">{{ row.year or "None" }}</td>
+                    <td class="govuk-table__cell app-results__updated">
+                      {%- if row.updated -%}
+                        {{ row.updated.date }}
+                        <span class="govuk-hint govuk-!-margin-bottom-0">{{ row.updated.time }}</span>
+                      {%- else -%}
+                        None
+                      {%- endif -%}
+                    </td>
                   </tr>
                 {% endfor %}
               </tbody>

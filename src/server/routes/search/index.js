@@ -1,10 +1,10 @@
 import { auditSearch } from '#/server/common/helpers/audit.js'
 import { searchLegacyAccreditationApplications } from '#/server/common/helpers/backend-api/backend-api.js'
+import { STATUSES } from '#/server/common/helpers/legacy-application.js'
 import {
   PAGE_SIZE,
   SEARCH_FIELDS,
   accreditationYears,
-  STATUSES,
   formFromRawQuery,
   pagination,
   resultRow,

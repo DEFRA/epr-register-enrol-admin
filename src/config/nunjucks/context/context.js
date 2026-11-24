@@ -46,7 +46,9 @@ export function context(request) {
           {
             href: '/search',
             text: 'Operator journey',
-            current: request.path === '/search'
+            current:
+              request.path === '/search' ||
+              request.path.startsWith('/accreditation-applications/')
           }
         ]
       : [],

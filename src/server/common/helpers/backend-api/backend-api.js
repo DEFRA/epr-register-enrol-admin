@@ -99,14 +99,76 @@ async function problemFields(response) {
 }
 
 /**
- * GET a page of results from the backend as this service, signed, and check
- * it has the page shape (pageSchema). Failures are logged at
- * error (CDP's logger adds the trace ID) and returned as { ok: false }: the
- * caller shows a banner and the page carries on. Nothing from the request's
- * query or the response body is logged, as either can hold personal data.
+ * Read one Legacy accreditation application, exactly as stored
+ * (`GET /admin/accreditation-applications/{reference}`), by its application
+ * reference, or by its `_id` when it has none (a draft). The document is
+ * relaxed extended JSON and holds personal data: never log it.
+ *
+ * @param {string} reference the application reference or `_id`
+ * @param {import('pino').Logger} logger the request's logger, for failures
+ * @returns {Promise<{ ok: true, application: object } | { ok: false, notFound?: true }>}
+ */
+export async function getLegacyAccreditationApplication(reference, logger) {
+  const result = await signedGet(
+    `/admin/accreditation-applications/${encodeURIComponent(reference)}`,
+    undefined,
+    logger,
+    { logPath: '/admin/accreditation-applications/{reference}' }
+  )
+  if (!result.ok) {
+    return result
+  }
+  const body = await result.response.json().catch(() => undefined)
+  const { error, value } = applicationSchema.validate(body)
+  if (error) {
+    return result.fail(
+      result.httpFields,
+      'returned a response it could not read'
+    )
+  }
+  return { ok: true, application: value }
+}
+
+// A stored document is any object; what it holds is shown as it is.
+const applicationSchema = Joi.object().unknown(true).required()
+
+/**
+ * GET a page of results from the backend and check it has the page shape
+ * (pageSchema).
  */
 async function getValidatedPage(path, params, logger) {
-  const url = `${config.get('backendApi.url').replace(/\/$/, '')}${path}?${params}`
+  const result = await signedGet(path, params, logger)
+  if (!result.ok) {
+    return result
+  }
+  const body = await result.response.json().catch(() => undefined)
+  const { error, value } = pageSchema.validate(body)
+  if (error) {
+    return result.fail(
+      result.httpFields,
+      'returned a response it could not read'
+    )
+  }
+  return { ok: true, body: value }
+}
+
+/**
+ * GET from the backend as this service, signed. Failures are logged at error
+ * (CDP's logger adds the trace ID) and returned as { ok: false }: the caller
+ * shows a banner and the page carries on. A 404 whose problem code is
+ * application_not_found is the record not existing, not a failure: it is
+ * returned as { ok: false, notFound: true } and not logged. Nothing from the
+ * request's query or the response body is logged, as either can hold personal
+ * data.
+ *
+ * @param {string} path
+ * @param {URLSearchParams} [params]
+ * @param {import('pino').Logger} logger
+ * @param {{ logPath?: string }} [options] the path as logged, when the real one holds an ID
+ */
+async function signedGet(path, params, logger, { logPath = path } = {}) {
+  const query = params ? `?${params}` : ''
+  const url = `${config.get('backendApi.url').replace(/\/$/, '')}${path}${query}`
   const clientId = config.get('backendApi.clientId')
   const timeoutMs = config.get('backendApi.timeoutMs')
   const headers = withTraceId(config.get('tracing.header'), {
@@ -116,7 +178,7 @@ async function getValidatedPage(path, params, logger) {
   })
 
   const fail = (fields, reason) => {
-    logger.error(fields, `${UPSTREAM} GET ${path} ${reason}`)
+    logger.error(fields, `${UPSTREAM} GET ${logPath} ${reason}`)
     return { ok: false }
   }
 
@@ -139,16 +201,16 @@ async function getValidatedPage(path, params, logger) {
 
   const httpFields = { http: { response: { status_code: response.status } } }
   if (!response.ok) {
-    return fail(
-      { ...httpFields, ...(await problemFields(response)) },
-      `returned ${response.status}`
-    )
+    const problem = await problemFields(response)
+    if (response.status === 404 && problem.error?.code === NOT_FOUND_CODE) {
+      return { ok: false, notFound: true }
+    }
+    return fail({ ...httpFields, ...problem }, `returned ${response.status}`)
   }
 
-  const body = await response.json().catch(() => undefined)
-  const { error, value } = pageSchema.validate(body)
-  if (error) {
-    return fail(httpFields, 'returned a response it could not read')
-  }
-  return { ok: true, body: value }
+  return { ok: true, response, httpFields, fail }
 }
+
+// The backend's code for "no record has that reference", as opposed to a
+// route it doesn't have.
+const NOT_FOUND_CODE = 'application_not_found'

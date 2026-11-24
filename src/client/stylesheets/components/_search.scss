@@ -73,9 +73,19 @@
   align-items: baseline;
 }
 
-// Seven columns in three-quarters of the page: smaller text so they fit.
+// Seven columns in three-quarters of the page: smaller text and tighter
+// spacing between columns so they fit.
 .app-results {
   @include govuk-font($size: 16);
+}
+
+.app-results .govuk-table__header,
+.app-results .govuk-table__cell {
+  padding-right: govuk-spacing(2);
+
+  &:last-child {
+    padding-right: 0;
+  }
 }
 
 .app-results__reference {
@@ -87,9 +97,15 @@
   @include govuk-font($size: 16);
 }
 
-// The organisation number, on its own line under the name.
+// The line under a value (organisation number, type and nation, time), on its
+// own line.
 .app-results .govuk-hint {
   display: block;
+}
+
+.app-results__updated,
+.app-results__ref-cell {
+  white-space: nowrap;
 }
 
 // The search comes before the filters in the page, so it is first on a narrow

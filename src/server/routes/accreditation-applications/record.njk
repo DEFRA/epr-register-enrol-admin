@@ -1,0 +1,73 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{# A copy button: hidden until the browser script finds the clipboard. #}
+{% macro copyButton(value, label) %}
+  <button type="button" class="app-copy" data-copy="{{ value }}" data-testid="copy" hidden>
+    <svg class="app-copy__icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>
+    <span class="govuk-visually-hidden">Copy {{ label }}</span>
+  </button>
+{% endmacro %}
+
+{% block content %}
+  {% if unavailable %}
+    {{ govukNotificationBanner({
+      titleText: "Important",
+      text: "Legacy accreditation application data is unavailable right now. Try again later.",
+      attributes: { "data-testid": "unavailable" }
+    }) }}
+  {% endif %}
+
+  <p class="govuk-visually-hidden" aria-live="polite" data-copy-status></p>
+
+  {% if not lines %}
+    <h1 class="govuk-heading-m app-record__heading">{{ heading }}</h1>
+  {% else %}
+    <section class="app-panel app-panel--details" data-testid="core-details" aria-labelledby="core-details-heading">
+      <div class="app-panel__header">
+        <h1 class="govuk-heading-m govuk-!-margin-bottom-0" id="core-details-heading">
+          Core details<span class="govuk-visually-hidden"> for {{ heading }}</span>
+        </h1>
+        <button type="button" class="app-copy app-copy--link govuk-link" data-copy-page-link data-testid="copy-link" hidden>
+          <svg class="app-copy__icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>
+          Copy link to this page
+        </button>
+      </div>
+      <dl class="app-details">
+        {% if details.status %}
+          <div class="app-details__item">
+            <dt class="govuk-heading-s govuk-!-margin-bottom-1">Status</dt>
+            <dd class="govuk-!-margin-left-0">{{ govukTag(details.status) }}</dd>
+          </div>
+        {% endif %}
+        {% for row in details.rows %}
+          <div class="app-details__item">
+            <dt class="govuk-heading-s govuk-!-margin-bottom-1">{{ row.key }}</dt>
+            <dd class="govuk-body govuk-!-margin-bottom-0 govuk-!-margin-left-0">
+              {%- if row.value -%}
+                <span class="{{ 'app-details__reference' if row.reference }}">{{ row.value }}</span>
+                {{ copyButton(row.value, row.key | lower) }}
+              {%- else -%}
+                <span class="govuk-hint govuk-!-margin-bottom-0">None</span>
+              {%- endif -%}
+            </dd>
+          </div>
+        {% endfor %}
+      </dl>
+    </section>
+
+    <h2 class="govuk-heading-m">Stored document</h2>
+    <p class="govuk-body">The document as stored. It is updated in place, so there are no earlier versions. People’s names and email addresses are masked, and values stored as numbers have their names beside them.</p>
+    <pre class="app-document" data-testid="document" tabindex="0"><code>
+      {%- for line in lines -%}
+        {{ line.indent }}{% if line.key is defined %}<span class="app-document__key">{{ line.key | dump }}</span>: {% endif -%}
+        <span class="app-document__{{ line.type }}">{{ line.text }}</span>
+        {%- if line.enumName %} <span class="app-document__enum">{{ line.enumName }}</span>{% endif -%}
+        {%- if line.comma %},{% endif -%}
+        {{ "\n" }}
+      {%- endfor -%}
+    </code></pre>
+  {% endif %}
+{% endblock %}

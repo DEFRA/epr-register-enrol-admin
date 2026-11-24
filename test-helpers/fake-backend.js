@@ -75,3 +75,74 @@ export const resultsPage = (
   items,
   { totalItems = items.length, pageNumber = 1, limit = 50 } = {}
 ) => HttpResponse.json({ pageNumber, limit, totalItems, items })
+
+/**
+ * A stored Legacy accreditation application as GET
+ * /admin/accreditation-applications/{reference} returns it: the raw Mongo
+ * document in relaxed extended JSON, personal data included, with enums
+ * stored as numbers.
+ */
+export function storedApplication(overrides = {}) {
+  return {
+    _id: { $oid: '6716a3c09e4b2d1f8a5c7e30' },
+    organisationId: '8f3b2c1a-6d4e-4f5a-9b7c-2e1d0a9f8c76',
+    orgId: 500318,
+    organisationName: 'Glenmore Glass Ltd',
+    year: 2027,
+    isExporter: false,
+    nation: 'Scotland',
+    siteAddress: 'Unit 4, Furnace Industrial Estate, Glasgow',
+    companiesHouseNumber: 'SC123456',
+    permitNumbers: [],
+    materialType: 'Glass',
+    applicationStatus: 'Approved',
+    applicationReference: 'RA-000004561',
+    caseManagementWorkItemId: {
+      $binary: { base64: '4EuaMm8dTCKoXl08nA8aJA==', subType: '04' }
+    },
+    registrationReference: 'R25ER5003180009GL',
+    accreditationReference: 'A27ER5003180009GL',
+    withdrawalReason: '',
+    submittedBy: {
+      fullName: 'Mary Clarke',
+      jobTitle: 'Operations Director',
+      email: 'mary.clarke@glenmore.co.uk'
+    },
+    submitterContactDetails: {
+      fullName: 'Sam Contact',
+      email: 'sam@glenmore.co.uk',
+      phone: '07700 900123'
+    },
+    updatedAt: { $date: '2026-12-03T15:12:00Z' },
+    version: 14,
+    prns: {
+      plannedTonnageBand: 2,
+      authorisers: [
+        { fullName: 'Mary Clarke', email: 'mary.clarke@glenmore.co.uk' }
+      ],
+      sectionStatus: 3
+    },
+    retiredField: 'kept as stored',
+    ...overrides
+  }
+}
+
+/**
+ * Serve epr-register-enrol-backend's read of one application for this test,
+ * and record each request it receives.
+ *
+ * @param {(request: Request, reference: string) => Response | Promise<Response>} respond
+ */
+export function useFakeRecord(respond) {
+  const requests = []
+  mswServer.use(
+    http.get(
+      `${BACKEND_URL}/admin/accreditation-applications/:reference`,
+      ({ request, params }) => {
+        requests.push(request)
+        return respond(request, params.reference)
+      }
+    )
+  )
+  return requests
+}

@@ -1,6 +1,7 @@
 import Joi from 'joi'
 
 import { searchCriteriaParams } from '#/server/common/helpers/backend-api/backend-api.js'
+import { recordHref } from '../accreditation-applications/href.js'
 
 export const PAGE_SIZE = 50
 
@@ -225,9 +226,49 @@ function isExporter({ wasteProcessingType, isExporter }) {
 }
 
 /**
- * One results row: only the columns AC11 lists. Nothing else from the stored
- * application (contacts, addresses, signatories, the business plan) reaches
- * the page.
+ * Reprocessor or Exporter, for a stored application.
+ *
+ * @param {{ wasteProcessingType?: string, isExporter?: boolean }} application
+ * @returns {'Exporter' | 'Reprocessor'}
+ */
+export const applicationType = (application) =>
+  isExporter(application) ? 'Exporter' : 'Reprocessor'
+
+// When the application was last updated, in UK time (the service runs in
+// UTC), as a date and a time.
+const ukDate = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/London',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric'
+})
+const ukTime = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/London',
+  hour: '2-digit',
+  minute: '2-digit'
+})
+
+function updated(value) {
+  const date = new Date(value ?? NaN)
+  return Number.isNaN(date.getTime())
+    ? undefined
+    : { date: ukDate.format(date), time: ukTime.format(date) }
+}
+
+// The most specific reference an application has: its accreditation number
+// once granted, its application reference once submitted, its registration
+// number, and its `_id` as a last resort.
+const reference = (application) =>
+  application.accreditationReference ||
+  application.applicationReference ||
+  application.registrationReference ||
+  application.applicationId
+
+/**
+ * One results row: its reference, status, organisation, registration number,
+ * material (with type and nation), year and when it was last updated. Nothing
+ * else from the stored application (contacts, addresses, signatories, the
+ * business plan) reaches the page.
  */
 export function resultRow(application) {
   const status = optionFor(STATUSES, application.applicationStatus) ?? {
@@ -235,13 +276,17 @@ export function resultRow(application) {
     classes: 'govuk-tag--grey'
   }
   return {
-    accreditationNumber: application.accreditationReference,
+    reference: reference(application),
+    href: recordHref(application),
     status: { text: status.text, classes: status.classes },
     organisationName: application.organisationName,
     organisationNumber: application.orgId,
     registrationNumber: application.registrationReference,
     material: application.materialType,
-    type: isExporter(application) ? 'Exporter' : 'Reprocessor',
-    year: application.year
+    materialHint: [applicationType(application), application.nation]
+      .filter(Boolean)
+      .join(' · '),
+    year: application.year,
+    updated: updated(application.updatedAt)
   }
 }

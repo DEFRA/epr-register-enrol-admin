@@ -4,8 +4,9 @@ What the Admin UI talks to in each environment, and the rules for stubs and
 writes. Read this when you change config, add an integration, add a stub, or
 add anything that writes to a backend.
 
-Sign-in is built (RA-738). The backend clients, backend stubs and write paths
-are not yet: the rules below are for when they are.
+Sign-in is built (RA-738), and so is the Accreditation API client, used by the
+search page (RA-740). Backend stubs, the Case Management API client and write
+paths are not built yet: the rules below are for when they are.
 
 ## What runs where
 
@@ -20,7 +21,29 @@ are not yet: the rules below are for when they are.
 
 Local development against real backends: the umbrella repo's `compose.yml`
 runs `epr-register-enrol-backend` (Accreditation API) and
-`case-management-backend` (Case Management API) with their databases.
+`case-management-backend` (Case Management API) with their databases. The
+README says how to point the Admin UI at them.
+
+## Calling the Accreditation API
+
+The Admin UI calls `epr-register-enrol-backend` as itself, signed with HMAC
+(see AGENTS.md, Auth). The backend knows it as the service client named
+`admin`, with the client ID `epr-register-enrol-admin` and the secret
+`AUTH_SHARED_SECRET__ADMIN`. The two sides must hold the same secret.
+
+| Environment | `BACKEND_URL` (cdp-app-config)                                    | `BACKEND_API_SHARED_SECRET` (CDP secret)      |
+| ----------- | ----------------------------------------------------------------- | --------------------------------------------- |
+| Local       | `http://localhost:8080` (the default: the umbrella Compose stack) | Set by hand, to match the local backend       |
+| Dev         | `epr-register-enrol-backend` in dev                               | The dev backend's `AUTH_SHARED_SECRET__ADMIN` |
+| Test        | `epr-register-enrol-backend` in test                              | The test backend's                            |
+| Ext-test    | `epr-register-enrol-backend` in ext-test                          | The ext-test backend's                        |
+| Perf-test   | TBC                                                               | TBC                                           |
+| Prod        | `epr-register-enrol-backend` in prod                              | The prod backend's                            |
+
+Each deployed environment needs `BACKEND_URL` set in `cdp-app-config` and the
+secret added in the CDP portal (secrets: RA-799). Production refuses to start
+without either. Elsewhere a missing secret sends unsigned calls, which the
+backend refuses, and the search page shows its "unavailable" banner.
 
 ## Signing in
 
@@ -35,7 +58,8 @@ code (OpenID Connect through `openid-client`); only where it points changes.
 
 In production (see "Telling environments apart") the service refuses to start
 unless `AUTH_PROVIDER` is `defra-prod` and the tenant ID, client ID, client secret,
-session cookie password and an `https` `APP_BASE_URL` are all set. Elsewhere,
+session cookie password and an `https` `APP_BASE_URL` are all set, along with
+`BACKEND_URL` and `BACKEND_API_SHARED_SECRET`. Elsewhere,
 any provider may be used.
 
 ## Stubs

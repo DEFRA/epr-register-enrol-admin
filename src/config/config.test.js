@@ -18,13 +18,16 @@ describe('Config defaults in production', () => {
     expect(config.get('log.enabled')).toBe(true)
   })
 
-  test('removes credentials and cookies from request logs', async () => {
+  test('removes credentials, cookies and search terms from request logs', async () => {
     const config = await loadConfig('production')
 
     expect(config.get('log.redact')).toEqual([
       'req.headers.authorization',
       'req.headers.cookie',
-      'res.headers'
+      'res.headers',
+      'req.query.q',
+      'req.query.returnTo',
+      'req.headers.referer'
     ])
   })
 
@@ -43,8 +46,31 @@ describe('Config defaults in local development', () => {
 
     expect(config.get('isDevelopment')).toBe(true)
     expect(config.get('log.format')).toBe('pino-pretty')
-    expect(config.get('log.redact')).toEqual([])
+    expect(config.get('log.redact')).toEqual([
+      'req.query.q',
+      'req.query.returnTo',
+      'req.headers.referer',
+      'res.headers.location'
+    ])
     expect(config.get('session.cache.engine')).toBe('memory')
     expect(config.get('session.cookie.secure')).toBe(false)
+  })
+})
+
+describe('The backend URL', () => {
+  test('without a scheme stops the service starting, not the first search', async () => {
+    vi.stubEnv('BACKEND_URL', 'backend.example.com')
+
+    await expect(loadConfig('development')).rejects.toThrow(
+      'must be an http or https URL'
+    )
+  })
+
+  test('with an http or https scheme is accepted', async () => {
+    vi.stubEnv('BACKEND_URL', 'https://backend.example.com')
+
+    const config = await loadConfig('development')
+
+    expect(config.get('backendApi.url')).toBe('https://backend.example.com')
   })
 })

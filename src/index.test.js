@@ -1,8 +1,10 @@
 import process from 'node:process'
 
+import { http, passthrough } from 'msw'
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
 
 import { statusCodes } from '#/server/common/constants/status-codes.js'
+import { mswServer } from '#/test-helpers/msw-server.js'
 
 describe('Starting the application', () => {
   let server
@@ -22,6 +24,8 @@ describe('Starting the application', () => {
   })
 
   test('starts a server that answers the platform health check', async () => {
+    // The service itself, not something outside it: let the call through.
+    mswServer.use(http.get(`${server.info.uri}/health`, () => passthrough()))
     const response = await fetch(`${server.info.uri}/health`)
 
     expect(response.status).toBe(statusCodes.ok)

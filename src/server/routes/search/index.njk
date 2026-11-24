@@ -1,6 +1,167 @@
 {% extends 'layouts/page.njk' %}
 
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/checkboxes/macro.njk" import govukCheckboxes %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
 {% block content %}
-  <h1 class="govuk-heading-l">Search</h1>
-  <p class="govuk-body" data-testid="app-page-body">Search is coming soon.</p>
+  {% if errors.length %}
+    {{ govukErrorSummary({
+      titleText: "There is a problem",
+      errorList: errors
+    }) }}
+  {% endif %}
+
+  {% if unavailable %}
+    {{ govukNotificationBanner({
+      titleText: "Important",
+      text: "Legacy accreditation application data is unavailable right now. Try again later.",
+      attributes: { "data-testid": "unavailable" }
+    }) }}
+  {% endif %}
+
+  <h1 class="govuk-heading-l">{{ heading }}</h1>
+
+  <form method="get" action="/search" novalidate>
+    <div class="govuk-grid-row">
+      <div class="govuk-grid-column-three-quarters app-search-layout__main">
+        <div class="app-search">
+          {{ govukInput({
+            id: "q",
+            name: "q",
+            type: "search",
+            value: form.q,
+            spellcheck: false,
+            label: { text: "Accreditation, registration or organisation", classes: "govuk-label--s" },
+            hint: { text: "All or part of an accreditation number (for example A27ER50011), registration number (for example R25EX), organisation number (for example 500039) or organisation name" },
+            classes: "app-search__input",
+            errorMessage: errorByField.q
+          }) }}
+          {{ govukButton({
+            text: "Search",
+            classes: "app-search__button",
+            attributes: { "data-testid": "search" }
+          }) }}
+        </div>
+
+        {{ govukCheckboxes({
+          idPrefix: "searchFields",
+          name: "searchFields",
+          classes: "govuk-checkboxes--small app-search-fields",
+          fieldset: { legend: { text: "Search in", classes: "govuk-fieldset__legend--s" } },
+          hint: { text: "Leave them all unticked to search all four." },
+          items: searchFieldItems,
+          errorMessage: errorByField.searchFields
+        }) }}
+
+        {% if selectedFilters.length %}
+          <div class="app-selected-filters" data-testid="selected-filters">
+            <h2 class="govuk-heading-s">Selected</h2>
+            {% for group in selectedFilters %}
+              <h3 class="govuk-body-s govuk-!-font-weight-bold govuk-!-margin-bottom-1">{{ group.heading }}</h3>
+              <ul class="app-selected-filters__tags">
+                {% for tag in group.tags %}
+                  <li>
+                    <a class="app-filter-tag" href="{{ tag.href }}">
+                      <span class="govuk-visually-hidden">Remove {{ group.heading | lower }}</span> {{ tag.text }}
+                    </a>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endfor %}
+            <p class="govuk-body-s"><a class="govuk-link" href="/search" data-testid="clear-filters">Clear search and filters</a></p>
+          </div>
+        {% endif %}
+
+        {% if results %}
+          <div class="app-results-heading">
+            <h2 class="govuk-heading-m" data-testid="results-heading">
+              {{ results.totalItems }} accreditation application{{ "" if results.totalItems == 1 else "s" }}
+            </h2>
+            <p class="govuk-body-s govuk-hint">Most recently updated first</p>
+          </div>
+
+          {% if results.rows.length %}
+            <table class="govuk-table app-results" data-testid="results">
+              <thead class="govuk-table__head">
+                <tr class="govuk-table__row">
+                  <th scope="col" class="govuk-table__header">Accreditation number</th>
+                  <th scope="col" class="govuk-table__header">Status</th>
+                  <th scope="col" class="govuk-table__header">Organisation</th>
+                  <th scope="col" class="govuk-table__header">Registration number</th>
+                  <th scope="col" class="govuk-table__header">Material</th>
+                  <th scope="col" class="govuk-table__header">Type</th>
+                  <th scope="col" class="govuk-table__header">Year</th>
+                </tr>
+              </thead>
+              <tbody class="govuk-table__body">
+                {% for row in results.rows %}
+                  <tr class="govuk-table__row">
+                    <td class="govuk-table__cell app-results__reference">{{ row.accreditationNumber or "None" }}</td>
+                    <td class="govuk-table__cell">{{ govukTag({ text: row.status.text, classes: row.status.classes }) }}</td>
+                    <td class="govuk-table__cell">
+                      {{ row.organisationName or "No name" }}
+                      <span class="govuk-hint govuk-!-margin-bottom-0">{{ row.organisationNumber or "No number" }}</span>
+                    </td>
+                    <td class="govuk-table__cell app-results__reference">{{ row.registrationNumber or "None" }}</td>
+                    <td class="govuk-table__cell">{{ row.material or "None" }}</td>
+                    <td class="govuk-table__cell">{{ row.type }}</td>
+                    <td class="govuk-table__cell">{{ row.year or "None" }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+
+            <p class="govuk-body" data-testid="showing">
+              Showing {{ results.from }} to {{ results.to }} of {{ results.totalItems }} application{{ "" if results.totalItems == 1 else "s" }}
+            </p>
+          {% elif results.pastEnd %}
+            <p class="govuk-body" data-testid="past-end">
+              There {{ "is" if results.pastEnd.lastPage == 1 else "are" }} only {{ results.pastEnd.lastPage }} page{{ "" if results.pastEnd.lastPage == 1 else "s" }} of results.
+              <a class="govuk-link" href="{{ results.pastEnd.href }}">Go to page {{ results.pastEnd.lastPage }}</a>
+            </p>
+          {% else %}
+            <p class="govuk-body" data-testid="no-results">No accreditation applications found</p>
+          {% endif %}
+
+          {% if results.pagination %}
+            {{ govukPagination(results.pagination) }}
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <div class="govuk-grid-column-one-quarter" data-testid="filters">
+        <h2 class="govuk-heading-m">Filters</h2>
+
+        {{ govukCheckboxes({
+          idPrefix: "status",
+          name: "status",
+          classes: "govuk-checkboxes--small",
+          fieldset: { legend: { text: "Status", classes: "govuk-fieldset__legend--s" } },
+          items: statusItems,
+          errorMessage: errorByField.status
+        }) }}
+
+        {{ govukRadios({
+          idPrefix: "year",
+          name: "year",
+          classes: "govuk-radios--small",
+          fieldset: { legend: { text: "Accreditation year", classes: "govuk-fieldset__legend--s" } },
+          items: yearItems,
+          errorMessage: errorByField.year
+        }) }}
+
+        {{ govukButton({
+          text: "Apply filters",
+          classes: "govuk-button--secondary",
+          attributes: { "data-testid": "apply-filters" }
+        }) }}
+      </div>
+    </div>
+  </form>
 {% endblock %}

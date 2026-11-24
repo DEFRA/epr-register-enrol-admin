@@ -9,12 +9,7 @@
  */
 // People's names and email addresses. Matched on the field's name, wherever it
 // is in the document. Organisation and site names are not people's names.
-const NAME_FIELDS = new Set([
-  'fullname',
-  'contactname',
-  'firstname',
-  'lastname'
-])
+const NAME_FIELDS = new Set(['fullname', 'contactname'])
 const isEmailField = (key) => key.toLowerCase().endsWith('email')
 const isNameField = (key) => NAME_FIELDS.has(key.toLowerCase())
 

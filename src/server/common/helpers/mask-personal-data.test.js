@@ -7,15 +7,11 @@ describe('Masking personal data', () => {
     expect(
       maskPersonalData({
         fullName: 'Mary Clarke',
-        contactName: 'Ann  Lee',
-        firstName: 'Jo',
-        lastName: 'X'
+        contactName: 'Ann  Lee'
       })
     ).toEqual({
       fullName: 'M*** C*****',
-      contactName: 'A**  L**',
-      firstName: 'J*',
-      lastName: 'X'
+      contactName: 'A**  L**'
     })
   })
 

@@ -15,8 +15,8 @@ paths are not built yet: the rules below are for when they are.
 | Local       | `defra-stub`, or `defra-dev`   | Stubbed, or real services run from the `DEFRA/epr-register-enrol` umbrella repo's Docker Compose | Allowed            |
 | Dev         | `defra-stub`                   | Real, deployed                                                                                   | Allowed            |
 | Test        | `defra-stub`                   | Real, deployed                                                                                   | Allowed            |
-| Ext-test    | `defra-stub`                   | Real, deployed. As close to production as possible                                               | Allowed            |
-| Perf-test   | TBC                            | TBC                                                                                              | TBC                |
+| Ext-test    | `defra-dev`                    | Real, deployed. As close to production as possible                                               | Allowed            |
+| Perf-test   | `defra-stub`                   | TBC                                                                                              | TBC                |
 | Prod        | `defra-prod`, and nothing else | Real, deployed                                                                                   | Refused            |
 
 Local development against real backends: the umbrella repo's `compose.yml`
@@ -56,6 +56,11 @@ code (OpenID Connect through `openid-client`); only where it points changes.
 | `defra-dev`     | The Defra Dev Entra ID tenant                                                     | `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET` (secret), `APP_BASE_URL` |
 | `defra-prod`    | The Defra Entra ID tenant ([RA-757](https://eaflood.atlassian.net/browse/RA-757)) | `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET` (secret), `APP_BASE_URL` |
 
+With `defra-stub`, the service signs in with the stub's own fixed client and
+ignores `ENTRA_CLIENT_ID` and `ENTRA_CLIENT_SECRET`. An environment can keep
+its Defra Dev secret in the CDP Portal while it uses the stub, so switching
+between the two is a change to `AUTH_PROVIDER` and its settings only.
+
 In production (see "Telling environments apart") the service refuses to start
 unless `AUTH_PROVIDER` is `defra-prod` and the tenant ID, client ID, client secret,
 session cookie password and an `https` `APP_BASE_URL` are all set, along with
@@ -71,11 +76,12 @@ any provider may be used.
 - Stubs are for non-production environments only. The app refuses to start
   in production with any stub enabled (see "Telling environments apart"), and
   that guard has a test.
-- Test and ext-test sign in through the Entra stub until they move to the
-  Defra Dev tenant
-  ([RA-798](https://eaflood.atlassian.net/browse/RA-798)). After that,
-  ext-test uses the Defra Dev tenant only, to stay as close to production as
-  possible.
+- Only ext-test signs in through the Defra Dev tenant, to stay as close to
+  production as possible. Dev, test and perf-test sign in through the stub,
+  so anyone can sign in there without a Defra Dev account. Each of them has
+  its own Defra Dev app registration, kept commented out in `cdp-app-config`
+  with its secret left in the CDP Portal, so moving one to Defra Dev is a
+  change to `AUTH_PROVIDER` and its settings only.
 
 ## Writes
 

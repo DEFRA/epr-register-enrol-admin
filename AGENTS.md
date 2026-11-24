@@ -248,8 +248,8 @@ touch them.
 ### Test against deployed services
 
 Prefer real integrations wherever an environment has them. What the Admin UI
-talks to changes by environment (stubs locally, real backends from dev, the
-Entra stub up to ext-test until RA-798 moves test and ext-test to the Defra Dev
+talks to changes by environment (stubs locally, real backends from dev, and
+the Entra stub everywhere but ext-test, which signs in through the Defra Dev
 tenant). See [docs/environments.md](docs/environments.md).
 
 ## Security

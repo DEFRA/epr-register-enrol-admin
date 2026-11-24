@@ -171,6 +171,9 @@ describe('A signed-in session with Entra ID', () => {
     vi.resetModules()
     vi.stubEnv('AUTH_PROVIDER', 'defra-dev')
     vi.stubEnv('ENTRA_TENANT_ID', tenantId)
+    // The client fake-entra.js knows, set as an environment sets its own.
+    vi.stubEnv('ENTRA_CLIENT_ID', 'epr-register-enrol-admin')
+    vi.stubEnv('ENTRA_CLIENT_SECRET', 'admin-stub-secret')
     const { createServer: createDevServer } = await import('#/server/server.js')
     server = await createDevServer()
     logs = recordLogs(server)

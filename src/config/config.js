@@ -153,15 +153,15 @@ export const config = convict({
       env: 'ENTRA_TENANT_ID'
     },
     clientId: {
-      doc: "This service's client ID in the provider. The default is the stub's client.",
+      doc: "This service's client ID in Entra ID, when AUTH_PROVIDER is defra-dev or defra-prod. Not used with the stub, whose client is fixed.",
       format: String,
-      default: 'epr-register-enrol-admin',
+      default: '',
       env: 'ENTRA_CLIENT_ID'
     },
     clientSecret: {
-      doc: "This service's client secret in the provider. The default is the stub's client secret.",
+      doc: "This service's client secret in Entra ID, when AUTH_PROVIDER is defra-dev or defra-prod. Not used with the stub, whose client is fixed.",
       format: String,
-      default: 'admin-stub-secret',
+      default: '',
       sensitive: true,
       env: 'ENTRA_CLIENT_SECRET'
     },

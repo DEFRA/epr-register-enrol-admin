@@ -36,6 +36,18 @@ The stub issues no refresh tokens, so you sign in again after about an hour.
 
 The stub only knows this service once [DEFRA/epr-register-enrol-entra-stub#25](https://github.com/DEFRA/epr-register-enrol-entra-stub/pull/25) is released. Until then, build the stub from that branch and run it with `EPR_REGISTER_ENROL_ENTRA_STUB=<your tag> docker compose up …`. Who users sign in with in each environment, and the settings for it, are in [docs/environments.md](docs/environments.md#signing-in).
 
+To sign in through real Entra ID on the Defra Dev tenant instead, with a Defra Dev account in `AG-EPR-SUPPORT`:
+
+```bash
+AUTH_PROVIDER=defra-dev \
+ENTRA_TENANT_ID=<the Defra Dev tenant ID, as in cdp-app-config> \
+ENTRA_CLIENT_ID=<the Defra Dev app registration's client ID> \
+ENTRA_CLIENT_SECRET=<its client secret> \
+npm run dev
+```
+
+The app registration you use must list `http://localhost:3000/auth/callback` as a redirect URI, so run on port 3000.
+
 To run the production build with Redis sessions, closer to how it runs on CDP:
 
 ```bash

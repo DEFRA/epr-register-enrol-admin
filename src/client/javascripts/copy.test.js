@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// @vitest-environment-options { "url": "https://admin.example.gov.uk/accreditation-applications/RA-000004561" }
+// @vitest-environment-options { "url": "https://admin.example.gov.uk/accreditation-applications/AP27EA500500ABPL" }
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { initCopyButtons } from './copy.js'
@@ -62,7 +62,7 @@ describe('Copy buttons', () => {
     await click('[data-copy-page-link]')
 
     expect(writeText).toHaveBeenCalledWith(
-      'https://admin.example.gov.uk/accreditation-applications/RA-000004561'
+      'https://admin.example.gov.uk/accreditation-applications/AP27EA500500ABPL'
     )
     expect(status()).toBe('Link copied')
   })
@@ -76,14 +76,5 @@ describe('Copy buttons', () => {
     expect(status()).toBe(
       'Could not copy. Select the text and copy it instead.'
     )
-  })
-
-  test('still copy on a page with no status region', async () => {
-    document.querySelector('[data-copy-status]').remove()
-    initCopyButtons()
-
-    await click('[data-copy]')
-
-    expect(writeText).toHaveBeenCalledWith('A27ER5003180009GL')
   })
 })

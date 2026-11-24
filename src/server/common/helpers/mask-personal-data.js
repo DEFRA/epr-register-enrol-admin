@@ -23,7 +23,7 @@ const maskName = (name) =>
   name.replaceAll(/\S+/g, (word) => word[0] + '*'.repeat(word.length - 1))
 
 // The first character of the address and of the domain's first label, then
-// the rest of the domain: "mary@glenmore.co.uk" -> "m***@g*******.co.uk".
+// the rest of the domain: "mary@mail.example.org" -> "m***@m***.example.org".
 function maskEmail(email) {
   const at = email.lastIndexOf('@')
   if (at < 1) {

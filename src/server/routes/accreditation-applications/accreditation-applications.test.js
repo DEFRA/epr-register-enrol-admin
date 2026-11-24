@@ -30,7 +30,7 @@ import {
 vi.mock('@defra/cdp-auditing', () => ({ audit: vi.fn() }))
 
 const VIEW_AUDIT = 'view-legacy-accreditation-application'
-const PAGE = '/accreditation-applications/RA-000004561'
+const PAGE = '/accreditation-applications/AP27EA500500ABPL'
 
 const viewAudits = () =>
   vi
@@ -86,7 +86,7 @@ describe('Viewing a Legacy accreditation application', () => {
     test('from search results: each row shows its most specific reference, linked to its Record page by application reference, or by id before it has one (AC01)', async () => {
       useFakeBackend(() =>
         resultsPage([
-          legacyApplication({ applicationReference: 'RA-000004561' }),
+          legacyApplication({ applicationReference: 'AP27EA500500ABPL' }),
           legacyApplication({
             accreditationReference: null,
             applicationReference: 'RA-000004562'
@@ -116,7 +116,7 @@ describe('Viewing a Legacy accreditation application', () => {
         .map((_i, link) => [[$(link).text().trim(), $(link).attr('href')]])
         .get()
       expect(links).toEqual([
-        ['A27ER5001120018PL', '/accreditation-applications/RA-000004561'],
+        ['A27ER5001120018PL', '/accreditation-applications/AP27EA500500ABPL'],
         ['RA-000004562', '/accreditation-applications/RA-000004562'],
         [
           'R25ER5001120018PL',
@@ -141,7 +141,7 @@ describe('Viewing a Legacy accreditation application', () => {
 
       expect(response.statusCode).toBe(200)
       expect(new URL(requests[0].url).pathname).toBe(
-        '/admin/accreditation-applications/RA-000004561'
+        '/admin/accreditation-applications/AP27EA500500ABPL'
       )
       expect(text($, 'title')).toBe(
         'A27ER5003180009GL | RREPW Reg-Accred GOV.UK'
@@ -162,7 +162,7 @@ describe('Viewing a Legacy accreditation application', () => {
       ).toBe('page')
     })
 
-    test('for a draft with no reference, by its id, headed by its id', async () => {
+    test('for a draft with no reference, by its id, headed by its registration number as its search row is', async () => {
       const requests = useFakeRecord(() =>
         HttpResponse.json(
           storedApplication({
@@ -180,7 +180,7 @@ describe('Viewing a Legacy accreditation application', () => {
       expect(new URL(requests[0].url).pathname).toBe(
         '/admin/accreditation-applications/6716a3c09e4b2d1f8a5c7e30'
       )
-      expect(text($, 'h1')).toBe('Core details for 6716a3c09e4b2d1f8a5c7e30')
+      expect(text($, 'h1')).toBe('Core details for R25ER5003180009GL')
       expect(coreDetails($).slice(0, 3)).toEqual([
         ['Status', 'Saved'],
         ['Accreditation number', 'None'],
@@ -260,7 +260,7 @@ describe('Viewing a Legacy accreditation application', () => {
   })
 
   describe('the core details (AC05, AC06)', () => {
-    test('are shown beside the stored document, each with a button that copies it', async () => {
+    test('are shown above the stored document, each with a button that copies it', async () => {
       useFakeRecord(() => HttpResponse.json(storedApplication()))
 
       const { $ } = await get(PAGE)
@@ -268,8 +268,8 @@ describe('Viewing a Legacy accreditation application', () => {
       expect(coreDetails($)).toEqual([
         ['Status', 'Approved'],
         ['Accreditation number', 'A27ER5003180009GL'],
-        ['Application reference', 'RA-000004561'],
-        ['Organisation', 'Glenmore Glass Ltd'],
+        ['Application reference', 'AP27EA500500ABPL'],
+        ['Organisation', 'Testmore Glass Ltd'],
         ['Organisation number', '500318'],
         ['Registration number', 'R25ER5003180009GL'],
         ['Material', 'Glass'],
@@ -286,8 +286,8 @@ describe('Viewing a Legacy accreditation application', () => {
           .get()
       ).toEqual([
         ['A27ER5003180009GL', 'Copy accreditation number'],
-        ['RA-000004561', 'Copy application reference'],
-        ['Glenmore Glass Ltd', 'Copy organisation'],
+        ['AP27EA500500ABPL', 'Copy application reference'],
+        ['Testmore Glass Ltd', 'Copy organisation'],
         ['500318', 'Copy organisation number'],
         ['R25ER5003180009GL', 'Copy registration number'],
         ['Glass', 'Copy material'],
@@ -338,12 +338,12 @@ describe('Viewing a Legacy accreditation application', () => {
 
       const document = $('[data-testid="document"]').text()
       expect(document).toContain('"fullName": "M*** C*****"')
-      expect(document).toContain('"email": "m***@g*******.co.uk"')
+      expect(document).toContain('"email": "m***@e******.com"')
       expect(document).toContain('"fullName": "S** C******"')
       expect(response.payload).not.toContain('Mary')
       expect(response.payload).not.toContain('Clarke')
       expect(response.payload).not.toContain('Sam Contact')
-      expect(response.payload).not.toContain('glenmore.co.uk"')
+      expect(response.payload).not.toContain('clarke@example.com')
       expect(response.headers['cache-control']).toBe('no-store')
       expect(JSON.stringify(logs)).not.toContain('Mary')
     })
@@ -354,7 +354,7 @@ describe('Viewing a Legacy accreditation application', () => {
       const { $ } = await get(PAGE)
 
       const document = $('[data-testid="document"]').text()
-      expect(document).toContain('"organisationName": "Glenmore Glass Ltd"')
+      expect(document).toContain('"organisationName": "Testmore Glass Ltd"')
       expect(document).toContain('"phone": "07700 900123"')
       expect(document).toContain(
         '"siteAddress": "Unit 4, Furnace Industrial Estate, Glasgow"'
@@ -371,14 +371,14 @@ describe('Viewing a Legacy accreditation application', () => {
       expect(viewAudits()).toEqual([
         {
           event: { category: 'record', action: VIEW_AUDIT },
-          context: { reference: 'RA-000004561', outcome: 'found' },
+          context: { reference: 'AP27EA500500ABPL', outcome: 'found' },
           user: {
             id: supportUser.oid,
             email: supportUser.preferred_username
           }
         }
       ])
-      expect(JSON.stringify(viewAudits())).not.toContain('Glenmore')
+      expect(JSON.stringify(viewAudits())).not.toContain('Testmore')
     })
   })
 
@@ -398,7 +398,7 @@ describe('Viewing a Legacy accreditation application', () => {
 
       expect(response.statusCode).toBe(200)
       expect(text($, '[data-testid="unavailable"]')).toBe(unavailable)
-      expect(text($, 'h1')).toBe('RA-000004561')
+      expect(text($, 'h1')).toBe('AP27EA500500ABPL')
       expect($('[data-testid="document"]')).toHaveLength(0)
       expect(errorLogs(logs)).toEqual([
         {
@@ -413,7 +413,7 @@ describe('Viewing a Legacy accreditation application', () => {
       ])
       expect(viewAudits()).toEqual([
         expect.objectContaining({
-          context: { reference: 'RA-000004561', outcome: 'unavailable' }
+          context: { reference: 'AP27EA500500ABPL', outcome: 'unavailable' }
         })
       ])
     })
@@ -431,11 +431,11 @@ describe('Viewing a Legacy accreditation application', () => {
     })
 
     test.each([
-      ['is not JSON', () => new HttpResponse('Glenmore <html>')],
-      ['is not an object', () => HttpResponse.json(['Glenmore'])],
+      ['is not JSON', () => new HttpResponse('Testmore <html>')],
+      ['is not an object', () => HttpResponse.json(['Testmore'])],
       [
         'is not an application (no _id)',
-        () => HttpResponse.json({ pageNumber: 1, items: [{ x: 'Glenmore' }] })
+        () => HttpResponse.json({ pageNumber: 1, items: [{ x: 'Testmore' }] })
       ]
     ])(
       'a response that %s shows the banner, and logs an error without its contents',
@@ -453,7 +453,7 @@ describe('Viewing a Legacy accreditation application', () => {
               'epr-register-enrol-backend GET /admin/accreditation-applications/{reference} returned a response it could not read'
           }
         ])
-        expect(JSON.stringify(logs)).not.toContain('Glenmore')
+        expect(JSON.stringify(logs)).not.toContain('Testmore')
       }
     )
   })

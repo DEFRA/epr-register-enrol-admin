@@ -87,16 +87,16 @@ export function storedApplication(overrides = {}) {
     _id: { $oid: '6716a3c09e4b2d1f8a5c7e30' },
     organisationId: '8f3b2c1a-6d4e-4f5a-9b7c-2e1d0a9f8c76',
     orgId: 500318,
-    organisationName: 'Glenmore Glass Ltd',
+    organisationName: 'Testmore Glass Ltd',
     year: 2027,
     isExporter: false,
     nation: 'Scotland',
     siteAddress: 'Unit 4, Furnace Industrial Estate, Glasgow',
-    companiesHouseNumber: 'SC123456',
+    companiesHouseNumber: 'SC000000',
     permitNumbers: [],
     materialType: 'Glass',
     applicationStatus: 'Approved',
-    applicationReference: 'RA-000004561',
+    applicationReference: 'AP27EA500500ABPL',
     caseManagementWorkItemId: {
       $binary: { base64: '4EuaMm8dTCKoXl08nA8aJA==', subType: '04' }
     },
@@ -106,11 +106,11 @@ export function storedApplication(overrides = {}) {
     submittedBy: {
       fullName: 'Mary Clarke',
       jobTitle: 'Operations Director',
-      email: 'mary.clarke@glenmore.co.uk'
+      email: 'mary.clarke@example.com'
     },
     submitterContactDetails: {
       fullName: 'Sam Contact',
-      email: 'sam@glenmore.co.uk',
+      email: 'sam@example.com',
       phone: '07700 900123'
     },
     updatedAt: { $date: '2026-12-03T15:12:00Z' },
@@ -118,7 +118,7 @@ export function storedApplication(overrides = {}) {
     prns: {
       plannedTonnageBand: 2,
       authorisers: [
-        { fullName: 'Mary Clarke', email: 'mary.clarke@glenmore.co.uk' }
+        { fullName: 'Mary Clarke', email: 'mary.clarke@example.com' }
       ],
       sectionStatus: 3
     },
@@ -131,16 +131,16 @@ export function storedApplication(overrides = {}) {
  * Serve epr-register-enrol-backend's read of one application for this test,
  * and record each request it receives.
  *
- * @param {(request: Request, reference: string) => Response | Promise<Response>} respond
+ * @param {() => Response | Promise<Response>} respond
  */
 export function useFakeRecord(respond) {
   const requests = []
   mswServer.use(
     http.get(
       `${BACKEND_URL}/admin/accreditation-applications/:reference`,
-      ({ request, params }) => {
+      ({ request }) => {
         requests.push(request)
-        return respond(request, params.reference)
+        return respond()
       }
     )
   )

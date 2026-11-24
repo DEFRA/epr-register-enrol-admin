@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { recordHref } from './href.js'
+import { recordHref } from '#/server/common/helpers/legacy-application.js'
 import { coreDetails, documentLines, recordTitle } from './record.js'
 
 // Each line as it reads on the page.
@@ -123,9 +123,9 @@ describe('The core details', () => {
     const details = coreDetails({
       _id: { $oid: '6716a3c09e4b2d1f8a5c7e30' },
       accreditationReference: 'A27ER5003180009GL',
-      applicationReference: 'RA-000004561',
+      applicationReference: 'AP27EA500500ABPL',
       applicationStatus: 'AwaitingDecision',
-      organisationName: 'Glenmore Glass Ltd',
+      organisationName: 'Testmore Glass Ltd',
       orgId: 500318,
       registrationReference: 'R25ER5003180009GL',
       materialType: 'Glass',
@@ -139,8 +139,8 @@ describe('The core details', () => {
     })
     expect(details.rows.map(({ key, value }) => [key, value])).toEqual([
       ['Accreditation number', 'A27ER5003180009GL'],
-      ['Application reference', 'RA-000004561'],
-      ['Organisation', 'Glenmore Glass Ltd'],
+      ['Application reference', 'AP27EA500500ABPL'],
+      ['Organisation', 'Testmore Glass Ltd'],
       ['Organisation number', '500318'],
       ['Registration number', 'R25ER5003180009GL'],
       ['Material', 'Glass'],
@@ -171,7 +171,7 @@ describe('The core details', () => {
   })
 })
 
-describe("The Record page's heading", () => {
+describe("A record's name, as its search results row shows it", () => {
   test.each([
     [
       {
@@ -182,8 +182,8 @@ describe("The Record page's heading", () => {
       'A27'
     ],
     [{ applicationReference: 'RA-1', _id: { $oid: 'x' } }, 'RA-1'],
-    [{ _id: { $oid: 'x' } }, 'x'],
-    [{}, 'Accreditation application']
+    [{ registrationReference: 'R25', _id: { $oid: 'x' } }, 'R25'],
+    [{ _id: { $oid: 'x' } }, 'x']
   ])('of %j is %s', (document, title) => {
     expect(recordTitle(document)).toBe(title)
   })
@@ -192,8 +192,8 @@ describe("The Record page's heading", () => {
 describe('Where an application’s Record page is', () => {
   test.each([
     [
-      { applicationReference: 'RA-000004561', applicationId: 'abc' },
-      '/accreditation-applications/RA-000004561'
+      { applicationReference: 'AP27EA500500ABPL', applicationId: 'abc' },
+      '/accreditation-applications/AP27EA500500ABPL'
     ],
     [
       { applicationReference: null, applicationId: '6716a3c09e4b2d1f8a5c7e30' },

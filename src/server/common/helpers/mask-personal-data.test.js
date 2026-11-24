@@ -22,14 +22,14 @@ describe('Masking personal data', () => {
   test('masks email addresses, keeping the first letters and the end of the domain', () => {
     expect(
       maskPersonalData({
-        email: 'mary.clarke@glenmore.co.uk',
-        contactEmail: 'a@b.com',
-        ContactEMAIL: 'sam@glenmore'
+        email: 'mary.clarke@mail.example.org',
+        contactEmail: 'a@example.com',
+        ContactEMAIL: 'sam@example'
       })
     ).toEqual({
-      email: 'm***@g*******.co.uk',
-      contactEmail: 'a***@b.com',
-      ContactEMAIL: 's***@g*******'
+      email: 'm***@m***.example.org',
+      contactEmail: 'a***@e******.com',
+      ContactEMAIL: 's***@e******'
     })
   })
 
@@ -37,12 +37,12 @@ describe('Masking personal data', () => {
     expect(
       maskPersonalData({
         email: 'not an address',
-        contactEmail: '@x.com',
+        contactEmail: '@example.com',
         otherEmail: 'a@'
       })
     ).toEqual({
       email: 'n** a* a******',
-      contactEmail: '@*****',
+      contactEmail: '@***********',
       otherEmail: 'a***@'
     })
   })
@@ -50,18 +50,22 @@ describe('Masking personal data', () => {
   test('masks names and emails wherever they are, in objects and arrays', () => {
     expect(
       maskPersonalData({
-        prns: { authorisers: [{ fullName: 'Pat Lee', email: 'pat@x.org' }] },
-        contacts: { email: ['a@x.org', 'b@y.org'] }
+        prns: {
+          authorisers: [{ fullName: 'Pat Lee', email: 'pat@example.org' }]
+        },
+        contacts: { email: ['a@example.org', 'b@example.net'] }
       })
     ).toEqual({
-      prns: { authorisers: [{ fullName: 'P** L**', email: 'p***@x.org' }] },
-      contacts: { email: ['a***@x.org', 'b***@y.org'] }
+      prns: {
+        authorisers: [{ fullName: 'P** L**', email: 'p***@e******.org' }]
+      },
+      contacts: { email: ['a***@e******.org', 'b***@e******.net'] }
     })
   })
 
   test('leaves everything else as stored: organisation names, phones, addresses, empty values', () => {
     const document = {
-      organisationName: 'Glenmore Glass Ltd',
+      organisationName: 'Testmore Glass Ltd',
       siteName: 'Furnace Site',
       phone: '07700 900123',
       siteAddress: 'Unit 4, Glasgow',

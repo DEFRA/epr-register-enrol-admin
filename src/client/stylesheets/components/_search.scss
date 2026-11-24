@@ -73,8 +73,9 @@
   align-items: baseline;
 }
 
-// Seven columns in three-quarters of the page: smaller text and tighter
-// spacing between columns so they fit.
+// Seven columns in three-quarters of the page, so smaller text and tighter
+// spacing between columns. They still overflow by about 20px at the
+// narrowest desktop width; the layout fix is still to be decided.
 .app-results {
   @include govuk-font($size: 16);
 }

@@ -239,6 +239,26 @@ describe('Searching Legacy accreditation applications', () => {
       expect(row[6]).toBe('None')
     })
 
+    test('shows None for an update time it cannot read', async () => {
+      useFakeBackend(() =>
+        resultsPage([legacyApplication({ updatedAt: 'not a date' })])
+      )
+
+      const { $ } = await get('/search')
+
+      expect(tableRows($)[0][6]).toBe('None')
+    })
+
+    test('writes Northern Ireland as words, as the status is', async () => {
+      useFakeBackend(() =>
+        resultsPage([legacyApplication({ nation: 'NorthernIreland' })])
+      )
+
+      const { $ } = await get('/search')
+
+      expect(tableRows($)[0][4]).toContain('Reprocessor · Northern Ireland')
+    })
+
     test('shows the most specific reference, status, organisation, registration number, material with type and nation, year and last update, in the order the backend gives', async () => {
       useFakeBackend(() =>
         resultsPage([
@@ -260,7 +280,7 @@ describe('Searching Legacy accreditation applications', () => {
           legacyApplication({
             accreditationReference: 'A27EX5003180009GL',
             applicationReference: null,
-            organisationName: 'Glenmore Glass Ltd',
+            organisationName: 'Testmore Glass Ltd',
             orgId: 500318,
             materialType: 'Glass',
             wasteProcessingType: null,
@@ -314,7 +334,7 @@ describe('Searching Legacy accreditation applications', () => {
         [
           'A27EX5003180009GL',
           'Duly made',
-          'Glenmore Glass Ltd 500318',
+          'Testmore Glass Ltd 500318',
           'R25ER5001120018PL',
           'Glass Exporter · Scotland',
           '2027',
@@ -350,7 +370,7 @@ describe('Searching Legacy accreditation applications', () => {
         'govuk-tag govuk-tag--light-blue',
         'govuk-tag govuk-tag--green'
       ])
-      // RA-750: each row's reference links to its Record page, and nothing
+      // Each row's reference links to its Record page, and nothing
       // else links.
       expect(
         $('[data-testid="results"] a')
@@ -402,7 +422,7 @@ describe('Searching Legacy accreditation applications', () => {
       ]) {
         expect(response.payload).not.toContain(value)
       }
-      // The id appears only in the link to the Record page (RA-750).
+      // The id appears only in the link to the Record page.
       expect(response.payload.split('1c3e5a7b9d0f4b2c8e4a6c8e')).toHaveLength(2)
       expect(response.payload).toContain(
         'href="/accreditation-applications/1c3e5a7b9d0f4b2c8e4a6c8e"'

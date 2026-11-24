@@ -2,6 +2,7 @@ import { auditRecordView } from '#/server/common/helpers/audit.js'
 import { getLegacyAccreditationApplication } from '#/server/common/helpers/backend-api/backend-api.js'
 import { maskPersonalData } from '#/server/common/helpers/mask-personal-data.js'
 import { statusCodes } from '#/server/common/constants/status-codes.js'
+import { RECORD_PATH } from '#/server/common/helpers/legacy-application.js'
 import {
   coreDetails,
   documentLines,
@@ -28,7 +29,7 @@ export const accreditationApplications = {
     register(server) {
       server.route({
         method: 'GET',
-        path: '/accreditation-applications/{reference}',
+        path: `${RECORD_PATH}/{reference}`,
         options: {
           validate: {
             params: referenceParam,

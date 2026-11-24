@@ -1,6 +1,10 @@
 import Joi from 'joi'
 
-import { STATUSES, applicationType } from '../search/search-form.js'
+import {
+  applicationType,
+  mostSpecificReference,
+  statusTag
+} from '#/server/common/helpers/legacy-application.js'
 
 // What a reference in the URL may be: what a real one can be, an application
 // reference (AP27EA500500ABPL) or a 24-character _id, so letters, digits and
@@ -45,7 +49,9 @@ function uuid(base64) {
 }
 
 // Extended JSON's typed values, written as the Mongo shell writes them, so the
-// document reads as it does in the database.
+// document reads as it does in the database. One exception: a date outside
+// the years 1970 to 9999 arrives as { $numberLong } and is shown as
+// ISODate({"$numberLong": …}), which the shell would not print.
 function shellValue(value) {
   const keys = Object.keys(value)
   if (keys.length !== 1) {
@@ -147,24 +153,19 @@ export function documentLines(document) {
 }
 
 /**
- * The core details shown beside the document (AC05), each with the value its
+ * The core details shown above the document (AC05), each with the value its
  * copy button copies.
  *
  * @param {object} document relaxed extended JSON, already masked
  */
 export function coreDetails(document) {
-  const status = STATUSES.find(
-    ({ value }) => value === document.applicationStatus
-  ) ?? { text: document.applicationStatus, classes: 'govuk-tag--grey' }
   const text = (value) =>
     value === undefined || value === null || value === ''
       ? undefined
       : String(value)
   return {
-    status: text(document.applicationStatus) && {
-      text: status.text,
-      classes: status.classes
-    },
+    status:
+      text(document.applicationStatus) && statusTag(document.applicationStatus),
     rows: [
       {
         key: 'Accreditation number',
@@ -196,17 +197,13 @@ export function coreDetails(document) {
 }
 
 /**
- * The Record page's heading: its accreditation number, or its application
- * reference, or, for a draft with neither, its `_id`.
+ * The record's name, for the page title, the breadcrumb and the hidden text
+ * after "Core details": the same reference its search results row shows, so
+ * the text the user selected is on the page they land on. The backend client
+ * only returns documents with an `_id`.
  *
  * @param {object} document relaxed extended JSON
  * @returns {string}
  */
-export function recordTitle(document) {
-  return (
-    document.accreditationReference ||
-    document.applicationReference ||
-    document._id?.$oid ||
-    'Accreditation application'
-  )
-}
+export const recordTitle = (document) =>
+  mostSpecificReference(document) || document._id.$oid

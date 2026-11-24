@@ -46,7 +46,7 @@ ENTRA_CLIENT_SECRET=<its client secret> \
 npm run dev
 ```
 
-The registration accepts `http://localhost:3000`, so run on port 3000.
+The app registration you use must list `http://localhost:3000/auth/callback` as a redirect URI, so run on port 3000.
 
 To run the production build with Redis sessions, closer to how it runs on CDP:
 

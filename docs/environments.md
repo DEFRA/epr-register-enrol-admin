@@ -14,9 +14,9 @@ paths are not built yet: the rules below are for when they are.
 | ----------- | ------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------ |
 | Local       | `defra-stub`, or `defra-dev`   | Stubbed, or real services run from the `DEFRA/epr-register-enrol` umbrella repo's Docker Compose | Allowed            |
 | Dev         | `defra-stub`                   | Real, deployed                                                                                   | Allowed            |
-| Test        | `defra-dev`                    | Real, deployed                                                                                   | Allowed            |
+| Test        | `defra-stub`                   | Real, deployed                                                                                   | Allowed            |
 | Ext-test    | `defra-dev`                    | Real, deployed. As close to production as possible                                               | Allowed            |
-| Perf-test   | TBC                            | TBC                                                                                              | TBC                |
+| Perf-test   | `defra-stub`                   | TBC                                                                                              | TBC                |
 | Prod        | `defra-prod`, and nothing else | Real, deployed                                                                                   | Refused            |
 
 Local development against real backends: the umbrella repo's `compose.yml`
@@ -76,10 +76,12 @@ any provider may be used.
 - Stubs are for non-production environments only. The app refuses to start
   in production with any stub enabled (see "Telling environments apart"), and
   that guard has a test.
-- Test and ext-test sign in through the Defra Dev tenant, so they behave
-  like production. Ext-test uses it only, to stay as close to production as
-  possible. Test can be switched back to the stub with `AUTH_PROVIDER` if
-  needed.
+- Only ext-test signs in through the Defra Dev tenant, to stay as close to
+  production as possible. Dev, test and perf-test sign in through the stub,
+  so anyone can sign in there without a Defra Dev account. Each of them has
+  its own Defra Dev app registration, kept commented out in `cdp-app-config`
+  with its secret left in the CDP Portal, so moving one to Defra Dev is a
+  change to `AUTH_PROVIDER` and its settings only.
 
 ## Writes
 

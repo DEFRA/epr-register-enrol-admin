@@ -1,13 +1,12 @@
 /**
- * The one place personal data is masked (AGENTS.md, "Mask personal data by
- * default"). Views, logs and audit entries use it, so the rules are tested
- * here.
+ * Masks personal data in a stored document before the Record page shows it
+ * (AGENTS.md, "Mask personal data by default"). Masking rules belong here, so
+ * they are tested in one place.
  *
  * RA-750 agreed the lightest masking for stored documents: people's names and
- * email addresses only. Other personal fields (phone numbers, addresses) are
- * shown unmasked by that decision, named in the PR.
+ * email addresses only. Every other field, personal or not, is shown as
+ * stored; the PR names the personal ones.
  */
-
 // People's names and email addresses. Matched on the field's name, wherever it
 // is in the document. Organisation and site names are not people's names.
 const NAME_FIELDS = new Set([

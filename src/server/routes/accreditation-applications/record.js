@@ -2,15 +2,16 @@ import Joi from 'joi'
 
 import { STATUSES, applicationType } from '../search/search-form.js'
 
-// What a reference in the URL may be: as the backend accepts it (1 to 100
-// characters, no control characters).
+// What a reference in the URL may be: what a real one can be, an application
+// reference (AP27EA500500ABPL) or a 24-character _id, so letters, digits and
+// hyphens only. That is stricter than the backend, so anything else is not
+// found without asking it, and the reference can never become a "." or ".."
+// path segment that sends the call to another endpoint.
 export const referenceParam = Joi.object({
   reference: Joi.string()
     .trim()
-    .min(1)
     .max(100)
-    // eslint-disable-next-line no-control-regex
-    .pattern(/^[^\u0000-\u001f\u007f]+$/)
+    .pattern(/^[A-Za-z0-9-]+$/)
     .required()
 })
 

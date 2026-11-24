@@ -188,18 +188,6 @@ describe('Viewing a Legacy accreditation application', () => {
       ])
     })
 
-    test('a reference with characters a URL holds specially is sent encoded', async () => {
-      const requests = useFakeRecord(() =>
-        HttpResponse.json(storedApplication())
-      )
-
-      await get('/accreditation-applications/RA%2F1%3F2')
-
-      expect(new URL(requests[0].url).pathname).toBe(
-        '/admin/accreditation-applications/RA%2F1%3F2'
-      )
-    })
-
     test('offers a button that copies a link to this page, once the browser can copy (AC03)', async () => {
       useFakeRecord(() => HttpResponse.json(storedApplication()))
 
@@ -245,7 +233,14 @@ describe('Viewing a Legacy accreditation application', () => {
     test.each([
       ['over 100 characters', 'A'.repeat(101)],
       ['with a control character', 'RA-1%01'],
-      ['of only spaces', '%20%20']
+      ['with a control character the backend also refuses (C1)', 'AP27%C2%85'],
+      ['of only spaces', '%20%20'],
+      ['of a dot with spaces round it', '%20.'],
+      ['of a dot then a space', '.%20'],
+      ['of two dots with a space', '%20..'],
+      ['with a space inside', 'AP27%20EA'],
+      ['with a slash', 'AP27%2FEA'],
+      ['with a question mark', 'AP27%3FEA']
     ])(
       'a reference %s is not found, without asking the backend',
       async (_case, reference) => {
@@ -437,7 +432,11 @@ describe('Viewing a Legacy accreditation application', () => {
 
     test.each([
       ['is not JSON', () => new HttpResponse('Glenmore <html>')],
-      ['is not an object', () => HttpResponse.json(['Glenmore'])]
+      ['is not an object', () => HttpResponse.json(['Glenmore'])],
+      [
+        'is not an application (no _id)',
+        () => HttpResponse.json({ pageNumber: 1, items: [{ x: 'Glenmore' }] })
+      ]
     ])(
       'a response that %s shows the banner, and logs an error without its contents',
       async (_case, respond) => {

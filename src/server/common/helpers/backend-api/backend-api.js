@@ -129,8 +129,13 @@ export async function getLegacyAccreditationApplication(reference, logger) {
   return { ok: true, application: value }
 }
 
-// A stored document is any object; what it holds is shown as it is.
-const applicationSchema = Joi.object().unknown(true).required()
+// A stored document: an object with an _id, whatever else it holds. A
+// response without one is not an application, so it is a failure, not a page.
+const applicationSchema = Joi.object({
+  _id: Joi.object({ $oid: Joi.string().required() }).unknown(true).required()
+})
+  .unknown(true)
+  .required()
 
 /**
  * GET a page of results from the backend and check it has the page shape

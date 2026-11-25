@@ -41,9 +41,9 @@ The Admin UI calls `epr-register-enrol-backend` as itself, signed with HMAC
 | Prod        | `epr-register-enrol-backend` in prod                              | The prod backend's                            |
 
 Each deployed environment needs `BACKEND_URL` set in `cdp-app-config` and the
-secret added in the CDP portal (secrets: RA-799). Production refuses to start
-without either. Elsewhere a missing secret sends unsigned calls, which the
-backend refuses, and the search page shows its "unavailable" banner.
+secret added in the CDP portal (secrets: RA-799). Every deployed environment
+refuses to start without either. Only local may leave the secret empty, which
+sends unsigned calls that only a fake backend accepts.
 
 ## Calling the Case Management API
 
@@ -62,10 +62,9 @@ secret.
 | Perf-test   | TBC                                                               | TBC                                                    |
 | Prod        | `epr-register-enrol-management-be` in prod                        | The prod management-be's                               |
 
-Production refuses to start without either. Elsewhere a missing secret sends
-unsigned calls, which only management-be running in Development accepts; a
-deployed one refuses them, and the work items page shows its "unavailable"
-banner.
+Every deployed environment refuses to start without either. Only local may
+leave the secret empty, which sends unsigned calls that only management-be
+running in Development accepts.
 
 ## Signing in
 
@@ -82,8 +81,9 @@ In production (see "Telling environments apart") the service refuses to start
 unless `AUTH_PROVIDER` is `defra-prod` and the tenant ID, client ID, client secret,
 session cookie password and an `https` `APP_BASE_URL` are all set, along with
 `BACKEND_URL`, `BACKEND_API_SHARED_SECRET`, `MANAGEMENT_API_URL` and
-`MANAGEMENT_API_SHARED_SECRET`. Elsewhere,
-any provider may be used.
+`MANAGEMENT_API_SHARED_SECRET`. Elsewhere, any provider may be used, but every
+deployed environment (any `ENVIRONMENT` other than `local`) still refuses to
+start without those four backend values.
 
 ## Stubs
 

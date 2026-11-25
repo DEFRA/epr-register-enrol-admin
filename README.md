@@ -55,21 +55,21 @@ The backend only answers clients it knows, and checks each call's HMAC signature
 
 Without a backend, or with a mismatched secret, the search page stays up and shows "Legacy accreditation application data is unavailable right now", and the reason is logged at `error`.
 
-| Variable                    | Default                    | What it is                                                                                        |
-| --------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------- |
-| `BACKEND_URL`               | `http://localhost:8080`    | Where `epr-register-enrol-backend` is. Set per environment in `cdp-app-config`.                   |
-| `BACKEND_API_SHARED_SECRET` | empty (calls go unsigned)  | Secret. The HMAC secret the backend knows as `AUTH_SHARED_SECRET__ADMIN`. Required in production. |
-| `BACKEND_API_CLIENT_ID`     | `epr-register-enrol-admin` | The `x-cdp-client-id` sent; matches the admin entry in the backend's `ServiceClients`.            |
-| `BACKEND_API_TIMEOUT_MS`    | `12000`                    | How long to wait for the backend before showing the banner.                                       |
+| Variable                    | Default                    | What it is                                                                                                              |
+| --------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `BACKEND_URL`               | `http://localhost:8080`    | Where `epr-register-enrol-backend` is. Set per environment in `cdp-app-config`. Required in every deployed environment. |
+| `BACKEND_API_SHARED_SECRET` | empty (calls go unsigned)  | Secret. The HMAC secret the backend knows as `AUTH_SHARED_SECRET__ADMIN`. Required in every deployed environment.       |
+| `BACKEND_API_CLIENT_ID`     | `epr-register-enrol-admin` | The `x-cdp-client-id` sent; matches the admin entry in the backend's `ServiceClients`.                                  |
+| `BACKEND_API_TIMEOUT_MS`    | `12000`                    | How long to wait for the backend before showing the banner.                                                             |
 
-The work items page (Case management) reads from [`epr-register-enrol-management-be`](https://github.com/DEFRA/epr-register-enrol-management-be) (`GET /work-items` and `GET /work-items/re-accreditation/states`), and checks each work item against Legacy with the backend's `GET /admin/accreditation-application-statuses` and `GET /admin/case-management-status-mapping`. The umbrella Compose stack serves management-be on <http://localhost:8085>, the default `MANAGEMENT_API_URL`. Run in Development, management-be accepts unsigned calls; to sign them, give management-be `AUTH_SHARED_SECRET__ADMIN_UI=<a local secret>` and this service `MANAGEMENT_API_SHARED_SECRET=<the same secret>`.
+The work items page (Case management) reads from [`epr-register-enrol-management-be`](https://github.com/DEFRA/epr-register-enrol-management-be) (`GET /work-items` and `GET /work-items/re-accreditation/states`), and checks each work item against Legacy with the backend's `GET /admin/accreditation-application-statuses` and `GET /admin/case-management-status-mapping`. The umbrella Compose stack serves management-be on <http://localhost:8085>, the default `MANAGEMENT_API_URL`. Run in Development, management-be accepts unsigned calls, which only a local Admin UI may send; to sign them, give management-be `AUTH_SHARED_SECRET__ADMIN_UI=<a local secret>` and this service `MANAGEMENT_API_SHARED_SECRET=<the same secret>`.
 
-| Variable                       | Default                    | What it is                                                                                                    |
-| ------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `MANAGEMENT_API_URL`           | `http://localhost:8085`    | Where `epr-register-enrol-management-be` is. Set per environment in `cdp-app-config`. Required in production. |
-| `MANAGEMENT_API_SHARED_SECRET` | empty (calls go unsigned)  | Secret. The HMAC secret management-be knows as `AUTH_SHARED_SECRET__ADMIN_UI`. Required in production.        |
-| `MANAGEMENT_API_CLIENT_ID`     | `epr-register-enrol-admin` | The `x-cdp-client-id` sent; management-be's `Auth__AdminUiClientId`.                                          |
-| `MANAGEMENT_API_TIMEOUT_MS`    | `12000`                    | How long to wait for management-be before showing the banner.                                                 |
+| Variable                       | Default                    | What it is                                                                                                                    |
+| ------------------------------ | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `MANAGEMENT_API_URL`           | `http://localhost:8085`    | Where `epr-register-enrol-management-be` is. Set per environment in `cdp-app-config`. Required in every deployed environment. |
+| `MANAGEMENT_API_SHARED_SECRET` | empty (calls go unsigned)  | Secret. The HMAC secret management-be knows as `AUTH_SHARED_SECRET__ADMIN_UI`. Required in every deployed environment.        |
+| `MANAGEMENT_API_CLIENT_ID`     | `epr-register-enrol-admin` | The `x-cdp-client-id` sent; management-be's `Auth__AdminUiClientId`.                                                          |
+| `MANAGEMENT_API_TIMEOUT_MS`    | `12000`                    | How long to wait for management-be before showing the banner.                                                                 |
 
 See [docs/environments.md](docs/environments.md) for what each environment talks to.
 

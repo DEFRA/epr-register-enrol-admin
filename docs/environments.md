@@ -43,7 +43,11 @@ The Admin UI calls `epr-register-enrol-backend` as itself, signed with HMAC
 Each deployed environment needs `BACKEND_URL` set in `cdp-app-config` and the
 secret added in the CDP portal (secrets: RA-799). Every deployed environment
 refuses to start without either. Only local may leave the secret empty, which
-sends unsigned calls that only a fake backend accepts.
+sends unsigned calls that only a fake backend accepts. Perf-test's values are
+still TBC, so the Admin UI will not start in perf-test until `BACKEND_URL`,
+`BACKEND_API_SHARED_SECRET`, `MANAGEMENT_API_URL` and
+`MANAGEMENT_API_SHARED_SECRET` are all set there: set them before deploying
+it to perf-test.
 
 ## Calling the Case Management API
 
@@ -64,7 +68,8 @@ secret.
 
 Every deployed environment refuses to start without either. Only local may
 leave the secret empty, which sends unsigned calls that only management-be
-running in Development accepts.
+running in Development accepts. As above, perf-test needs both of these, and
+both Accreditation API values, before the Admin UI is deployed there.
 
 ## Signing in
 

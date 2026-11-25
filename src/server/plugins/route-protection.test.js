@@ -14,7 +14,11 @@ import {
   useFakeBackend,
   useFakeRecord
 } from '#/test-helpers/fake-backend.js'
-import { useFakeCaseManagement } from '#/test-helpers/fake-management-be.js'
+import {
+  WORK_ITEM_ID,
+  useFakeCaseManagement,
+  useFakeWorkItem
+} from '#/test-helpers/fake-management-be.js'
 
 // The only routes anyone can reach without the role, and why. Adding a route
 // here is a decision for review: everything else needs a signed-in user with
@@ -80,7 +84,12 @@ describe('Every route', () => {
     const protectedPages = () =>
       routes
         .filter((route) => route.method === 'get' && needsRole(route))
-        .map((route) => route.path.replaceAll(/{[^}]+}/g, 'placeholder'))
+        .map((route) =>
+          // A work item ID must be a GUID; any other parameter takes a word.
+          route.path.replaceAll(/{([^}]+)}/g, (_match, name) =>
+            name === 'id' ? WORK_ITEM_ID : 'placeholder'
+          )
+        )
 
     test('includes the search pages', () => {
       expect(protectedPages()).toEqual(
@@ -107,6 +116,7 @@ describe('Every route', () => {
       useFakeBackend(() => resultsPage([]))
       useFakeRecord(() => HttpResponse.json(storedApplication()))
       useFakeCaseManagement()
+      useFakeWorkItem()
       const { cookie } = await signIn(server, useFakeEntra(), supportUser)
       for (const path of protectedPages()) {
         const response = await server.inject({ url: path, headers: { cookie } })

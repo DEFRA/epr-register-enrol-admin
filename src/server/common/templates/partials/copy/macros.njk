@@ -1,0 +1,12 @@
+{# Copy buttons (RA-750 AC07, RA-752 AC03/AC07), brought to life by src/client/javascripts/copy.js. #}
+{% macro copyIcon() %}
+  <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>
+{% endmacro %}
+
+{# A copy button: hidden until the browser script finds the clipboard. #}
+{% macro copyButton(value, label) %}
+  <button type="button" class="app-copy" data-copy="{{ value }}" data-testid="copy" hidden>
+    {{ copyIcon() }}
+    <span class="govuk-visually-hidden">Copy {{ label }}</span>
+  </button>
+{% endmacro %}

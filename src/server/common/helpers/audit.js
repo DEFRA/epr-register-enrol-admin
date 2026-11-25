@@ -39,17 +39,15 @@ export function auditSearch(action, user, criteria) {
  * Record a record view in CDP Audit: who viewed which record. Only its
  * identifier is recorded, never its contents.
  *
+ * @param {'view-legacy-accreditation-application' | 'view-case-management-work-item'} action which kind of record
  * @param {{ id: string, email: string }} user who viewed it
- * @param {string} reference the application reference or `_id` asked for
+ * @param {{ reference: string } | { workItemId: string }} record the identifier asked for
  * @param {'found' | 'not-found' | 'unavailable'} outcome
  */
-export function auditRecordView(user, reference, outcome) {
+export function auditRecordView(action, user, record, outcome) {
   audit({
-    event: {
-      category: 'record',
-      action: 'view-legacy-accreditation-application'
-    },
-    context: { reference, outcome },
+    event: { category: 'record', action },
+    context: { ...record, outcome },
     user: { id: user.id, email: user.email }
   })
 }

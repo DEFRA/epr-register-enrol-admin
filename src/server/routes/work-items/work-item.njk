@@ -1,0 +1,85 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "partials/copy/macros.njk" import copyButton, copyIcon %}
+
+{% block content %}
+  {% if unavailable.length %}
+    {% set unavailableHtml %}
+      {% for message in unavailable %}
+        <p class="govuk-notification-banner__heading">{{ message }}</p>
+      {% endfor %}
+      <p class="govuk-body">Try again later.</p>
+    {% endset %}
+    {{ govukNotificationBanner({
+      titleText: "Important",
+      html: unavailableHtml,
+      attributes: { "data-testid": "unavailable" }
+    }) }}
+  {% endif %}
+
+  <p class="govuk-visually-hidden" aria-live="polite" data-copy-status></p>
+
+  {% if not details %}
+    <h1 class="govuk-heading-m app-record__heading">{{ heading }}</h1>
+  {% else %}
+    <section class="app-panel app-panel--details" data-testid="core-details" aria-labelledby="core-details-heading">
+      <div class="app-panel__header">
+        <h1 class="govuk-heading-m govuk-!-margin-bottom-0" id="core-details-heading">
+          Core details<span class="govuk-visually-hidden"> for work item {{ heading }}</span>
+        </h1>
+        <button type="button" class="app-copy app-copy--link govuk-link" data-copy-page-link data-testid="copy-link" hidden>
+          {{ copyIcon() }}
+          Copy link to this page
+        </button>
+      </div>
+      <dl class="app-details">
+        {% for row in details %}
+          <div class="app-details__item">
+            <dt class="govuk-heading-s govuk-!-margin-bottom-1">{{ row.key }}</dt>
+            <dd class="govuk-body govuk-!-margin-bottom-0 govuk-!-margin-left-0">
+              {%- if row.value -%}
+                <span class="app-details__reference">{{ row.value }}</span>
+                {{ copyButton(row.value, row.key | lower) }}
+              {%- elif row.missing -%}
+                <strong class="app-missing">Missing from work item</strong>
+              {%- else -%}
+                <span class="govuk-hint govuk-!-margin-bottom-0">{{ row.absent }}</span>
+              {%- endif -%}
+            </dd>
+          </div>
+        {% endfor %}
+      </dl>
+    </section>
+
+    {# GOV.UK Tabs, written out rather than through govukTabs: the macro
+       re-indents each panel's HTML, which would shift the document's
+       lines in its <pre>. #}
+    <div class="govuk-tabs" data-module="govuk-tabs" data-testid="work-item-tabs">
+      <h2 class="govuk-tabs__title">Contents</h2>
+      <ul class="govuk-tabs__list">
+        <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
+          <a class="govuk-tabs__tab" href="#document">Document</a>
+        </li>
+        <li class="govuk-tabs__list-item">
+          <a class="govuk-tabs__tab" href="#regulator-view">Regulator view</a>
+        </li>
+      </ul>
+      <div class="govuk-tabs__panel" id="document">
+        <h2 class="govuk-heading-m">Document</h2>
+        <p class="govuk-body">The work item as Case management returns it: its payload, notes and audit log, including each status push to the Operator journey (the <code>status-push-</code> entries). People’s names and email addresses are masked.</p>
+        <pre class="app-document" data-testid="document" tabindex="0"><code>
+          {%- for line in lines -%}
+            {{ line.indent }}{% if line.key is defined %}<span class="app-document__key">{{ line.key | dump }}</span>: {% endif -%}
+            <span class="app-document__{{ line.type }}">{{ line.text }}</span>
+            {%- if line.comma %},{% endif -%}
+            {{ "\n" }}
+          {%- endfor -%}
+        </code></pre>
+      </div>
+      <div class="govuk-tabs__panel govuk-tabs__panel--hidden" id="regulator-view">
+        {% include "partials/work-items/regulator-view.njk" %}
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

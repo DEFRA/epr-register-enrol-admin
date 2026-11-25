@@ -1,7 +1,84 @@
+// Ported from management-fe (origin/main b0b9694), src/config/nunjucks/filters/format-date.js. A copy: there is no shared package to import it from.
+// Admin UI changes: none; it replaces the CDP template's formatDate, now in UK time.
 import { format, isDate, parseISO } from 'date-fns'
+import { tz } from '@date-fns/tz'
+
+/**
+ * The IANA timezone all user-facing timestamps are rendered in.
+ *
+ * The backend stores and returns every timestamp in UTC. This module is the
+ * single point at which we convert those UTC instants to the user-facing
+ * wall-clock zone for display. Using the IANA 'Europe/London' zone (rather
+ * than a fixed offset) makes British Summer Time (BST = UTC+1) and GMT
+ * (UTC+0) — and the spring-forward / autumn-back DST transitions between
+ * them — automatic, and keeps the result correct regardless of the server's
+ * own TZ (production servers run UTC).
+ */
+export const UK_TIMEZONE = 'Europe/London'
 
 export function formatDate(value, formattedDateStr = 'EEE do MMMM yyyy') {
   const date = isDate(value) ? value : parseISO(value)
 
-  return format(date, formattedDateStr)
+  return format(date, formattedDateStr, { in: tz(UK_TIMEZONE) })
+}
+
+/**
+ * Format an ISO-8601 date-time string in the GDS-recommended date-time
+ * format: "D MMMM YYYY at h:mma" (e.g. "27 April 2026 at 10:00am").
+ *
+ * The backend is UTC; this converts to UK local time (see UK_TIMEZONE) so
+ * BST and GMT — and the DST transitions — render correctly without relying
+ * on the server's TZ.
+ *
+ * Returns an empty string when the value is absent or unparseable, so it is
+ * safe to use directly in Nunjucks templates without a guard:
+ *   {{ item.submittedAt | formatDateTimeGds }}
+ */
+export function formatDateTimeGds(value) {
+  if (!value) {
+    return ''
+  }
+  const date = isDate(value) ? value : parseISO(value)
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+  return format(date, "d MMMM yyyy 'at' h:mmaaa", { in: tz(UK_TIMEZONE) })
+}
+
+/**
+ * Format an ISO-8601 date(-time) string in the GDS-recommended *date* format:
+ * "D MMMM YYYY" (e.g. "16 July 2026") — date only, no time component.
+ *
+ * Used for the "Submitted on" tile field (RA-324, AC05.6). The guard parses
+ * with the SAME parser used to format (date-fns `parseISO`), so a value the
+ * guard accepts can never throw in `format` — returns an empty string for an
+ * absent or unparseable value, safe to use directly in a template without a
+ * surrounding guard.
+ */
+export function formatDateGds(value) {
+  return formatDateSafely(value, 'd MMMM yyyy')
+}
+
+/**
+ * Format an ISO-8601 date(-time) string in the short case-header format:
+ * "DD MMM YYYY" (e.g. "01 Nov 2026") — two-digit day, abbreviated month.
+ *
+ * Used only by the work item case header (RA-493), whose Figma design uses
+ * this compact form so the grid columns stay narrow. Same guard and UK
+ * time zone as `formatDateGds`; empty string for an absent or unparseable
+ * value.
+ */
+export function formatDateShortGds(value) {
+  return formatDateSafely(value, 'dd MMM yyyy')
+}
+
+function formatDateSafely(value, pattern) {
+  if (!value) {
+    return ''
+  }
+  const date = isDate(value) ? value : parseISO(value)
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+  return format(date, pattern, { in: tz(UK_TIMEZONE) })
 }

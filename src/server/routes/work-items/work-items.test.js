@@ -600,14 +600,19 @@ describe('Searching case management work items', () => {
       ])
     })
 
-    test('show the work item ID as text, not a link, until the Work item page is built (RA-752)', async () => {
+    test("link each work item ID to that work item's page (RA-752 AC01)", async () => {
       useFakeCaseManagement({
         workItems: () => workItemsPage([workItem()])
       })
 
       const { $ } = await get('/work-items')
 
-      expect($('[data-testid="work-item-id"] a')).toHaveLength(0)
+      const link = $('[data-testid="work-item-id"]')
+      expect(link.prop('tagName')).toBe('A')
+      expect(link.text()).toBe('3f9a1c2e-4b5d-4e6f-8a7b-9c0d1e2f3a4b')
+      expect(link.attr('href')).toBe(
+        '/work-items/3f9a1c2e-4b5d-4e6f-8a7b-9c0d1e2f3a4b'
+      )
     })
 
     test('mask the caseworker name, which never reaches the page in full', async () => {

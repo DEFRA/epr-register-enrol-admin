@@ -1,0 +1,7 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <h1 class="govuk-heading-l">Work item not found</h1>
+  <p class="govuk-body" data-testid="not-found">No case management work item has the ID <span class="app-details__reference">{{ id }}</span>.</p>
+  <p class="govuk-body">Check the ID, or <a class="govuk-link" href="/work-items">search for the work item</a>.</p>
+{% endblock %}

@@ -1,17 +1,42 @@
 /**
- * Masks personal data in a stored document before the Record page shows it
- * (AGENTS.md, "Mask personal data by default"). Masking rules belong here, so
- * they are tested in one place.
+ * Masks personal data in a stored document or a case management work item
+ * before a page shows it (AGENTS.md, "Mask personal data by default").
+ * Masking rules belong here, so they are tested in one place.
  *
- * RA-750 agreed the lightest masking for stored documents: people's names and
- * email addresses only. Every other field, personal or not, is shown as
- * stored; the PR names the personal ones.
+ * RA-750 agreed the lightest masking for stored documents, and RA-752 AC10
+ * the same for work items: people's names and email addresses only. Every
+ * other field, personal or not, is shown as stored; the PRs name the personal
+ * ones.
  */
-// People's names and email addresses. Matched on the field's name, wherever it
+// Fields that hold a person's name, matched on the field's name wherever it
 // is in the document. Organisation and site names are not people's names.
-const NAME_FIELDS = new Set(['fullname', 'contactname'])
+// Legacy documents: fullName and contactName. Work items (management-be's
+// WorkItemResponse and the audit details and payloads it writes): the
+// caseworkers and operators named on the case, as well as fullName and
+// contactName in the payload.
+const NAME_FIELDS = new Set(
+  [
+    'fullName',
+    'contactName',
+    'assignedToName',
+    'createdByName',
+    'assigneeName',
+    'previousAssigneeName',
+    'regulatorName',
+    'responderFullName',
+    'submittedBy',
+    'respondedBy',
+    'uploadedBy',
+    'recyclingOperationsUpdatedBy',
+    'spotCheckConfirmedBy'
+  ].map((name) => name.toLowerCase())
+)
 const isEmailField = (key) => key.toLowerCase().endsWith('email')
 const isNameField = (key) => NAME_FIELDS.has(key.toLowerCase())
+// An email address under any field: user IDs and notification recipients
+// can be one.
+const EMAIL_ADDRESS = /^[^\s@]+@[^\s@]+$/
+const isEmailAddress = (value) => EMAIL_ADDRESS.test(value)
 
 /**
  * A person's name, masked: each word keeps only its first character, so
@@ -47,7 +72,7 @@ function maskEmail(email) {
  */
 export function maskPersonalData(value, key = '') {
   if (typeof value === 'string') {
-    if (isEmailField(key)) {
+    if (isEmailField(key) || isEmailAddress(value)) {
       return maskEmail(value)
     }
     return isNameField(key) ? maskName(value) : value

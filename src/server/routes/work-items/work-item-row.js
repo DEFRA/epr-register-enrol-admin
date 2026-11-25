@@ -1,4 +1,7 @@
-import { RE_ACCREDITATION } from '#/server/common/helpers/case-management.js'
+import {
+  RE_ACCREDITATION,
+  workItemHref
+} from '#/server/common/helpers/case-management.js'
 import {
   RECORD_PATH,
   statusTag
@@ -101,6 +104,7 @@ export function workItemRow(item, { stateNames, legacy, mappings }, logger) {
   }
   return {
     id: item.id,
+    href: workItemHref(item.id),
     ...payloadFields(item, logger),
     state: stateLabel(stateNames, item.stateId),
     assignee: assignee(item),

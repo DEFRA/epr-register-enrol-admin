@@ -1,4 +1,5 @@
 import { auditSearch } from '#/server/common/helpers/audit.js'
+import { workItemRoute } from './work-item-route.js'
 import {
   getCaseManagementStatusMapping,
   getLegacyStatusesForWorkItems
@@ -10,6 +11,7 @@ import {
 import { PAGE_SIZE, resultsSummary } from '#/server/common/helpers/paging.js'
 import {
   RE_ACCREDITATION,
+  STATES_UNAVAILABLE,
   WORK_ITEMS_PATH
 } from '#/server/common/helpers/case-management.js'
 import {
@@ -36,8 +38,7 @@ const PAGE_TITLE = 'Search case management work items'
 // What failed, in plain words, for the banner (AGENTS.md, Errors).
 const UNAVAILABLE = {
   workItems: 'Case management work items are unavailable right now.',
-  states:
-    'Case management work item states are unavailable right now, so states show by ID only.',
+  states: STATES_UNAVAILABLE,
   mapping:
     'The Operator journey status mapping is unavailable right now, so results are not checked against Legacy.',
   legacy: 'Legacy accreditation application statuses are unavailable right now.'
@@ -110,6 +111,7 @@ export const workItems = {
   plugin: {
     name: 'work-items',
     register(server) {
+      server.route(workItemRoute)
       server.route({
         method: 'GET',
         path: WORK_ITEMS_PATH,

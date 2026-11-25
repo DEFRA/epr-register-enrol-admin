@@ -202,3 +202,94 @@ export async function searchWorkItems(
   })
   return result.ok ? { ok: true, page: result.body } : result
 }
+
+// management-be answers an unknown work item ID with a bare 404 and no
+// problem code (RA-752 ticket, technical notes; WorkItemEndpoints.GetById),
+// so any 404 from a work item's own GET is that work item not existing.
+const anyNotFound = () => true
+
+// What the work item page reads from a work item (WorkItemResponse in
+// management-be). The rest of the projection is shown as it comes, in the
+// Document tab.
+const auditEntrySchema = Joi.object({
+  id: Joi.string().required(),
+  action: Joi.string().required(),
+  actionDisplayName: Joi.string().required(),
+  details: Joi.object()
+    .pattern(Joi.string(), Joi.string().allow(null, ''))
+    .required(),
+  createdAt: Joi.date().iso().raw().required()
+}).unknown(true)
+
+const workItemSchema = Joi.object({
+  id: Joi.string().guid().required(),
+  typeId: Joi.string().required(),
+  stateId: Joi.string().required(),
+  submittedAt: Joi.date().iso().raw().required(),
+  lastModifiedAt: Joi.date().iso().raw().required(),
+  payload: Joi.object().unknown(true).required(),
+  notes: Joi.array().items(Joi.object().unknown(true)).required(),
+  auditLog: Joi.array().items(auditEntrySchema).required()
+})
+  .unknown(true)
+  .required()
+
+/**
+ * One case management work item, as management-be projects it
+ * (`GET /work-items/{id}`): envelope, payload, notes, audit log and SLA.
+ *
+ * @param {string} id the work item's ID, a GUID
+ * @param {{ id: string, name: string }} user the signed-in user
+ * @param {import('pino').Logger} logger the request's logger, for failures
+ * @returns {Promise<{ ok: true, workItem: object } | { ok: false, notFound?: true }>}
+ */
+export async function getWorkItem(id, user, logger) {
+  const logPath = '/work-items/{id}'
+  const asUser = signedInUser(user, logPath, logger)
+  if (!asUser) {
+    return { ok: false }
+  }
+  const result = await signedGet(
+    managementBe(asUser),
+    `/work-items/${encodeURIComponent(id)}`,
+    logger,
+    { logPath, schema: workItemSchema, isNotFound: anyNotFound }
+  )
+  return result.ok ? { ok: true, workItem: result.body } : result
+}
+
+const priorYearSchema = Joi.object({
+  year: Joi.number().integer().required(),
+  tonnageBand: Joi.string().allow(null).required(),
+  authorisers: Joi.array().items(Joi.object().unknown(true)).required(),
+  businessPlan: Joi.object().unknown(true).required()
+})
+  .unknown(true)
+  .required()
+
+/**
+ * The previous year's accreditation for a re-accreditation work item, read
+ * live from ReEx by management-be
+ * (`GET /work-items/re-accreditation/{id}/prior-year`). management-be
+ * answers 404 when the work item has none (it was created by form, or ReEx
+ * has no record), which is not a failure: management-fe leaves the section
+ * out then, and so does the Admin UI. Called only once getWorkItem has
+ * read the work item, as the same user, so the user has an ID and a name.
+ *
+ * @param {string} id the work item's ID, a GUID
+ * @param {{ id: string, name: string }} user the signed-in user
+ * @param {import('pino').Logger} logger the request's logger, for failures
+ * @returns {Promise<{ ok: true, priorYear: object } | { ok: false, notFound?: true }>}
+ */
+export async function getReAccreditationPriorYear(id, user, logger) {
+  const logPath = '/work-items/re-accreditation/{id}/prior-year'
+  // The user getWorkItem has already checked, trimmed as it was sent there.
+  const asUser = signedInUser(user, logPath, logger)
+  const result = await signedGet(
+    managementBe(asUser),
+    `/work-items/re-accreditation/${encodeURIComponent(id)}/prior-year`,
+    logger,
+    { logPath, schema: priorYearSchema, isNotFound: anyNotFound }
+  )
+  return result.ok ? { ok: true, priorYear: result.body } : result
+}

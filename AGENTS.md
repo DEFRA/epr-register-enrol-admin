@@ -138,8 +138,9 @@ nation after the user name) when it sends either, as management-be's
   header carries only Latin-1 and loses outer spaces; signed as sent), the role
   `Waste.SupportUser.ReadOnly` and no nation header (the nation line is
   signed empty), eight-line form. management-be knows this caller as
-  `Auth__AdminUiClientId` and lets it read `GET /work-items` and
-  `GET /work-items/re-accreditation/states` only.
+  `Auth__AdminUiClientId` and lets it read `GET /work-items`,
+  `GET /work-items/re-accreditation/states` (RA-751), `GET /work-items/{id}`
+  and `GET /work-items/re-accreditation/{id}/prior-year` (RA-752) only.
 
 `sign-request.test.js` pins each backend's own known signature.
 

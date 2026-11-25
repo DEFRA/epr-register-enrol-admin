@@ -66,10 +66,17 @@ function stateItems(states, ticked, stateNames) {
   )
 }
 
-function workItemsPage(
-  h,
-  { form, errors = [], states = [], stateNames = new Map(), ...model }
-) {
+// The states to offer as filters, and their display names by ID: none when
+// the state list is unavailable, so states show by ID only.
+function stateList(result) {
+  const states = result.ok ? result.states : []
+  return {
+    states,
+    stateNames: new Map(states.map(({ id, displayName }) => [id, displayName]))
+  }
+}
+
+function workItemsPage(h, { form, errors = [], states, stateNames, ...model }) {
   return h
     .view('work-items/index', {
       pageTitle: errors.length ? `Error: ${PAGE_TITLE}` : PAGE_TITLE,
@@ -112,10 +119,19 @@ export const workItems = {
           validate: {
             query: workItemsQuery,
             // Show the form again with what was wrong, not an error page.
-            failAction(request, h, error) {
+            // The state list is fetched so every state can be ticked to put
+            // the filters right; nothing is searched, looked up or audited,
+            // as on the RA-740 page.
+            async failAction(request, h, error) {
+              const states = await getReAccreditationStates(
+                request.auth.credentials.user,
+                request.logger
+              )
               return workItemsPage(h, {
                 form: formFromRawQuery(request.query),
-                errors: workItemsErrors(error)
+                errors: workItemsErrors(error),
+                ...stateList(states),
+                unavailable: states.ok ? [] : [UNAVAILABLE.states]
               })
                 .code(400)
                 .takeover()
@@ -137,11 +153,7 @@ export const workItems = {
             ? await legacyStatuses(search.page.items, logger)
             : undefined
 
-          const stateNames = new Map(
-            states.ok
-              ? states.states.map(({ id, displayName }) => [id, displayName])
-              : []
-          )
+          const { stateNames } = stateList(states)
           const mappings = states.ok
             ? stateMappings(
                 states.states,
@@ -162,8 +174,7 @@ export const workItems = {
               assigned: criteria.assigned ?? '',
               archived: criteria.archived ?? ''
             },
-            states: states.ok ? states.states : [],
-            stateNames,
+            ...stateList(states),
             selectedFilters: selectedFilters(criteria, stateNames),
             mappingRows: mappings && mappingRows(mappings),
             unavailable: failed.map((name) => UNAVAILABLE[name]),

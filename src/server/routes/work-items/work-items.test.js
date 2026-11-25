@@ -442,7 +442,51 @@ describe('Searching case management work items', () => {
       expect(checked($, 'assigned')).toEqual(['false'])
       expect(checked($, 'archived')).toEqual([])
       expect(checked($, 'typeId')).toEqual(['re-accreditation'])
+      expect(checked($, 'stateId')).toEqual(['updated'])
+    })
+
+    test('still offers every state, by name and ID, so the filters can be put right', async () => {
+      const requests = useFakeCaseManagement()
+
+      const { response, $ } = await get(
+        '/work-items?archived=any&stateId=updated'
+      )
+
+      expect(response.statusCode).toBe(400)
+      expect(text($, '.govuk-error-summary__list')).toBe(
+        'Select archived or not archived from the list'
+      )
+      expect(labels($, 'stateId')).toHaveLength(12)
+      expect(labels($, 'stateId')).toContain('Updated (assessment-in-progress)')
+      expect(checked($, 'stateId')).toEqual(['updated'])
+      expect(requests.states).toHaveLength(1)
+      expect(requests.workItems).toEqual([])
+      expect(requests.statuses).toEqual([])
+      expect(requests.mapping).toEqual([])
+      expect($('[data-testid="unavailable"]')).toHaveLength(0)
+      expect(searchAudits()).toEqual([])
+    })
+
+    test('says states show by ID only, and logs it, when the state list fails', async () => {
+      useFakeCaseManagement({
+        states: () => HttpResponse.json({ title: 'Boom' }, { status: 500 })
+      })
+
+      const { response, $ } = await get(
+        '/work-items?archived=any&stateId=updated'
+      )
+
+      expect(response.statusCode).toBe(400)
+      expect(text($, '.govuk-error-summary__list')).toBe(
+        'Select archived or not archived from the list'
+      )
+      expect(bannerText($)).toBe(
+        'Important Case management work item states are unavailable right now, so states show by ID only. Try again later.'
+      )
       expect(labels($, 'stateId')).toEqual(['updated'])
+      expect(errorLogs().map(({ message }) => message)).toEqual([
+        'epr-register-enrol-management-be GET /work-items/re-accreditation/states returned 500'
+      ])
     })
 
     test('shows a form with nothing chosen when nothing was sent', async () => {

@@ -11,7 +11,9 @@ const productionValues = {
   SESSION_COOKIE_SECURE: 'true',
   SESSION_CACHE_ENGINE: 'redis',
   BACKEND_URL: 'https://backend.example.com',
-  BACKEND_API_SHARED_SECRET: 'a-real-hmac-secret'
+  BACKEND_API_SHARED_SECRET: 'a-real-hmac-secret',
+  MANAGEMENT_API_URL: 'https://management-be.example.com',
+  MANAGEMENT_API_SHARED_SECRET: 'another-real-hmac-secret'
 }
 
 async function problemsWith(env) {
@@ -61,9 +63,23 @@ describe('Settings for each environment', () => {
       'SESSION_COOKIE_SECURE must be true',
       'SESSION_CACHE_ENGINE must be redis',
       'BACKEND_URL must be set',
-      'BACKEND_API_SHARED_SECRET must be set'
+      'BACKEND_API_SHARED_SECRET must be set',
+      'MANAGEMENT_API_URL must be set',
+      'MANAGEMENT_API_SHARED_SECRET must be set'
     ])
   })
+
+  test.each([
+    ['MANAGEMENT_API_URL', 'MANAGEMENT_API_URL must be set'],
+    ['MANAGEMENT_API_SHARED_SECRET', 'MANAGEMENT_API_SHARED_SECRET must be set']
+  ])(
+    'production refuses to run without %s, as it cannot call case management',
+    async (name, problem) => {
+      const { [name]: _missing, ...withoutIt } = productionValues
+
+      expect(await problemsWith(withoutIt)).toEqual([problem])
+    }
+  )
 
   test('production refuses the Defra Dev tenant', async () => {
     expect(

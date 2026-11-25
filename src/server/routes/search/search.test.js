@@ -191,6 +191,7 @@ describe('Searching Legacy accreditation applications', () => {
 
       expect(navigation).toEqual([
         { text: 'Operator journey', href: '/search', current: 'page' },
+        { text: 'Case management', href: '/work-items', current: null },
         { text: 'Sign out', href: '/auth/sign-out', current: null }
       ])
     })

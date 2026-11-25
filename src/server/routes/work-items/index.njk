@@ -1,0 +1,247 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/checkboxes/macro.njk" import govukCheckboxes %}
+{% from "govuk/components/details/macro.njk" import govukDetails %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% macro missingOr(field, absent) -%}
+  {%- if field.missing -%}
+    <strong class="app-missing">Missing from work item</strong>
+  {%- else -%}
+    {{ field.value or absent }}
+  {%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+  {% if errors.length %}
+    {{ govukErrorSummary({
+      titleText: "There is a problem",
+      errorList: errors
+    }) }}
+  {% endif %}
+
+  {% if unavailable.length %}
+    {% set unavailableHtml %}
+      {% for message in unavailable %}
+        <p class="govuk-notification-banner__heading">{{ message }}</p>
+      {% endfor %}
+      <p class="govuk-body">Try again later.</p>
+    {% endset %}
+    {{ govukNotificationBanner({
+      titleText: "Important",
+      html: unavailableHtml,
+      attributes: { "data-testid": "unavailable" }
+    }) }}
+  {% endif %}
+
+  <h1 class="govuk-heading-l">{{ heading }}</h1>
+
+  {% if mappingRows %}
+    {% set mappingHtml %}
+      <table class="govuk-table" data-testid="state-mapping">
+        <caption class="govuk-table__caption govuk-table__caption--s">Each re-accreditation state, how a move onto it reaches the Operator journey, and the status it is pushed as</caption>
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">State</th>
+            <th scope="col" class="govuk-table__header">Pushed as</th>
+            <th scope="col" class="govuk-table__header">Operator journey status</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body">
+          {% for row in mappingRows %}
+            <tr class="govuk-table__row">
+              <td class="govuk-table__cell">{{ row.state }}</td>
+              <td class="govuk-table__cell">{{ row.pushedAs }}</td>
+              <td class="govuk-table__cell">{{ row.status }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endset %}
+    {{ govukDetails({
+      summaryText: "How work item states map to Operator journey statuses",
+      html: mappingHtml
+    }) }}
+  {% endif %}
+
+  <form method="get" action="/work-items" novalidate>
+    <div class="govuk-grid-row">
+      <div class="govuk-grid-column-three-quarters app-search-layout__main">
+        <div class="app-search">
+          {{ govukInput({
+            id: "q",
+            name: "q",
+            type: "search",
+            value: form.q,
+            spellcheck: false,
+            label: { text: "Work item, accreditation or organisation", classes: "govuk-label--s" },
+            hint: { text: "A work item ID, an accreditation ID or RA- reference, an organisation ID or part of an organisation name" },
+            classes: "app-search__input",
+            errorMessage: errorByField.q
+          }) }}
+          {{ govukButton({
+            text: "Search",
+            classes: "app-search__button",
+            attributes: { "data-testid": "search" }
+          }) }}
+        </div>
+
+        {% if selectedFilters.length %}
+          <div class="app-selected-filters" data-testid="selected-filters">
+            <h2 class="govuk-heading-s">Selected</h2>
+            {% for group in selectedFilters %}
+              <h3 class="govuk-body-s govuk-!-font-weight-bold govuk-!-margin-bottom-1">{{ group.heading }}</h3>
+              <ul class="app-selected-filters__tags">
+                {% for tag in group.tags %}
+                  <li>
+                    <a class="app-filter-tag" href="{{ tag.href }}">
+                      <span class="govuk-visually-hidden">Remove {{ group.heading | lower }}</span> {{ tag.text }}
+                    </a>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endfor %}
+            <p class="govuk-body-s"><a class="govuk-link" href="/work-items" data-testid="clear-filters">Clear search and filters</a></p>
+          </div>
+        {% endif %}
+
+        {% if results %}
+          <div class="app-results-heading">
+            <h2 class="govuk-heading-m" data-testid="results-heading">
+              {{ results.totalItems }} work item{{ "" if results.totalItems == 1 else "s" }}
+            </h2>
+            <p class="govuk-body-s govuk-hint">Most recently submitted first</p>
+          </div>
+
+          {% if results.rows.length %}
+            <table class="govuk-table app-results" data-testid="results">
+              <thead class="govuk-table__head">
+                <tr class="govuk-table__row">
+                  <th scope="col" class="govuk-table__header">Work item ID</th>
+                  <th scope="col" class="govuk-table__header">RA- reference</th>
+                  <th scope="col" class="govuk-table__header">Organisation</th>
+                  <th scope="col" class="govuk-table__header">State</th>
+                  <th scope="col" class="govuk-table__header">Assignee</th>
+                  <th scope="col" class="govuk-table__header">Last changed</th>
+                  <th scope="col" class="govuk-table__header">Legacy status</th>
+                </tr>
+              </thead>
+              <tbody class="govuk-table__body">
+                {% for row in results.rows %}
+                  <tr class="govuk-table__row{{ ' app-results__row--mismatch' if row.legacy.mismatch }}">
+                    <td class="govuk-table__cell app-results__reference" data-testid="work-item-id">{{ row.id }}</td>
+                    <td class="govuk-table__cell app-results__reference">{{ missingOr(row.applicationReference, "None") }}</td>
+                    <td class="govuk-table__cell">
+                      {{ missingOr(row.organisationName, "No name") }}
+                      <span class="govuk-hint govuk-!-margin-bottom-0">{{ missingOr(row.operatorOrganisationId, "No ID") }}</span>
+                    </td>
+                    <td class="govuk-table__cell">{{ row.state }}</td>
+                    <td class="govuk-table__cell">{{ row.assignee }}</td>
+                    <td class="govuk-table__cell app-results__updated">
+                      {{ row.lastChanged.date }}
+                      <span class="govuk-hint govuk-!-margin-bottom-0">{{ row.lastChanged.time }}</span>
+                    </td>
+                    <td class="govuk-table__cell" data-testid="legacy-status">
+                      {% if row.legacy.status %}
+                        <a class="govuk-link" href="{{ row.legacy.href }}" data-testid="record-link">{{ govukTag({ text: row.legacy.status.text, classes: row.legacy.status.classes }) }}</a>
+                      {% endif %}
+                      {% if row.legacy.mismatch %}
+                        <strong class="govuk-tag govuk-tag--red app-mismatch" data-testid="mismatch">Mismatch</strong>
+                      {% endif %}
+                      <span class="govuk-hint govuk-!-margin-bottom-0">{{ row.legacy.text }}</span>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+
+            <p class="govuk-body" data-testid="showing">
+              Showing {{ results.from }} to {{ results.to }} of {{ results.totalItems }} work item{{ "" if results.totalItems == 1 else "s" }}
+            </p>
+          {% elif results.pastEnd %}
+            <p class="govuk-body" data-testid="past-end">
+              There {{ "is" if results.pastEnd.lastPage == 1 else "are" }} only {{ results.pastEnd.lastPage }} page{{ "" if results.pastEnd.lastPage == 1 else "s" }} of results.
+              <a class="govuk-link" href="{{ results.pastEnd.href }}">Go to page {{ results.pastEnd.lastPage }}</a>
+            </p>
+          {% else %}
+            <p class="govuk-body" data-testid="no-results">No work items found</p>
+          {% endif %}
+
+          {% if results.pagination %}
+            {{ govukPagination(results.pagination) }}
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <div class="govuk-grid-column-one-quarter" data-testid="filters">
+        <h2 class="govuk-heading-m">Filters</h2>
+
+        {{ govukCheckboxes({
+          idPrefix: "stateId",
+          name: "stateId",
+          classes: "govuk-checkboxes--small",
+          fieldset: { legend: { text: "State", classes: "govuk-fieldset__legend--s" } },
+          items: stateItems,
+          errorMessage: errorByField.stateId
+        }) }}
+
+        {{ govukCheckboxes({
+          idPrefix: "typeId",
+          name: "typeId",
+          classes: "govuk-checkboxes--small",
+          fieldset: { legend: { text: "Work item type", classes: "govuk-fieldset__legend--s" } },
+          items: typeItems,
+          errorMessage: errorByField.typeId
+        }) }}
+
+        {{ govukCheckboxes({
+          idPrefix: "nation",
+          name: "nation",
+          classes: "govuk-checkboxes--small",
+          fieldset: { legend: { text: "Nation", classes: "govuk-fieldset__legend--s" } },
+          items: nationItems,
+          errorMessage: errorByField.nation
+        }) }}
+
+        {{ govukCheckboxes({
+          idPrefix: "material",
+          name: "material",
+          classes: "govuk-checkboxes--small",
+          fieldset: { legend: { text: "Material", classes: "govuk-fieldset__legend--s" } },
+          items: materialItems,
+          errorMessage: errorByField.material
+        }) }}
+
+        {{ govukRadios({
+          idPrefix: "assigned",
+          name: "assigned",
+          classes: "govuk-radios--small",
+          fieldset: { legend: { text: "Assigned", classes: "govuk-fieldset__legend--s" } },
+          items: assignedItems,
+          errorMessage: errorByField.assigned
+        }) }}
+
+        {{ govukRadios({
+          idPrefix: "archived",
+          name: "archived",
+          classes: "govuk-radios--small",
+          fieldset: { legend: { text: "Archived", classes: "govuk-fieldset__legend--s" } },
+          items: archivedItems,
+          errorMessage: errorByField.archived
+        }) }}
+
+        {{ govukButton({
+          text: "Apply filters",
+          classes: "govuk-button--secondary",
+          attributes: { "data-testid": "apply-filters" }
+        }) }}
+      </div>
+    </div>
+  </form>
+{% endblock %}

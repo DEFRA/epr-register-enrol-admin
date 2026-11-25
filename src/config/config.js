@@ -198,6 +198,33 @@ export const config = convict({
       env: 'BACKEND_API_SHARED_SECRET'
     }
   },
+  managementApi: {
+    url: {
+      doc: 'Base URL of epr-register-enrol-management-be (the Case Management API). Set per environment in cdp-app-config. The default is where the epr-register-enrol umbrella Compose stack serves it.',
+      format: httpUrl,
+      default: 'http://localhost:8085',
+      env: 'MANAGEMENT_API_URL'
+    },
+    timeoutMs: {
+      doc: 'How long to wait for epr-register-enrol-management-be before showing the "unavailable" banner, in milliseconds.',
+      format: 'nat',
+      default: 12000,
+      env: 'MANAGEMENT_API_TIMEOUT_MS'
+    },
+    clientId: {
+      doc: 'Who this service is to epr-register-enrol-management-be: the x-cdp-client-id it sends, which management-be knows as Auth__AdminUiClientId.',
+      format: String,
+      default: 'epr-register-enrol-admin',
+      env: 'MANAGEMENT_API_CLIENT_ID'
+    },
+    sharedSecret: {
+      doc: 'HMAC-SHA256 secret this service signs its calls to epr-register-enrol-management-be with. management-be verifies it as AUTH_SHARED_SECRET__ADMIN_UI. Empty sends calls unsigned, which only management-be running in Development accepts; a deployed one refuses them. Production refuses to start without it.',
+      format: String,
+      default: '',
+      sensitive: true,
+      env: 'MANAGEMENT_API_SHARED_SECRET'
+    }
+  },
   httpProxy: {
     doc: 'HTTP Proxy',
     format: String,

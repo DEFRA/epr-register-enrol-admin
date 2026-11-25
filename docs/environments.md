@@ -4,9 +4,9 @@ What the Admin UI talks to in each environment, and the rules for stubs and
 writes. Read this when you change config, add an integration, add a stub, or
 add anything that writes to a backend.
 
-Sign-in is built (RA-738), and so is the Accreditation API client, used by the
-search page (RA-740). Backend stubs, the Case Management API client and write
-paths are not built yet: the rules below are for when they are.
+Sign-in is built (RA-738), and so are the Accreditation API client (RA-740)
+and the Case Management API client (RA-751). Backend stubs and write paths are
+not built yet: the rules below are for when they are.
 
 ## What runs where
 
@@ -45,6 +45,28 @@ secret added in the CDP portal (secrets: RA-799). Production refuses to start
 without either. Elsewhere a missing secret sends unsigned calls, which the
 backend refuses, and the search page shows its "unavailable" banner.
 
+## Calling the Case Management API
+
+The Admin UI calls `epr-register-enrol-management-be` on behalf of the
+signed-in user, signed with HMAC (see AGENTS.md, Auth). management-be knows it
+by the client ID `epr-register-enrol-admin` (`Auth__AdminUiClientId`) and the
+secret `AUTH_SHARED_SECRET__ADMIN_UI`. The two sides must hold the same
+secret.
+
+| Environment | `MANAGEMENT_API_URL` (cdp-app-config)                             | `MANAGEMENT_API_SHARED_SECRET` (CDP secret)            |
+| ----------- | ----------------------------------------------------------------- | ------------------------------------------------------ |
+| Local       | `http://localhost:8085` (the default: the umbrella Compose stack) | Set by hand, or empty for management-be in Development |
+| Dev         | `epr-register-enrol-management-be` in dev                         | The dev management-be's `AUTH_SHARED_SECRET__ADMIN_UI` |
+| Test        | `epr-register-enrol-management-be` in test                        | The test management-be's                               |
+| Ext-test    | `epr-register-enrol-management-be` in ext-test                    | The ext-test management-be's                           |
+| Perf-test   | TBC                                                               | TBC                                                    |
+| Prod        | `epr-register-enrol-management-be` in prod                        | The prod management-be's                               |
+
+Production refuses to start without either. Elsewhere a missing secret sends
+unsigned calls, which only management-be running in Development accepts; a
+deployed one refuses them, and the work items page shows its "unavailable"
+banner.
+
 ## Signing in
 
 `AUTH_PROVIDER` says who users sign in with. Every provider runs the same
@@ -59,7 +81,8 @@ code (OpenID Connect through `openid-client`); only where it points changes.
 In production (see "Telling environments apart") the service refuses to start
 unless `AUTH_PROVIDER` is `defra-prod` and the tenant ID, client ID, client secret,
 session cookie password and an `https` `APP_BASE_URL` are all set, along with
-`BACKEND_URL` and `BACKEND_API_SHARED_SECRET`. Elsewhere,
+`BACKEND_URL`, `BACKEND_API_SHARED_SECRET`, `MANAGEMENT_API_URL` and
+`MANAGEMENT_API_SHARED_SECRET`. Elsewhere,
 any provider may be used.
 
 ## Stubs

@@ -1,12 +1,11 @@
 import { auditSearch } from '#/server/common/helpers/audit.js'
 import { searchLegacyAccreditationApplications } from '#/server/common/helpers/backend-api/backend-api.js'
 import { STATUSES } from '#/server/common/helpers/legacy-application.js'
+import { PAGE_SIZE, resultsSummary } from '#/server/common/helpers/paging.js'
 import {
-  PAGE_SIZE,
   SEARCH_FIELDS,
   accreditationYears,
   formFromRawQuery,
-  pagination,
   resultRow,
   searchErrors,
   searchHref,
@@ -53,23 +52,6 @@ function searchPage(h, { form, errors = [], ...model }) {
   })
 }
 
-function results(criteria, page) {
-  const from = (page.pageNumber - 1) * page.limit + 1
-  const lastPage = Math.ceil(page.totalItems / page.limit)
-  return {
-    rows: page.items.map(resultRow),
-    totalItems: page.totalItems,
-    from,
-    to: from + page.items.length - 1,
-    // A shared link to a page the results no longer reach.
-    pastEnd:
-      page.items.length === 0 && page.totalItems > 0 && criteria.page > lastPage
-        ? { lastPage, href: searchHref({ ...criteria, page: lastPage }) }
-        : undefined,
-    pagination: pagination(criteria, page)
-  }
-}
-
 export const search = {
   plugin: {
     name: 'search',
@@ -93,7 +75,11 @@ export const search = {
         },
         async handler(request, h) {
           const criteria = request.query
-          auditSearch(request.auth.credentials.user, criteria)
+          auditSearch(
+            'search-legacy-accreditation-applications',
+            request.auth.credentials.user,
+            criteria
+          )
 
           const result = await searchLegacyAccreditationApplications(
             { ...criteria, limit: PAGE_SIZE },
@@ -104,7 +90,16 @@ export const search = {
             form: { ...criteria, year: String(criteria.year ?? '') },
             selectedFilters: selectedFilters(criteria),
             ...(result.ok
-              ? { results: results(criteria, result.page) }
+              ? {
+                  results: {
+                    rows: result.page.items.map(resultRow),
+                    ...resultsSummary(
+                      criteria,
+                      { ...result.page, itemCount: result.page.items.length },
+                      searchHref
+                    )
+                  }
+                }
               : { unavailable: true })
           })
         }

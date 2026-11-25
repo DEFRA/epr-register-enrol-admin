@@ -5,6 +5,7 @@ import { config } from '#/config/config.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
 import { hasRequiredRole } from '#/server/common/helpers/auth/user-session.js'
 import { RECORD_PATH } from '#/server/common/helpers/legacy-application.js'
+import { WORK_ITEMS_PATH } from '#/server/routes/work-items/work-item-form.js'
 
 const logger = createLogger()
 const assetPath = config.get('assetPath')
@@ -50,6 +51,11 @@ export function context(request) {
             current:
               request.path === '/search' ||
               request.path.startsWith(`${RECORD_PATH}/`)
+          },
+          {
+            href: WORK_ITEMS_PATH,
+            text: 'Case management',
+            current: request.path === WORK_ITEMS_PATH
           }
         ]
       : [],

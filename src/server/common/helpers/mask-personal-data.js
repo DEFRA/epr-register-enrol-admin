@@ -13,8 +13,16 @@ const NAME_FIELDS = new Set(['fullname', 'contactname'])
 const isEmailField = (key) => key.toLowerCase().endsWith('email')
 const isNameField = (key) => NAME_FIELDS.has(key.toLowerCase())
 
-// Each word keeps its first character: "Mary Clarke" -> "M*** C*****".
-const maskName = (name) =>
+/**
+ * A person's name, masked: each word keeps only its first character, so
+ * "Mary Clarke" is "M*** C*****". Also for a
+ * name that is not under a field of a stored document, such as the
+ * caseworker a work item is assigned to.
+ *
+ * @param {string} name
+ * @returns {string}
+ */
+export const maskName = (name) =>
   name.replaceAll(/\S+/g, (word) => word[0] + '*'.repeat(word.length - 1))
 
 // The first character of the address and of the domain's first label, then

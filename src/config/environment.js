@@ -61,6 +61,12 @@ export function productionConfigProblems(config) {
   if (!config.get('backendApi.sharedSecret')) {
     problems.push('BACKEND_API_SHARED_SECRET must be set')
   }
+  if (defaults('managementApi.url')) {
+    problems.push('MANAGEMENT_API_URL must be set')
+  }
+  if (!config.get('managementApi.sharedSecret')) {
+    problems.push('MANAGEMENT_API_SHARED_SECRET must be set')
+  }
 
   return problems
 }

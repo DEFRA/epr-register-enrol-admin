@@ -29,12 +29,14 @@ const jwks = {
   keys: [{ ...(await exportJWK(publicKey)), kid: 'test', alg: 'RS256' }]
 }
 
-const idToken = (issuer, { roles, ...user }, nonce) =>
+// The subject is the user's oid, as Entra ID's is, unless a test gives a user
+// a sub of its own to leave the oid claim out.
+const idToken = (issuer, { roles, sub, ...user }, nonce) =>
   new SignJWT({ ...user, ...(roles?.length && { roles }), nonce })
     .setProtectedHeader({ alg: 'RS256', kid: 'test' })
     .setIssuer(issuer)
     .setAudience(CLIENT_ID)
-    .setSubject(user.oid)
+    .setSubject(sub ?? user.oid)
     .setIssuedAt()
     .setExpirationTime('1h')
     .sign(privateKey)

@@ -153,8 +153,16 @@ export function workItemCriteriaParams({
   return params
 }
 
+// Results always come newest change first, as RA-740's do: a fixed order, not
+// a choice the user makes, so it is not part of the Admin UI's own URLs.
+const SORT = [
+  ['sort', 'last-modified'],
+  ['dir', 'desc']
+]
+
 /**
- * Search case management work items (`GET /work-items`).
+ * Search case management work items (`GET /work-items`), most recently changed
+ * first.
  *
  * @param {object} criteria the search term and filters, as workItemCriteriaParams takes them
  * @param {number} criteria.page 1-based page number
@@ -176,6 +184,7 @@ export async function searchWorkItems(
   const params = workItemCriteriaParams(criteria)
   params.append('page', String(page))
   params.append('pageSize', String(limit))
+  SORT.forEach(([name, value]) => params.append(name, value))
 
   const result = await signedGet(managementBe(asUser), path, logger, {
     params,

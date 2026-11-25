@@ -116,7 +116,7 @@
             <h2 class="govuk-heading-m" data-testid="results-heading">
               {{ results.totalItems }} work item{{ "" if results.totalItems == 1 else "s" }}
             </h2>
-            <p class="govuk-body-s govuk-hint">Most recently submitted first</p>
+            <p class="govuk-body-s govuk-hint" data-testid="sort-order">Most recently changed first</p>
           </div>
 
           {% if results.rows.length %}

@@ -287,7 +287,9 @@ describe('Searching case management work items', () => {
 
       expect(sentQuery(requests.workItems[0])).toEqual([
         ['page', '1'],
-        ['pageSize', '50']
+        ['pageSize', '50'],
+        ['sort', 'last-modified'],
+        ['dir', 'desc']
       ])
     })
 
@@ -309,7 +311,9 @@ describe('Searching case management work items', () => {
         ['assigned', 'false'],
         ['archived', 'true'],
         ['page', '3'],
-        ['pageSize', '50']
+        ['pageSize', '50'],
+        ['sort', 'last-modified'],
+        ['dir', 'desc']
       ])
     })
 
@@ -713,6 +717,49 @@ describe('Searching case management work items', () => {
         'Not found in Legacy'
       )
       expect($('[data-testid="record-link"]')).toHaveLength(0)
+    })
+  })
+
+  describe('the order of the results (AC8)', () => {
+    test('asks for the most recently changed first, always, without putting it in the URL', async () => {
+      const requests = useFakeCaseManagement()
+
+      const { $ } = await get('/work-items?nation=Wales')
+
+      expect(sentQuery(requests.workItems[0])).toEqual(
+        expect.arrayContaining([
+          ['sort', 'last-modified'],
+          ['dir', 'desc']
+        ])
+      )
+      expect(
+        $('a[href^="/work-items"]')
+          .map((_i, link) => $(link).attr('href'))
+          .get()
+          .filter((href) => /sort=|dir=/.test(href))
+      ).toEqual([])
+    })
+
+    test('says so beside the total, and lists them in the order management-be sends', async () => {
+      useFakeCaseManagement({
+        workItems: () =>
+          workItemsPage([
+            workItem({ lastModifiedAt: '2026-11-20T09:30:00Z' }),
+            workItem({ id: ID_2, lastModifiedAt: '2026-11-18T10:00:00Z' }),
+            workItem({ id: ID_3, lastModifiedAt: '2026-10-01T08:00:00Z' })
+          ])
+      })
+
+      const { $ } = await get('/work-items')
+
+      expect(text($, '.app-results-heading')).toBe(
+        '3 work items Most recently changed first'
+      )
+      expect(tableRows($, 'results').map((row) => [row[0], row[5]])).toEqual([
+        [workItem().id, '20 Nov 2026 09:30'],
+        [ID_2, '18 Nov 2026 10:00'],
+        [ID_3, '1 Oct 2026 09:00']
+      ])
     })
   })
 

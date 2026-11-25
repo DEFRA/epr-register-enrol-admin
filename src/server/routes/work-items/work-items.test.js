@@ -76,6 +76,14 @@ const selectedTags = ($) =>
 const bannerText = ($) => text($, '[data-testid="unavailable"]')
 
 const ID_2 = '7b2c4d6e-8f0a-4b1c-9d2e-3f4a5b6c7d8e'
+
+// A full page: 50 work items, each with its own id.
+const fiftyWorkItems = () =>
+  Array.from({ length: 50 }, (_, i) =>
+    workItem({
+      id: `3f9a1c2e-4b5d-4e6f-8a7b-${String(i).padStart(12, '0')}`
+    })
+  )
 const ID_3 = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
 
 describe('Searching case management work items', () => {
@@ -236,7 +244,7 @@ describe('Searching case management work items', () => {
         ['Updated (assessment-in-progress)', 'Status push', 'Updated'],
         [
           'Awaiting decision (awaiting-decision)',
-          'Status push',
+          'Sometimes pushed',
           'Awaiting decision'
         ],
         ['Queried (queried)', 'Query push', 'Queried'],
@@ -246,6 +254,29 @@ describe('Searching case management work items', () => {
         ['Refused (rejected-pending-contact)', 'Not pushed', 'Not pushed'],
         ['Refused (rejected)', 'Status push', 'Rejected'],
         ['Withdrawn (withdrawn)', 'Not pushed', 'Not pushed']
+      ])
+    })
+
+    test('logs a partly pushed state the backend has no status for', async () => {
+      useFakeCaseManagement({
+        mapping: () =>
+          HttpResponse.json({
+            ...statusMapping(),
+            statusPush: statusMapping().statusPush.filter(
+              ({ stateId }) => stateId !== 'awaiting-decision'
+            )
+          })
+      })
+
+      const { $ } = await get('/work-items')
+
+      expect(tableRows($, 'state-mapping')).toContainEqual([
+        'Awaiting decision (awaiting-decision)',
+        'Sometimes pushed',
+        'Not known'
+      ])
+      expect(errorLogs().map(({ message }) => message)).toEqual([
+        'epr-register-enrol-backend GET /admin/case-management-status-mapping has no status for the awaiting-decision state, which epr-register-enrol-management-be pushes as a status on some routes'
       ])
     })
 
@@ -413,7 +444,12 @@ describe('Searching case management work items', () => {
       ['material=gold', 'Select materials from the list'],
       ['assigned=maybe', 'Select assigned or unassigned from the list'],
       ['archived=yes', 'Select archived or not archived from the list'],
-      ['page=1001', 'Page must be a whole number from 1 to 1000']
+      ['page=1001', 'Page must be a whole number from 1 to 1000'],
+      ['q=Calder&q=Harbour', 'Enter one search term'],
+      [
+        Array.from({ length: 51 }, (_, i) => `stateId=state-${i}`).join('&'),
+        'Select 50 states or fewer'
+      ]
     ])(
       '%s shows the form again with what is wrong, and searches nothing',
       async (query, message) => {
@@ -422,12 +458,38 @@ describe('Searching case management work items', () => {
         const { response, $ } = await get(`/work-items?${query}`)
 
         expect(response.statusCode).toBe(400)
+        expect(response.headers['cache-control']).toBe('no-store')
         expect(text($, 'title')).toMatch(/^Error: Search case management/)
         expect(text($, '.govuk-error-summary__list')).toBe(message)
         expect(requests.workItems).toEqual([])
         expect(searchAudits()).toEqual([])
       }
     )
+
+    test('links each error to its field, and the page number, which has none, to nothing', async () => {
+      useFakeCaseManagement()
+
+      const { $ } = await get('/work-items?archived=yes&nation=Mars&page=0')
+
+      expect(
+        $('.govuk-error-summary__list li')
+          .map((_i, item) => ({
+            text: $(item).text().trim(),
+            href: $(item).find('a').attr('href') ?? null
+          }))
+          .get()
+      ).toEqual([
+        { text: 'Select nations from the list', href: '#nation' },
+        {
+          text: 'Select archived or not archived from the list',
+          href: '#archived'
+        },
+        { text: 'Page must be a whole number from 1 to 1000', href: null }
+      ])
+      for (const target of ['#nation', '#archived']) {
+        expect($(target)).toHaveLength(1)
+      }
+    })
 
     test('keeps what the user chose, ticked', async () => {
       useFakeCaseManagement()
@@ -545,21 +607,15 @@ describe('Searching case management work items', () => {
       expect($('[data-testid="work-item-id"] a')).toHaveLength(0)
     })
 
-    test('mask the caseworker name, and never show the contact details', async () => {
+    test('mask the caseworker name, which never reaches the page in full', async () => {
       useFakeCaseManagement({
         workItems: () => workItemsPage([workItem()])
       })
 
       const { response } = await get('/work-items')
 
-      for (const personal of [
-        'Morgan Caseworker',
-        'Sam Contact',
-        'sam.contact@example.com',
-        'operator@example.com'
-      ]) {
-        expect(response.payload).not.toContain(personal)
-      }
+      expect(response.payload).not.toContain('Morgan')
+      expect(response.payload).not.toContain('Caseworker')
     })
 
     test.each([
@@ -752,6 +808,20 @@ describe('Searching case management work items', () => {
       expect($('[data-testid="mismatch"]')).toHaveLength(0)
     })
 
+    test('is not flagged for a state only some routes into push, and says why', async () => {
+      withLegacy(
+        [workItem({ stateId: 'awaiting-decision' })],
+        [legacyStatus(workItem().id, 'Updated')]
+      )
+
+      const { $ } = await get('/work-items')
+
+      expect(text($, '[data-testid="legacy-status"]')).toBe(
+        'Updated Not checked: only some routes into this state are pushed'
+      )
+      expect($('[data-testid="mismatch"]')).toHaveLength(0)
+    })
+
     test('says so when the linked application is not found in Legacy', async () => {
       withLegacy([workItem()], [legacyStatus(workItem().id, null)])
 
@@ -811,22 +881,25 @@ describe('Searching case management work items', () => {
     test('shows 50 a page, the total, and links to the other pages', async () => {
       const requests = useFakeCaseManagement({
         workItems: () =>
-          workItemsPage(
-            Array.from({ length: 50 }, () => workItem()),
-            {
-              totalCount: 120,
-              page: 2
-            }
-          ),
-        statuses: (request) =>
-          HttpResponse.json({
-            items: [
-              ...new Set(new URL(request.url).searchParams.getAll('workItemId'))
-            ].map((id) => legacyStatus(id, 'Updated'))
+          workItemsPage(fiftyWorkItems(), {
+            totalCount: 120,
+            page: 2
           })
       })
 
       const { $ } = await get('/work-items?nation=Wales&page=2')
+
+      expect($('[data-testid="unavailable"]')).toHaveLength(0)
+      expect(tableRows($, 'results')).toHaveLength(50)
+      expect(
+        $('[data-testid="legacy-status"]')
+          .map((_i, cell) => $(cell).text().replaceAll(/\s+/g, ' ').trim())
+          .get()
+      ).toEqual(Array(50).fill('Updated Matches'))
+      expect(sentQuery(requests.statuses[0])).toEqual(
+        fiftyWorkItems().map(({ id }) => ['workItemId', id])
+      )
+      expect(errorLogs()).toEqual([])
 
       expect(text($, '[data-testid="results-heading"]')).toBe('120 work items')
       expect(text($, '[data-testid="showing"]')).toBe(
@@ -870,6 +943,7 @@ describe('Searching case management work items', () => {
       const { response, $ } = await get('/work-items?q=Calder')
 
       expect(response.statusCode).toBe(200)
+      expect(response.headers['cache-control']).toBe('no-store')
       expect(bannerText($)).toBe(
         'Important Case management work items are unavailable right now. Try again later.'
       )
@@ -882,6 +956,23 @@ describe('Searching case management work items', () => {
           message:
             'epr-register-enrol-management-be GET /work-items returned 500'
         }
+      ])
+    })
+
+    test('management-be sending more than the 50 work items asked for', async () => {
+      useFakeCaseManagement({
+        workItems: () =>
+          workItemsPage([...fiftyWorkItems(), workItem({ id: ID_2 })])
+      })
+
+      const { $ } = await get('/work-items')
+
+      expect(bannerText($)).toContain(
+        'Case management work items are unavailable right now.'
+      )
+      expect($('[data-testid="results"]')).toHaveLength(0)
+      expect(errorLogs().map(({ message }) => message)).toEqual([
+        'epr-register-enrol-management-be GET /work-items returned a response it could not read'
       ])
     })
 
@@ -1090,7 +1181,7 @@ describe('Searching case management work items', () => {
       for (const { headers } of [...requests.workItems, ...requests.states]) {
         expect(headers.get('x-cdp-client-id')).toBe('epr-register-enrol-admin')
         expect(headers.get('x-cdp-user-id')).toBe(supportUser.oid)
-        expect(headers.get('x-cdp-user-name')).toBe('Support User')
+        expect(headers.get('x-cdp-user-name')).toBe('Support%20User')
         expect(headers.get('x-cdp-user-role')).toBe(
           'Waste.SupportUser.ReadOnly'
         )
@@ -1141,7 +1232,7 @@ describe('Searching case management work items', () => {
                 'v3',
                 'epr-register-enrol-admin',
                 supportUser.oid,
-                'Support User',
+                'Support%20User',
                 'Waste.SupportUser.ReadOnly',
                 '',
                 timestamp,
@@ -1156,7 +1247,61 @@ describe('Searching case management work items', () => {
       })
     })
 
+    describe('with a name a header cannot carry as it is', () => {
+      beforeEach(() => {
+        config.set('managementApi.sharedSecret', 'admin-ui-test-secret')
+      })
+
+      afterEach(() => {
+        config.set('managementApi.sharedSecret', '')
+      })
+
+      test.each([
+        ['O’Brien', 'O%E2%80%99Brien'],
+        ['Siân Ŵyn', 'Si%C3%A2n%20%C5%B4yn'],
+        ['Łukasz', '%C5%81ukasz'],
+        ['  Support User  ', 'Support%20User']
+      ])(
+        'sends %j URI-encoded and trimmed, signed as sent',
+        async (name, sent) => {
+          const other = await signIn(server, useFakeEntra(), {
+            ...supportUser,
+            name
+          })
+          const requests = useFakeCaseManagement()
+          logs.length = 0
+
+          const { response, $ } = await get('/work-items', {
+            cookie: other.cookie
+          })
+
+          expect(response.statusCode).toBe(200)
+          expect($('[data-testid="unavailable"]')).toHaveLength(0)
+          const { headers } = requests.workItems[0]
+          expect(headers.get('x-cdp-user-name')).toBe(sent)
+          expect(headers.get('x-cdp-auth-signature')).toBe(
+            createHmac('sha256', 'admin-ui-test-secret')
+              .update(
+                [
+                  'v3',
+                  'epr-register-enrol-admin',
+                  supportUser.oid,
+                  sent,
+                  'Waste.SupportUser.ReadOnly',
+                  '',
+                  headers.get('x-cdp-auth-timestamp'),
+                  headers.get('x-cdp-auth-nonce')
+                ].join('\n')
+              )
+              .digest('base64')
+          )
+          expect(errorLogs()).toEqual([])
+        }
+      )
+    })
+
     test.each([
+      ['name', { ...supportUser, name: '   ' }],
       ['name', { ...supportUser, name: undefined }],
       ['ID', { ...supportUser, oid: undefined, sub: 'subject-1' }]
     ])(

@@ -17,7 +17,7 @@ export const reAccreditationStates = () =>
     ['duly-made', 'Duly made', 'status'],
     ['assessment-started', 'Duly made', 'none'],
     ['assessment-in-progress', 'Updated', 'status'],
-    ['awaiting-decision', 'Awaiting decision', 'status'],
+    ['awaiting-decision', 'Awaiting decision', 'partial'],
     ['queried', 'Queried', 'query'],
     ['updated', 'Updated', 'status'],
     ['approved-pending-contact', 'Approved', 'none'],
@@ -51,32 +51,22 @@ export const statusMapping = () => ({
 })
 
 /**
- * A re-accreditation work item as GET /work-items returns it, contact details
- * included, so tests can check none of them reach the page.
+ * A re-accreditation work item as GET /work-items returns it to a read-only
+ * caller such as the Admin UI: management-be projects each item to the
+ * fields the page reads (RA-751).
  */
 export function workItem(overrides = {}, payload = {}) {
   return {
     id: '3f9a1c2e-4b5d-4e6f-8a7b-9c0d1e2f3a4b',
     typeId: 're-accreditation',
     stateId: 'assessment-in-progress',
-    submittedAt: '2026-10-01T09:00:00Z',
     lastModifiedAt: '2026-11-18T10:00:00Z',
-    submittedBy: 'operator@example.com',
-    templateVersion: '1',
-    availableActions: [],
     assignedToId: 'caseworker-oid-1',
     assignedToName: 'Morgan Caseworker',
-    assignedAt: '2026-10-02T09:00:00Z',
     payload: {
       applicationReference: 'RA-000000123',
-      accreditationId: 'A27ER5001120018PL',
       operatorOrganisationId: '500112',
       organisationName: 'Calder Valley Recycling Ltd',
-      nation: 'England',
-      material: 'plastic',
-      operatorApplicationId: '1c3e5a7b9d0f4b2c8e4a6c8e',
-      contactName: 'Sam Contact',
-      contactEmail: 'sam.contact@example.com',
       ...payload
     },
     ...overrides

@@ -9,6 +9,15 @@ import {
   recordHref,
   statusTag
 } from '#/server/common/helpers/legacy-application.js'
+import {
+  asList,
+  formErrors,
+  labelOf,
+  listOf,
+  pageHref,
+  searchTerm,
+  without
+} from '#/server/common/helpers/search-form.js'
 import { ukDateTime } from '#/server/common/helpers/uk-date-time.js'
 
 // The fields q can search, in the order the form shows them.
@@ -31,27 +40,8 @@ export function accreditationYears(today = new Date()) {
   return Array.from({ length: last - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i)
 }
 
-const optionFor = (options, value) =>
-  options.find((option) => option.value === value)
-
-const labelOf = (options, value) => optionFor(options, value).text
-
-const listOf = (options) =>
-  Joi.array()
-    .single()
-    .items(Joi.string().valid(...options.map((option) => option.value)))
-    .unique()
-    .default([])
-
 export const searchQuery = Joi.object({
-  // The backend refuses a control character (char.IsControl) in q, so it is
-  // a form error here rather than a failed search.
-  q: Joi.string()
-    .trim()
-    .max(100)
-    .pattern(/^\P{Cc}*$/u, 'no control characters')
-    .allow('')
-    .default(''),
+  q: searchTerm,
   searchFields: listOf(SEARCH_FIELDS),
   status: listOf(STATUSES),
   year: Joi.number().integer().min(2000).max(9999).empty(''),
@@ -67,12 +57,6 @@ const ERROR_MESSAGES = {
   page: 'Page must be a whole number, 1 or more'
 }
 
-// Where one field can be wrong in more than one way, the message for each.
-const ERROR_MESSAGES_BY_TYPE = {
-  'q:string.pattern.name':
-    'Search must not include line breaks, tabs or other hidden characters'
-}
-
 // Where each error summary entry takes the user.
 const ERROR_TARGETS = {
   q: '#q',
@@ -81,22 +65,11 @@ const ERROR_TARGETS = {
   year: '#year'
 }
 
-export function searchErrors(validationError) {
-  const typeOf = new Map(
-    validationError.details.map((detail) => [detail.path[0], detail.type])
-  )
-  return Object.keys(ERROR_MESSAGES)
-    .filter((field) => typeOf.has(field))
-    .map((field) => ({
-      field,
-      text:
-        ERROR_MESSAGES_BY_TYPE[`${field}:${typeOf.get(field)}`] ??
-        ERROR_MESSAGES[field],
-      href: ERROR_TARGETS[field]
-    }))
-}
-
-const asList = (value) => [value ?? []].flat()
+export const searchErrors = (validationError) =>
+  formErrors(validationError, {
+    messages: ERROR_MESSAGES,
+    targets: ERROR_TARGETS
+  })
 
 /**
  * The form as the user sent it, to show it back to them when it was not
@@ -111,16 +84,8 @@ export function formFromRawQuery(query) {
   }
 }
 
-export function searchHref({ page, ...criteria }) {
-  const params = searchCriteriaParams(criteria)
-  if (page > 1) {
-    params.append('page', String(page))
-  }
-  const query = params.toString()
-  return query ? `/search?${query}` : '/search'
-}
-
-const without = (list, value) => list.filter((item) => item !== value)
+export const searchHref = ({ page, ...criteria }) =>
+  pageHref('/search', searchCriteriaParams(criteria), page)
 
 /**
  * The search term, ticked fields and filters in force, each as a tag whose

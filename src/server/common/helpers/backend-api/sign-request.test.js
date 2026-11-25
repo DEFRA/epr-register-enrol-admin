@@ -76,6 +76,26 @@ describe('Signing a call to epr-register-enrol-management-be', () => {
     ).toBe('YS2+6vd9iBCjTS30LVJvJZOtIXqudTx0KKsbuX7/PjI=')
   })
 
+  test('gives the signature management-be pins for a URI-encoded name', () => {
+    // management-be's known value for the Admin UI caller with the name
+    // "Siân O’Brien", sent and signed as encodeURIComponent gives it.
+    expect(
+      signRequestHeaders(
+        {
+          'x-cdp-client-id': 'epr-register-enrol-admin',
+          'x-cdp-user-id': 'entra-oid-123',
+          'x-cdp-user-name': encodeURIComponent('Siân O’Brien'),
+          'x-cdp-user-role': 'Waste.SupportUser.ReadOnly'
+        },
+        {
+          sharedSecret: 'admin-test-secret',
+          timestamp: '2026-11-25T10:00:00.000Z',
+          nonce: 'nonce-abc'
+        }
+      )['x-cdp-auth-signature']
+    ).toBe('xUgQC3G8CMtms+/s3rWHQRZ5BAiunCjZgm9lI3muA/M=')
+  })
+
   test('a changed role no longer matches the signature', () => {
     const tampered = signRequestHeaders(
       { ...userHeaders, 'x-cdp-user-role': 'Waste.SupportUser.Admin' },

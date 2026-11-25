@@ -23,7 +23,12 @@ const managementBe = (user) => ({
   trustHeaders: {
     'x-cdp-client-id': config.get('managementApi.clientId'),
     'x-cdp-user-id': user.id,
-    'x-cdp-user-name': user.name,
+    // A header can carry only Latin-1, and loses leading and trailing spaces
+    // on the way, so a name like "Siân O’Brien" would fail the call or the
+    // signature. It is sent, and signed, URI-encoded: pure ASCII, exactly the
+    // bytes management-be verifies (agreed with management-be for RA-751;
+    // it does not decode it, as no read-only route uses the name).
+    'x-cdp-user-name': encodeURIComponent(user.name),
     'x-cdp-user-role': config.get('auth.requiredRole')
   }
 })
@@ -34,18 +39,19 @@ const managementBe = (user) => ({
  * failure is logged.
  */
 function signedInUser(user, path, logger) {
-  if (!user?.id || !user?.name) {
+  const name = user?.name?.trim()
+  if (!user?.id || !name) {
     logger.error(
       `${UPSTREAM} GET ${path} not called: the signed-in user has no ${user?.id ? 'name' : 'ID'} to send`
     )
     return undefined
   }
-  return user
+  return { id: user.id, name }
 }
 
-// How a state reaches the Operator journey: as a status push, as a query
-// push, or not at all.
-const PUSH_KINDS = ['status', 'query', 'none']
+// How a move onto a state reaches the Operator journey: as a status push, as
+// a query push, by some routes in but not others (partial), or not at all.
+const PUSH_KINDS = ['status', 'query', 'partial', 'none']
 
 const statesSchema = Joi.object({
   states: Joi.array()
@@ -86,27 +92,30 @@ export async function getReAccreditationStates(user, logger) {
   return result.ok ? { ok: true, states: result.body.states } : result
 }
 
-// Only the page around the results and what every row needs. The payload is
-// checked by the page, row by row, so one work item's missing field is shown
-// and logged for that row rather than losing the whole page.
-const workItemsSchema = Joi.object({
-  page: Joi.number().integer().min(1).required(),
-  pageSize: Joi.number().integer().min(1).required(),
-  totalCount: Joi.number().integer().min(0).required(),
-  items: Joi.array()
-    .items(
-      Joi.object({
-        id: Joi.string().guid().required(),
-        typeId: Joi.string().required(),
-        stateId: Joi.string().required(),
-        lastModifiedAt: Joi.date().iso().raw().required(),
-        payload: Joi.object().unknown(true).required()
-      }).unknown(true)
-    )
+// Only the page around the results and what every row needs, and no more
+// items than were asked for. The payload is checked by the page, row by row,
+// so one work item's missing field is shown and logged for that row rather
+// than losing the whole page.
+const workItemsSchema = (limit) =>
+  Joi.object({
+    page: Joi.number().integer().min(1).required(),
+    pageSize: Joi.number().integer().min(1).required(),
+    totalCount: Joi.number().integer().min(0).required(),
+    items: Joi.array()
+      .items(
+        Joi.object({
+          id: Joi.string().guid().required(),
+          typeId: Joi.string().required(),
+          stateId: Joi.string().required(),
+          lastModifiedAt: Joi.date().iso().raw().required(),
+          payload: Joi.object().unknown(true).required()
+        }).unknown(true)
+      )
+      .max(limit)
+      .required()
+  })
+    .unknown(true)
     .required()
-})
-  .unknown(true)
-  .required()
 
 /**
  * The work item search as query parameters, in management-be's names
@@ -188,7 +197,7 @@ export async function searchWorkItems(
 
   const result = await signedGet(managementBe(asUser), path, logger, {
     params,
-    schema: workItemsSchema
+    schema: workItemsSchema(limit)
   })
   return result.ok ? { ok: true, page: result.body } : result
 }

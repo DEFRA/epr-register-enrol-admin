@@ -5,7 +5,7 @@ import { config } from '#/config/config.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
 import { hasRequiredRole } from '#/server/common/helpers/auth/user-session.js'
 import { RECORD_PATH } from '#/server/common/helpers/legacy-application.js'
-import { WORK_ITEMS_PATH } from '#/server/routes/work-items/work-item-form.js'
+import { WORK_ITEMS_PATH } from '#/server/common/helpers/case-management.js'
 
 const logger = createLogger()
 const assetPath = config.get('assetPath')

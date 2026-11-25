@@ -134,7 +134,8 @@ nation after the user name) when it sends either, as management-be's
   empty user lines, six-line form, as its `ServiceClientAuthenticationHandler`
   checks.
 - `epr-register-enrol-management-be` is called on behalf of the signed-in
-  user: client ID, the user's ID and name, the role
+  user: client ID, the user's ID and name (trimmed and URI-encoded, since a
+  header carries only Latin-1 and loses outer spaces; signed as sent), the role
   `Waste.SupportUser.ReadOnly` and no nation header (the nation line is
   signed empty), eight-line form. management-be knows this caller as
   `Auth__AdminUiClientId` and lets it read `GET /work-items` and

@@ -9,23 +9,27 @@ import {
 } from '#/server/common/helpers/backend-api/management-api.js'
 import { PAGE_SIZE, resultsSummary } from '#/server/common/helpers/paging.js'
 import {
+  RE_ACCREDITATION,
+  WORK_ITEMS_PATH
+} from '#/server/common/helpers/case-management.js'
+import {
+  checkboxItems,
+  errorByField
+} from '#/server/common/helpers/search-form.js'
+import { mappingRows, stateLabel, stateMappings } from './state-mapping.js'
+import { workItemRow } from './work-item-row.js'
+import {
   ARCHIVED,
   ASSIGNED,
   MATERIALS,
   NATIONS,
-  RE_ACCREDITATION,
   TYPES,
-  WORK_ITEMS_PATH,
   formFromRawQuery,
-  mappingRows,
   selectedFilters,
-  stateLabel,
-  stateMappings,
-  workItemRow,
   workItemsErrors,
   workItemsHref,
   workItemsQuery
-} from './work-item-form.js'
+} from './work-items-query.js'
 
 const PAGE_TITLE = 'Search case management work items'
 
@@ -38,13 +42,6 @@ const UNAVAILABLE = {
     'The Operator journey status mapping is unavailable right now, so results are not checked against Legacy.',
   legacy: 'Legacy accreditation application statuses are unavailable right now.'
 }
-
-const checkboxItems = (options, ticked) =>
-  options.map(({ value, text }) => ({
-    value,
-    text,
-    checked: ticked.includes(value)
-  }))
 
 // Any, then each choice: leaving the filter out applies none.
 const radioItems = (options, chosen) => [
@@ -89,9 +86,7 @@ function workItemsPage(h, { form, errors = [], states, stateNames, ...model }) {
       assignedItems: radioItems(ASSIGNED, form.assigned),
       archivedItems: radioItems(ARCHIVED, form.archived),
       errors,
-      errorByField: Object.fromEntries(
-        errors.map(({ field, text }) => [field, { text }])
-      ),
+      errorByField: errorByField(errors),
       ...model
     })
     .header('cache-control', 'no-store')

@@ -3,6 +3,10 @@ import { searchLegacyAccreditationApplications } from '#/server/common/helpers/b
 import { STATUSES } from '#/server/common/helpers/legacy-application.js'
 import { PAGE_SIZE, resultsSummary } from '#/server/common/helpers/paging.js'
 import {
+  checkboxItems,
+  errorByField
+} from '#/server/common/helpers/search-form.js'
+import {
   SEARCH_FIELDS,
   accreditationYears,
   formFromRawQuery,
@@ -14,13 +18,6 @@ import {
 } from './search-form.js'
 
 const PAGE_TITLE = 'Search accreditation applications'
-
-const checkboxItems = (options, ticked) =>
-  options.map(({ value, text }) => ({
-    value,
-    text,
-    checked: ticked.includes(value)
-  }))
 
 // A year from a shared URL that isn't one of the usual ones is offered too,
 // so the form still shows what is being filtered on. Something that isn't a
@@ -45,9 +42,7 @@ function searchPage(h, { form, errors = [], ...model }) {
     yearItems: yearItems(form.year),
     searchFieldItems: checkboxItems(SEARCH_FIELDS, form.searchFields),
     errors,
-    errorByField: Object.fromEntries(
-      errors.map(({ field, text }) => [field, { text }])
-    ),
+    errorByField: errorByField(errors),
     ...model
   })
 }

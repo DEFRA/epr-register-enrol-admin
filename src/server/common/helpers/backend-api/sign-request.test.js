@@ -77,8 +77,9 @@ describe('Signing a call to epr-register-enrol-management-be', () => {
   })
 
   test('gives the signature management-be pins for a URI-encoded name', () => {
-    // management-be's known value for the Admin UI caller with the name
-    // "Siân O’Brien", sent and signed as encodeURIComponent gives it.
+    // The same inputs and result as management-be's
+    // ClientIdAuthenticationAdminUiCallerTests.Extended_signature_over_a_percent_encoded_name_matches_the_known_value:
+    // the name "Siân O’Brien", sent and signed as encodeURIComponent gives it.
     expect(
       signRequestHeaders(
         {

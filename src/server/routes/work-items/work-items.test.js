@@ -151,6 +151,9 @@ describe('Searching case management work items', () => {
       expect(text($, 'label[for="q"]')).toBe(
         'Work item, accreditation or organisation'
       )
+      expect(text($, '#q-hint')).toBe(
+        'A work item ID, an accreditation ID or application reference, an organisation ID or part of an organisation name'
+      )
       expect(
         $('[data-testid="filters"] legend')
           .map((_i, legend) => $(legend).text().trim())
@@ -563,7 +566,7 @@ describe('Searching case management work items', () => {
   })
 
   describe('the results (AC5)', () => {
-    test('show the work item ID, RA- reference, organisation, state, assignee and last changed date', async () => {
+    test('show the work item ID, application reference, organisation, state, assignee and last changed date', async () => {
       useFakeCaseManagement({
         workItems: () => workItemsPage([workItem()])
       })
@@ -577,7 +580,7 @@ describe('Searching case management work items', () => {
           .get()
       ).toEqual([
         'Work item ID',
-        'RA- reference',
+        'Application reference',
         'Organisation',
         'State',
         'Assignee',
@@ -587,7 +590,7 @@ describe('Searching case management work items', () => {
       expect(tableRows($, 'results')).toEqual([
         [
           '3f9a1c2e-4b5d-4e6f-8a7b-9c0d1e2f3a4b',
-          'RA-000000123',
+          'AP27EA500112ABPL',
           'Calder Valley Recycling Ltd 500112',
           'Updated (assessment-in-progress)',
           'M***** C*********',
@@ -658,7 +661,7 @@ describe('Searching case management work items', () => {
         message: `epr-register-enrol-management-be work item has no ${field}`
       })
       expect(errorLogs()).toEqual([
-        workItemField('RA- reference (payload.applicationReference)'),
+        workItemField('application reference (payload.applicationReference)'),
         workItemField('organisation ID (payload.operatorOrganisationId)'),
         workItemField('organisation name (payload.organisationName)')
       ])

@@ -11,7 +11,7 @@ import { stateLabel } from './state-mapping.js'
 // writes each when the work item is created from a submitted application, so
 // one missing is a data problem: shown as missing and logged, not hidden.
 const REQUIRED_FIELDS = [
-  ['applicationReference', 'RA- reference'],
+  ['applicationReference', 'application reference'],
   ['operatorOrganisationId', 'organisation ID'],
   ['organisationName', 'organisation name']
 ]
@@ -83,7 +83,7 @@ function legacyColumn(item, { legacy, mappings }) {
 }
 
 /**
- * One results row (AC5, AC7): the work item ID, RA- reference, organisation,
+ * One results row (AC5, AC7): the work item ID, application reference, organisation,
  * state, assignee, when it last changed and its Legacy application's status.
  * Nothing else from the work item (contacts, addresses) reaches the page.
  */

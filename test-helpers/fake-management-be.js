@@ -64,7 +64,9 @@ export function workItem(overrides = {}, payload = {}) {
     assignedToId: 'caseworker-oid-1',
     assignedToName: 'Morgan Caseworker',
     payload: {
-      applicationReference: 'RA-000000123',
+      // A real work item's applicationReference is the Legacy application
+      // reference (AP…), not the RA- reference the ticket names.
+      applicationReference: 'AP27EA500112ABPL',
       operatorOrganisationId: '500112',
       organisationName: 'Calder Valley Recycling Ltd',
       ...payload

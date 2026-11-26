@@ -101,6 +101,8 @@ describe('Viewing a case management work item', () => {
 
   const errorLogs = () =>
     logs.filter(({ level }) => level === 'error').map(({ message }) => message)
+  const warnLogs = () =>
+    logs.filter(({ level }) => level === 'warn').map(({ message }) => message)
 
   describe('opening the page', () => {
     test('from a direct link: shows the core details, then the Document and Regulator view tabs, Document first (AC02, AC08)', async () => {
@@ -429,6 +431,11 @@ describe('Viewing a case management work item', () => {
         ['Application reference', 'Missing from work item'],
         ['Accreditation number', 'Missing from work item']
       ])
+      // The case header says so too, and never puts the work item ID in its
+      // place; the error log below is coreDetails', once.
+      expect(text($, '[data-testid="case-header-accreditation-ref"]')).toBe(
+        'Missing from work item'
+      )
       expect(errorLogs()).toEqual([
         `${UPSTREAM} work item has no application reference (applicationReference)`,
         `${UPSTREAM} work item has no accreditation number (payload.accreditationId)`
@@ -494,9 +501,12 @@ describe('Viewing a case management work item', () => {
       expect(errorLogs()).toEqual([
         `${UPSTREAM} work item has a type the Admin UI does not know (mystery-type)`
       ])
-      expect(text($, '[data-testid="case-header-request-type"]')).toBe(
-        'mystery-type'
+      // Finding 5: no default layout for a type the Admin UI doesn't know.
+      // coreDetails' error log above is the only one.
+      expect(text($, '[data-testid="regulator-view-unsupported"]')).toBe(
+        'This work item type has no Regulator view in the Admin UI.'
       )
+      expect($('[data-testid="case-header"]')).toHaveLength(0)
     })
   })
 
@@ -801,6 +811,128 @@ describe('Viewing a case management work item', () => {
       )
       expect($('[data-testid="prior-year-heading"]')).toHaveLength(0)
     })
+
+    test('says None in the case header for a type whose reference is optional', async () => {
+      useFakeWorkItem({
+        workItem: () =>
+          HttpResponse.json(
+            workItemResponse(
+              { typeId: 'add-overseas-site' },
+              { applicationReference: undefined, site: {} }
+            )
+          )
+      })
+
+      const { $ } = await get(PAGE)
+
+      expect(text($, '[data-testid="case-header-accreditation-ref"]')).toBe(
+        'None'
+      )
+    })
+
+    test('shows a document with no scan status as missing it, and logs it', async () => {
+      useFakeWorkItem({
+        workItem: () =>
+          HttpResponse.json(
+            workItemResponse(
+              {},
+              { samplingPlan: { files: [{ filename: 'plan.pdf' }] } }
+            )
+          )
+      })
+
+      const { $ } = await get(PAGE)
+
+      expect(
+        text($, '[data-testid="app-detail-value-sampling-inspection-plan"]')
+      ).toBe('plan.pdf Scan status missing')
+      expect(errorLogs()).toEqual([
+        `${UPSTREAM} work item has a document with no scan status (scanStatus)`
+      ])
+      expect(logs.find(({ level }) => level === 'error').fields).toEqual({
+        workItem: { id: WORK_ITEM_ID }
+      })
+    })
+
+    test('shows an assignment with no assignee as missing it, and logs the entry', async () => {
+      const entry = {
+        id: '0d6e2b1a-3333-4c3d-8e9f-000000000001',
+        action: 'assigned',
+        actionDisplayName: 'Assigned',
+        details: { assigneeId: null, assigneeName: null },
+        createdAt: '2026-10-01T10:00:00Z',
+        createdBy: null,
+        createdByName: null,
+        stateId: 'submitted'
+      }
+      useFakeWorkItem({
+        workItem: () =>
+          HttpResponse.json(workItemResponse({ auditLog: [entry] }))
+      })
+
+      const { $ } = await get(`${PAGE}?tab=application-history`)
+
+      expect(
+        text(
+          $,
+          `[data-testid="work-item-audit-entry-${entry.id}"] p:first-child`
+        )
+      ).toBe('Assigned — Missing from audit entry')
+      expect(errorLogs()).toEqual([
+        `${UPSTREAM} work item has an assigned audit entry (${entry.id}) with no assignee (details.assigneeName, details.assigneeId)`
+      ])
+      expect(logs.find(({ level }) => level === 'error').fields).toEqual({
+        workItem: { id: WORK_ITEM_ID },
+        auditEntry: { id: entry.id, action: 'assigned' }
+      })
+    })
+
+    test("shows a re-accreditation with no processing type as a reprocessor's, as Case management does, warning every time", async () => {
+      useFakeWorkItem({
+        workItem: () =>
+          HttpResponse.json(
+            workItemResponse({}, { wasteProcessingType: undefined })
+          )
+      })
+
+      const { $ } = await get(PAGE)
+      await get(`${PAGE}?tab=additional-information`)
+
+      expect(text($, '[data-testid="app-detail-value-site-address"]')).toBe(
+        '1 Mill Lane, Halifax HX1 1AA'
+      )
+      expect(warnLogs()).toEqual(
+        Array(2).fill(
+          `${UPSTREAM} work item has no processing type (payload.wasteProcessingType), so it is shown as a reprocessor's`
+        )
+      )
+      expect(errorLogs()).toEqual([])
+    })
+
+    test.each(['application-summary', 'additional-information'])(
+      'shows no %s for a processing type that is neither reprocessor nor exporter, and logs it',
+      async (tab) => {
+        useFakeWorkItem({
+          workItem: () =>
+            HttpResponse.json(
+              workItemResponse({}, { wasteProcessingType: 'trader' })
+            )
+        })
+
+        const { $ } = await get(`${PAGE}?tab=${tab}`)
+
+        expect(
+          text($, '[data-testid="processing-type-not-recorded"]')
+        ).toContain(
+          "This work item's application type is not recorded as reprocessor or exporter"
+        )
+        expect($('[data-testid="application-details"]')).toHaveLength(0)
+        expect($('[data-testid="additional-information"]')).toHaveLength(0)
+        expect(errorLogs()).toEqual([
+          `${UPSTREAM} work item has a processing type that is neither reprocessor nor exporter (payload.wasteProcessingType)`
+        ])
+      }
+    )
 
     test('has nothing that changes the work item: no forms, and no buttons but copy buttons', async () => {
       useFakeWorkItem()

@@ -9,9 +9,12 @@
  * changes a work item (actions, assignment, the SLA, queries, notes,
  * downloads) is left out.
  */
-import { notificationFailureDetected, decorateAuditLog } from './audit-log.js'
 import {
-  APPLICATION_SUMMARY_TAB_KEY,
+  decorateAuditLog,
+  isAssignmentWithoutAssignee,
+  notificationFailureDetected
+} from './audit-log.js'
+import {
   buildCaseHeader,
   buildCaseTabs,
   decorateForCaseHeader,
@@ -20,8 +23,8 @@ import {
 } from './case-header.js'
 import {
   authoriserName,
-  buildApplicationSummary,
   buildBusinessPlanPairs,
+  processingType,
   tonnageBandLabel
 } from './application-summary.js'
 import { buildAdditionalInformationRows } from './additional-information.js'
@@ -45,20 +48,6 @@ const PENDING_CONTACT_BANNERS = {
     text: 'The application was refused. You now need to contact the applicant about the decision.'
   }
 }
-
-/**
- * The tabs a work item's Regulator view has: its type's own, or the default
- * three.
- *
- * @param {object} workItem
- * @returns {string[]}
- */
-export const caseTabKeys = (workItem) =>
-  buildCaseTabs({
-    workItemId: workItem.id,
-    active: APPLICATION_SUMMARY_TAB_KEY,
-    typeId: workItem.typeId
-  }).map(({ key }) => key)
 
 // management-fe detail.controller.js `loadPriorYear`, given the prior year
 // management-be sent.
@@ -87,13 +76,27 @@ export function regulatorView(
     applicationRef: workItem.payload.applicationReference ?? null
   }
   const type = getWorkItemType(workItem.typeId)
+  const report = problemReporter(workItem, logger)
+  const processing = type.hasProcessingType
+    ? checkedProcessingType(workItem, report)
+    : 'not-applicable'
   const isReAccreditation = workItem.typeId === RE_ACCREDITATION
   const decisionMetadata = isReAccreditation
     ? buildDecisionMetadata(workItem, logger)
     : null
   const pendingContact = PENDING_CONTACT_BANNERS[workItem.stateId]
-  const buildSummary = type?.buildApplicationSummary ?? buildApplicationSummary
-  const applicationSummary = buildSummary({ workItem: decorated })
+  const applicationSummary = type.buildApplicationSummary({
+    workItem: decorated
+  })
+  reportMissingScanStatuses(applicationSummary.rows, report)
+  workItem.auditLog
+    .filter(isAssignmentWithoutAssignee)
+    .forEach((entry) =>
+      report.error(
+        `has an assigned audit entry (${entry.id}) with no assignee (details.assigneeName, details.assigneeId)`,
+        { auditEntry: { id: entry.id, action: entry.action } }
+      )
+    )
 
   return {
     caseHeader: buildCaseHeader({ workItem: decorated }),
@@ -114,7 +117,11 @@ export function regulatorView(
     isPendingContact: Boolean(pendingContact),
     // management-fe renders add-ORS's summary with its own template
     // (src/server/routes/add-overseas-site/detail-v1.njk).
-    summaryLayout: type?.summaryLayout ?? 'standard',
+    summaryLayout: type.summaryLayout,
+    // The summary and Additional information depend on whether it is a
+    // reprocessor's or an exporter's: neither is guessed when the type is
+    // not one of the two.
+    processingTypeNotRecorded: processing === 'unrecognised',
     applicationSummary,
     priorYear: priorYear && priorYearView(priorYear),
     auditLog: decorateAuditLog(workItem.auditLog, {
@@ -133,5 +140,55 @@ export function regulatorView(
         stateDisplayName(stateNames, stateId)
     }),
     additionalInformationRows: buildAdditionalInformationRows({ workItem })
+  }
+}
+
+const UPSTREAM = 'epr-register-enrol-management-be'
+
+// Logs what is wrong with the work item, naming it.
+const problemReporter = (workItem, logger) => ({
+  error: (problem, fields = {}) =>
+    logger.error(
+      { workItem: { id: workItem.id }, ...fields },
+      `${UPSTREAM} work item ${problem}`
+    ),
+  warn: (problem) =>
+    logger.warn(
+      { workItem: { id: workItem.id } },
+      `${UPSTREAM} work item ${problem}`
+    )
+})
+
+// payload.wasteProcessingType, logged when it is not one the summary can
+// show. Absent is old stored data: items stored before RA-314 have no
+// wasteProcessingType, and management-fe shows them as a reprocessor's, so
+// the Admin UI does too, logging at warn every time until they are migrated
+// (beads epr-obyr.4).
+function checkedProcessingType(workItem, report) {
+  const kind = processingType(workItem.payload)
+  if (kind === 'absent') {
+    report.warn(
+      "has no processing type (payload.wasteProcessingType), so it is shown as a reprocessor's"
+    )
+  } else if (kind === 'unrecognised') {
+    report.error(
+      'has a processing type that is neither reprocessor nor exporter (payload.wasteProcessingType)'
+    )
+  }
+  return kind
+}
+
+// A document without a scan status is shown as missing, and logged.
+function reportMissingScanStatuses(rows, report) {
+  const files = rows.flatMap((row) => {
+    if (row.kind === 'files') {
+      return row.files
+    }
+    return row.kind === 'bes-sites'
+      ? row.sites.flatMap((site) => site.files)
+      : []
+  })
+  if (files.some((file) => file.scanStatusMissing)) {
+    report.error('has a document with no scan status (scanStatus)')
   }
 }

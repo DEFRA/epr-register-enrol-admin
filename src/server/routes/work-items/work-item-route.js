@@ -7,7 +7,8 @@ import {
 import { documentLines } from '#/server/common/helpers/document-lines.js'
 import { maskPersonalData } from '#/server/common/helpers/mask-personal-data.js'
 import { statusCodes } from '#/server/common/constants/status-codes.js'
-import { caseTabKeys, regulatorView } from './regulator-view/regulator-view.js'
+import { regulatorView } from './regulator-view/regulator-view.js'
+import { getWorkItemType } from './regulator-view/work-item-types.js'
 import {
   RE_ACCREDITATION,
   STATES_UNAVAILABLE,
@@ -104,7 +105,10 @@ export const workItemRoute = {
 
     // Masked here, before anything reaches the view (AGENTS.md, AC10).
     const workItem = maskPersonalData(result.workItem)
-    if (!caseTabKeys(workItem).includes(tab)) {
+    // A type the Admin UI doesn't know has no Regulator view, only a notice
+    // (coreDetails logs the type at error).
+    const type = getWorkItemType(workItem.typeId)
+    if (type && !type.caseTabs.includes(tab)) {
       return notFound(h, id)
     }
     const priorYear = await priorYearFor(workItem, user, logger)
@@ -113,16 +117,18 @@ export const workItemRoute = {
       {
         details: coreDetails(workItem, stateNames, logger),
         lines: documentLines(workItem, { numberedEnums: {} }),
-        regulator: regulatorView(
-          {
-            workItem,
-            stateNames,
-            priorYear:
-              priorYear.priorYear && maskPersonalData(priorYear.priorYear),
-            tab
-          },
-          logger
-        )
+        regulator: type
+          ? regulatorView(
+              {
+                workItem,
+                stateNames,
+                priorYear:
+                  priorYear.priorYear && maskPersonalData(priorYear.priorYear),
+                tab
+              },
+              logger
+            )
+          : { typeUnsupported: true }
       },
       [!states.ok && 'states', !priorYear.ok && 'priorYear'].filter(Boolean)
     )

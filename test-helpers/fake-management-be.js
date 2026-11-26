@@ -169,6 +169,7 @@ export function workItemResponse(overrides = {}, payload = {}) {
       operatorOrganisationId: '500112',
       organisationName: 'Calder Valley Recycling Ltd',
       registrationNumber: 'R25ER5001120018PL',
+      wasteProcessingType: 'reprocessor',
       nation: 'England',
       material: 'plastic',
       chargeAmountPence: 280000,

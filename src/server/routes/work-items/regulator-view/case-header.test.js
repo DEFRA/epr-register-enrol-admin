@@ -93,6 +93,7 @@ describe('#chargeEntry', () => {
 describe('#buildCaseHeader (RA-295 AC01)', () => {
   const workItem = {
     id: 'w-1',
+    typeId: 're-accreditation',
     stateDisplayName: 'Duly made',
     stateTagClass: 'govuk-tag--blue',
     slaDueDate: '2026-08-24T09:00:00Z',
@@ -251,7 +252,12 @@ describe('#buildCaseHeader (RA-295 AC01)', () => {
 
   test('renders the status as plain text when the work item was not decorated', () => {
     const header = buildCaseHeader({
-      workItem: { id: 'w-1', stateId: 'submitted', payload: {} }
+      workItem: {
+        typeId: 're-accreditation',
+        id: 'w-1',
+        stateId: 'submitted',
+        payload: {}
+      }
     })
     const status = header.meta.find((entry) => entry.key === 'status')
     expect(status.tagClass).toBeNull()
@@ -259,18 +265,24 @@ describe('#buildCaseHeader (RA-295 AC01)', () => {
     expect(status.value).toBe('submitted')
   })
 
-  test('falls back to the work item id when there is no application reference', () => {
-    const header = buildCaseHeader({ workItem: { id: 'w-1', payload: {} } })
-    expect(header.applicationRef).toBe('w-1')
+  test('marks a missing application reference on a re-accreditation as missing, never the work item id (Admin UI)', () => {
+    const header = buildCaseHeader({
+      workItem: { typeId: 're-accreditation', id: 'w-1', payload: {} }
+    })
+    expect(header.applicationRef).toBeNull()
+    expect(header.applicationRefMissing).toBe(true)
   })
 
-  test('falls back to an em dash when there is neither reference nor id', () => {
-    const header = buildCaseHeader({ workItem: { payload: {} } })
-    expect(header.applicationRef).toBe(EM_DASH)
+  test('shows no reference, not a missing one, for a type that may have none (Admin UI)', () => {
+    const header = buildCaseHeader({
+      workItem: { typeId: 'add-overseas-site', id: 'w-1', payload: {} }
+    })
+    expect(header.applicationRef).toBeNull()
+    expect(header.applicationRefMissing).toBe(false)
   })
 
   test('tolerates a work item with no payload at all', () => {
-    const header = buildCaseHeader({ workItem: {} })
+    const header = buildCaseHeader({ workItem: { typeId: 're-accreditation' } })
     expect(header.organisationName).toBe(EM_DASH)
     expect(header.organisationId).toBeNull()
     expect(metaValue(header, 'material')).toBe(EM_DASH)
@@ -283,7 +295,11 @@ describe('#buildCaseHeader (RA-295 AC01)', () => {
     expect(
       metaValue(
         buildCaseHeader({
-          workItem: { payload: {}, assignedToName: 'Bob Example' }
+          workItem: {
+            typeId: 're-accreditation',
+            payload: {},
+            assignedToName: 'Bob Example'
+          }
         }),
         'assigned-to'
       )
@@ -291,7 +307,13 @@ describe('#buildCaseHeader (RA-295 AC01)', () => {
 
     expect(
       metaValue(
-        buildCaseHeader({ workItem: { payload: {}, assignedToId: 'bob-1' } }),
+        buildCaseHeader({
+          workItem: {
+            typeId: 're-accreditation',
+            payload: {},
+            assignedToId: 'bob-1'
+          }
+        }),
         'assigned-to'
       )
     ).toBe('bob-1')
@@ -299,7 +321,12 @@ describe('#buildCaseHeader (RA-295 AC01)', () => {
 
   test('shows "Unassigned" when nobody holds the work item', () => {
     expect(
-      metaValue(buildCaseHeader({ workItem: { payload: {} } }), 'assigned-to')
+      metaValue(
+        buildCaseHeader({
+          workItem: { typeId: 're-accreditation', payload: {} }
+        }),
+        'assigned-to'
+      )
     ).toBe('Unassigned')
   })
 
@@ -312,6 +339,7 @@ describe('#buildCaseHeader (RA-295 AC01)', () => {
     test('prefers operatorOrgNumber when present, even alongside an ObjectId-shaped operatorOrganisationId', () => {
       const header = buildCaseHeader({
         workItem: {
+          typeId: 're-accreditation',
           payload: {
             operatorOrganisationId: '6a74a6a12b7c39b0cc15ca55',
             operatorOrgNumber: 500500
@@ -323,7 +351,10 @@ describe('#buildCaseHeader (RA-295 AC01)', () => {
 
     test('falls back to operatorOrganisationId when it is genuinely 6-digit numeric (admin-created work item)', () => {
       const header = buildCaseHeader({
-        workItem: { payload: { operatorOrganisationId: '500001' } }
+        workItem: {
+          typeId: 're-accreditation',
+          payload: { operatorOrganisationId: '500001' }
+        }
       })
       expect(header.organisationId).toBe('500001')
     })
@@ -331,6 +362,7 @@ describe('#buildCaseHeader (RA-295 AC01)', () => {
     test('does not fall back to an ObjectId-shaped operatorOrganisationId', () => {
       const header = buildCaseHeader({
         workItem: {
+          typeId: 're-accreditation',
           payload: { operatorOrganisationId: '6a74a6a12b7c39b0cc15ca55' }
         }
       })
@@ -339,13 +371,18 @@ describe('#buildCaseHeader (RA-295 AC01)', () => {
 
     test('does not fall back to a non-numeric operatorOrganisationId of any other shape', () => {
       const header = buildCaseHeader({
-        workItem: { payload: { operatorOrganisationId: 'ORG-123-001' } }
+        workItem: {
+          typeId: 're-accreditation',
+          payload: { operatorOrganisationId: 'ORG-123-001' }
+        }
       })
       expect(header.organisationId).toBeNull()
     })
 
     test('is null when neither field is present', () => {
-      const header = buildCaseHeader({ workItem: { payload: {} } })
+      const header = buildCaseHeader({
+        workItem: { typeId: 're-accreditation', payload: {} }
+      })
       expect(header.organisationId).toBeNull()
     })
   })
@@ -422,7 +459,8 @@ describe("RA-739: a type's own header", () => {
     expect(header).toMatchObject({
       backHref: '/work-items',
       backText: 'Applications',
-      applicationRef: 'w-1',
+      applicationRef: null,
+      applicationRefMissing: false,
       title: 'Denmark PR'
     })
   })

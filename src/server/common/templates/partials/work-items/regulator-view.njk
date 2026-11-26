@@ -21,6 +21,7 @@
 {% from "govuk/components/panel/macro.njk" import govukPanel %}
 {% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
 {% from "case-header/macro.njk" import appCaseHeader %}
 {% from "case-tabs/macro.njk" import appCaseTabs %}
 {% from "partials/work-items/summary-macros.njk" import documentItem, newPrefix, overseasSiteList, businessPlanPair, siteDetails %}
@@ -29,6 +30,9 @@
 <p class="govuk-body">The work item as a caseworker sees it in Case management. Nothing here can be changed. People’s names and email addresses are masked.</p>
 
 <div class="app-regulator-view" data-testid="regulator-view">
+{% if regulator.typeUnsupported %}
+  <p class="govuk-body" data-testid="regulator-view-unsupported">This work item type has no Regulator view in the Admin UI.</p>
+{% else %}
   {{ appCaseHeader(regulator.caseHeader) }}
 
   {{ appCaseTabs({ tabs: regulator.caseTabs }) }}
@@ -75,7 +79,13 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
 
-  {% if regulator.tab == 'application-summary' and regulator.summaryLayout == 'add-overseas-site' %}
+  {% if regulator.processingTypeNotRecorded and regulator.tab != 'application-history' %}
+    {{ govukWarningText({
+      text: "This work item's application type is not recorded as reprocessor or exporter, so Case management's view of it can't be shown. The Document tab shows it as stored.",
+      attributes: { "data-testid": "processing-type-not-recorded" }
+    }) }}
+  {% elif regulator.tab == 'application-summary' and regulator.summaryLayout == 'add-overseas-site' %}
+
     <h3 class="govuk-heading-m" data-testid="application-details-heading">Application details</h3>
     {% if regulator.applicationSummary.validFrom %}
       <dl class="govuk-summary-list app-summary-list--borderless govuk-!-margin-bottom-6"
@@ -351,4 +361,5 @@
 
     </div>
   </div>
+{% endif %}
 </div>

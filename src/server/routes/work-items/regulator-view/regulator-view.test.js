@@ -7,7 +7,7 @@ import { regulatorView } from './regulator-view.js'
 // it. The page's own tests (work-item.test.js) cover what each tab shows;
 // these cover the cases its fixture does not reach.
 const STATE_NAMES = new Map([['submitted', 'Not started']])
-const logger = () => ({ error: vi.fn() })
+const logger = () => ({ error: vi.fn(), warn: vi.fn() })
 
 const view = (workItem, tab = 'application-summary', log = logger()) =>
   regulatorView({ workItem, stateNames: STATE_NAMES, tab }, log)
@@ -114,7 +114,7 @@ describe('The Regulator view', () => {
       })
     })
 
-    test('says who an unassigned item was taken from, and no one it went to', () => {
+    test('says who an item was taken from, and that the entry is missing who it went to', () => {
       const assigned = entry(
         workItemResponse({
           auditLog: [
@@ -124,10 +124,13 @@ describe('The Regulator view', () => {
         'assigned'
       )
 
-      expect(assigned.summary).toBe('caseworker-oid-1 → unknown user')
-      expect(
-        assigned.detailRows.find(({ key }) => key === 'Now assigned to')
-      ).toBeUndefined()
+      expect(assigned.summary).toBe(
+        'caseworker-oid-1 → Missing from audit entry'
+      )
+      expect(assigned.detailRows).toContainEqual({
+        key: 'Now assigned to',
+        value: 'Missing from audit entry'
+      })
     })
 
     test('shows a payment date change, leaving out dates it cannot read', () => {
@@ -168,6 +171,40 @@ describe('The Regulator view', () => {
       expect(
         changed.detailRows.find(({ key }) => key === 'Reason')
       ).toBeUndefined()
+    })
+  })
+
+  describe("an exporter's evidence of broadly equivalent standards", () => {
+    test('logs a BES document with no scan status', () => {
+      const log = logger()
+
+      const { applicationSummary } = view(
+        workItemResponse(
+          {},
+          {
+            wasteProcessingType: 'Exporter',
+            overseasSites: {
+              sites: [
+                {
+                  siteName: 'Rotterdam Reprocessing BV',
+                  selected: true,
+                  besEvidence: { files: [{ filename: 'bes.pdf' }] }
+                }
+              ]
+            }
+          }
+        ),
+        'application-summary',
+        log
+      )
+
+      const bes = applicationSummary.rows.find(({ key }) => key === 'bes')
+      expect(bes.sites[0].files[0].scanStatusMissing).toBe(true)
+      expect(log.error).toHaveBeenCalledWith(
+        { workItem: { id: workItem().id } },
+        'epr-register-enrol-management-be work item has a document with no scan status (scanStatus)'
+      )
+      expect(log.warn).not.toHaveBeenCalled()
     })
   })
 

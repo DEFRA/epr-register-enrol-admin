@@ -70,7 +70,6 @@ describe('Masking personal data', () => {
             details: {
               assigneeName: 'Ann Lee',
               previousAssigneeName: 'Bo Ray',
-              regulatorName: 'Cy Doe',
               responderFullName: 'Di Fox',
               respondedBy: 'Ed Goh',
               recyclingOperationsUpdatedBy: 'Flo Hay',
@@ -89,7 +88,6 @@ describe('Masking personal data', () => {
           details: {
             assigneeName: 'A** L**',
             previousAssigneeName: 'B* R**',
-            regulatorName: 'C* D**',
             responderFullName: 'D* F**',
             respondedBy: 'E* G**',
             recyclingOperationsUpdatedBy: 'F** H**',
@@ -120,6 +118,8 @@ describe('Masking personal data', () => {
   test('leaves everything else as stored: organisation names, phones, addresses, empty values', () => {
     const document = {
       organisationName: 'Testmore Glass Ltd',
+      // A regulator's name (management-be NotifyConfig.GetRegulatorName), not a person's.
+      regulatorName: 'Environment Agency',
       siteName: 'Furnace Site',
       phone: '07700 900123',
       siteAddress: 'Unit 4, Glasgow',

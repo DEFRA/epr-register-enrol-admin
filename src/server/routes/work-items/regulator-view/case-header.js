@@ -4,6 +4,7 @@ import { formatDateShortGds } from '#/config/nunjucks/filters/format-date.js'
 import { formatChargeAmount } from './charge-amount.js'
 import { unwrapMongoDate } from './mongo-date.js'
 import { materialLabel } from './materials.js'
+import { RE_ACCREDITATION } from '#/server/common/helpers/case-management.js'
 import { getWorkItemType } from './work-item-types.js'
 import { stateTagClass } from './state-badge.js'
 // Single definition of the "no value" glyph, shared with the application
@@ -134,13 +135,18 @@ export function buildCaseHeader({ workItem, assignment = null }) {
   const header = {
     backHref: BACK_HREF,
     backText: BACK_TEXT,
-    // RA-249. The header's reference line is navigational, so it may fall
-    // back to the work item id when the human RA-* reference is absent.
-    applicationRef: payload.applicationReference ?? workItem?.id ?? EM_DASH
+    // Admin UI: management-fe falls back to the work item id (RA-249). Here
+    // an absent reference is shown as such: missing from a re-accreditation
+    // (coreDetails logs it at error on the same request), "None" for other
+    // types, as the core details show it.
+    applicationRef: payload.applicationReference ?? null,
+    applicationRefMissing:
+      payload.applicationReference == null &&
+      workItem.typeId === RE_ACCREDITATION
   }
 
-  const type = getWorkItemType(workItem?.typeId)
-  if (type?.buildCaseHeader) {
+  const type = getWorkItemType(workItem.typeId)
+  if (type.buildCaseHeader) {
     return type.buildCaseHeader({ header, workItem, assignment })
   }
 
@@ -299,7 +305,7 @@ export function decorateForCaseHeader(workItem, stateNames) {
   const type = getWorkItemType(workItem.typeId)
   return {
     ...workItem,
-    typeDisplayName: type?.displayName ?? workItem.typeId,
+    typeDisplayName: type.displayName,
     stateDisplayName: stateDisplayName(stateNames, workItem.stateId),
     stateTagClass: stateTagClass(workItem.stateId)
   }
@@ -337,8 +343,7 @@ const TAB_TEXT = {
  * @param {string} args.typeId the work item's type
  */
 export function buildCaseTabs({ workItemId, active, typeId }) {
-  const keys = getWorkItemType(typeId)?.caseTabs ?? DEFAULT_CASE_TAB_KEYS
-  return keys.map((key) => ({
+  return getWorkItemType(typeId).caseTabs.map((key) => ({
     key,
     text: TAB_TEXT[key],
     href: `/work-items/${encodeURIComponent(workItemId)}?tab=${key}#regulator-view`,

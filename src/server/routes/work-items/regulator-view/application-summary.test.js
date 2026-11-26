@@ -527,13 +527,14 @@ describe('#buildApplicationSummary (RA-295 AC02)', () => {
     })
   })
 
-  test('handles a file with no id, name or scan status without throwing', () => {
+  test('marks a file with no scan status as missing it, not as Pending (Admin UI)', () => {
     const { rows } = buildApplicationSummary({
       workItem: { id: 'w-1', payload: { samplingPlan: { files: [{}] } } }
     })
     expect(row(rows, 'sampling-inspection-plan').files[0]).toMatchObject({
       filename: EM_DASH,
-      scanStatus: 'Pending',
+      scanStatus: null,
+      scanStatusMissing: true,
       uploadedAt: null,
       uploadedBy: null
     })

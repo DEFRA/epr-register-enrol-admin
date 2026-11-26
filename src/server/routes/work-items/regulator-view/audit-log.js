@@ -422,6 +422,20 @@ function actionDisplayNameFor(entry) {
  * `details`. Falls back to an empty string when there is nothing useful to
  * add (the template already shows the action display name).
  */
+// Admin UI: shown in place of an assignee an "assigned" entry doesn't name.
+export const ASSIGNEE_MISSING = 'Missing from audit entry'
+
+const assigneeOf = (details) => details.assigneeName ?? details.assigneeId
+
+/**
+ * Admin UI: whether an audit entry records an assignment to no one, which
+ * management-be never writes (regulatorView logs it at error).
+ *
+ * @param {{ action: string, details: object }} entry
+ */
+export const isAssignmentWithoutAssignee = (entry) =>
+  entry.action === ACTION_ASSIGNED && assigneeOf(entry.details) == null
+
 export function summariseAuditEntry(entry) {
   if (entry == null || typeof entry !== 'object') {
     return ''
@@ -440,7 +454,9 @@ export function summariseAuditEntry(entry) {
     case PAYMENT_DATE_CHANGED_ACTION:
       return summarisePaymentDateChanged(details)
     case ACTION_ASSIGNED: {
-      const to = details.assigneeName ?? details.assigneeId ?? 'unknown user'
+      // Admin UI: management-fe says "unknown user"; an assigned entry with no
+      // assignee is shown as missing, and regulatorView logs it at error.
+      const to = assigneeOf(details) ?? ASSIGNEE_MISSING
       const from = details.previousAssigneeName ?? details.previousAssigneeId
       return from ? `${from} → ${to}` : to
     }
@@ -536,11 +552,11 @@ export function detailRowsForAuditEntry(entry, { payload } = {}) {
       const rows = []
       const previous =
         details.previousAssigneeName ?? details.previousAssigneeId
-      const next = details.assigneeName ?? details.assigneeId
       rows.push({ key: 'Previously assigned to', value: previous ?? 'Nobody' })
-      if (next) {
-        rows.push({ key: 'Now assigned to', value: next })
-      }
+      rows.push({
+        key: 'Now assigned to',
+        value: assigneeOf(details) ?? ASSIGNEE_MISSING
+      })
       const actor = entry.createdByName ?? entry.createdBy
       if (actor) {
         rows.push({ key: 'Assigned by', value: actor })

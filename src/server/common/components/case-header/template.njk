@@ -30,7 +30,15 @@
         </li>
         <li class="app-case-header__breadcrumbs-item"
             aria-current="page"
-            data-testid="case-header-accreditation-ref">{{ params.applicationRef }}</li>
+            data-testid="case-header-accreditation-ref">
+          {%- if params.applicationRef -%}
+            {{ params.applicationRef }}
+          {%- elif params.applicationRefMissing -%}
+            <strong class="app-missing">Missing from work item</strong>
+          {%- else -%}
+            None
+          {%- endif -%}
+        </li>
       </ol>
     </nav>
 

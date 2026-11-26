@@ -63,7 +63,11 @@
     {% if newTestId %}{{ newPrefix(newTestId) }}{% endif %}
     {# Admin UI: never a download link; the Regulator view reads, and does not fetch documents. #}
     <span data-testid="app-detail-document">{{ file.filename }}</span>
-    {{ govukTag({ text: file.scanStatus, classes: file.scanTagClass }) }}
+    {% if file.scanStatusMissing %}
+      <strong class="app-missing" data-testid="app-detail-scan-status-missing">Scan status missing</strong>
+    {% else %}
+      {{ govukTag({ text: file.scanStatus, classes: file.scanTagClass }) }}
+    {% endif %}
     {% if showUpdated and (file.uploadedAt or file.uploadedBy) %}
       {# "S&I updated by" — retained per RA-295's Jira notes. #}
       <span class="govuk-hint govuk-!-margin-bottom-0"

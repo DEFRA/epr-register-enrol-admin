@@ -22,7 +22,6 @@ const NAME_FIELDS = new Set(
     'createdByName',
     'assigneeName',
     'previousAssigneeName',
-    'regulatorName',
     'responderFullName',
     'submittedBy',
     'respondedBy',

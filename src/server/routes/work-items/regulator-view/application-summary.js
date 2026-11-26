@@ -77,6 +77,24 @@ const BUSINESS_PLAN_CATEGORIES = [
  * all, and is treated as a reprocessor (`false`) — matching how every such
  * item already rendered.
  */
+/**
+ * Admin UI: what payload.wasteProcessingType records, case-insensitively:
+ * 'exporter', 'reprocessor', 'absent' (a work item stored before RA-314
+ * added it) or 'unrecognised'. regulatorView logs the last two and decides
+ * what to show.
+ *
+ * @param {object} payload
+ * @returns {'exporter' | 'reprocessor' | 'absent' | 'unrecognised'}
+ */
+export function processingType(payload) {
+  const value = payload.wasteProcessingType
+  if (value === undefined || value === null) {
+    return 'absent'
+  }
+  const kind = String(value).toLowerCase()
+  return ['exporter', 'reprocessor'].includes(kind) ? kind : 'unrecognised'
+}
+
 export function isExporterApplication(workItem) {
   const wasteProcessingType = workItem?.payload?.wasteProcessingType
   return (
@@ -174,7 +192,10 @@ export function fileViewModel(file) {
   const scanStatus = file?.scanStatus ?? null
   return {
     filename: file?.filename || EM_DASH,
-    scanStatus: scanStatus || 'Pending',
+    // Admin UI: management-fe shows a missing scan status as "Pending". Here
+    // it is shown as missing; regulatorView logs it at error.
+    scanStatus,
+    scanStatusMissing: !scanStatus,
     scanTagClass: scanTagClass(scanStatus),
     // "S&I updated by" (retained per RA-295's Jira notes) — but note the
     // producer only ever emits `uploadedAt`, never an uploader identity:

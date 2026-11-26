@@ -53,7 +53,7 @@ const radioItems = (options, chosen) => [
   }))
 ]
 
-// The states to filter on: every re-accreditation state, and any other state
+// The states to filter on: every Standard workflow state, and any other state
 // ID in the URL, so the form still shows what is being filtered on.
 function stateItems(states, ticked, stateNames) {
   const ids = [...new Set([...states.map(({ id }) => id), ...ticked])]
@@ -64,7 +64,10 @@ function stateItems(states, ticked, stateNames) {
 }
 
 // The states to offer as filters, and their display names by ID: none when
-// the state list is unavailable, so states show by ID only.
+// the state list is unavailable, so states show by ID only. management-be
+// serves re-accreditation's list, and add-overseas-site uses the same Standard
+// workflow states, so one list labels and filters both types (AC06).
+// management-be pins that with a test (RA-751).
 function stateList(result) {
   const states = result.ok ? result.states : []
   return {

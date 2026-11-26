@@ -70,7 +70,13 @@ function legacyColumn(item, { legacy, mappings }) {
     pushed: ({ expected }) =>
       expected === found.applicationStatus
         ? { text: 'Matches' }
-        : { mismatch: true, text: `Expected ${statusTag(expected).text}` }
+        : { mismatch: true, text: `Expected ${statusTag(expected).text}` },
+    // A partly pushed state's status is pushed on some routes in only, so a
+    // difference is never flagged; a match still says so (RA-751 AC7).
+    partial: ({ expected }) =>
+      expected === found.applicationStatus
+        ? { text: 'Matches' }
+        : { text: 'Not flagged: only some routes into this state are pushed' }
   }
   return {
     status,

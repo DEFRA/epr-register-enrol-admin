@@ -811,7 +811,7 @@ describe('Searching case management work items', () => {
       expect($('[data-testid="mismatch"]')).toHaveLength(0)
     })
 
-    test('flags a state only some routes into push when Legacy differs', async () => {
+    test('does not flag a state only some routes into push, and says why', async () => {
       withLegacy(
         [workItem({ stateId: 'awaiting-decision' })],
         [legacyStatus(workItem().id, 'Updated')]
@@ -820,9 +820,9 @@ describe('Searching case management work items', () => {
       const { $ } = await get('/work-items')
 
       expect(text($, '[data-testid="legacy-status"]')).toBe(
-        'Updated Mismatch Expected Awaiting decision'
+        'Updated Not flagged: only some routes into this state are pushed'
       )
-      expect($('[data-testid="mismatch"]')).toHaveLength(1)
+      expect($('[data-testid="mismatch"]')).toHaveLength(0)
     })
 
     test('matches a state only some routes into push when Legacy agrees', async () => {

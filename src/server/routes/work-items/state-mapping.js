@@ -31,7 +31,7 @@ const PUSHED_AS = {
  * @param {{ statusPush: Map<string, string>, queryPush: string } | undefined} mapping
  *   undefined when the mapping is unavailable
  * @param {import('pino').Logger} logger
- * @returns {Map<string, { label: string, pushedAs: string, expected?: string, outcome: 'pushed' | 'not-pushed' | 'unavailable' | 'unknown' }>}
+ * @returns {Map<string, { label: string, pushedAs: string, expected?: string, outcome: 'pushed' | 'partial' | 'not-pushed' | 'unavailable' | 'unknown' }>}
  */
 export function stateMappings(states, mapping, logger) {
   const names = new Map(states.map(({ id, displayName }) => [id, displayName]))
@@ -55,11 +55,10 @@ export function stateMappings(states, mapping, logger) {
         )
         return [id, { label, pushedAs, outcome: 'unknown' }]
       }
-      // A partly pushed state (some routes into it push its status, some
-      // don't) is checked like any pushed state: the Operator journey should
-      // mirror case management, so any difference is flagged. A false
-      // mismatch is better than a missed one (tech lead, RA-751).
-      return [id, { label, pushedAs, expected, outcome: 'pushed' }]
+      // Some routes into a partly pushed state push its status and some
+      // don't, so a Legacy status that differs is not necessarily wrong.
+      const outcome = operatorJourneyPush === 'partial' ? 'partial' : 'pushed'
+      return [id, { label, pushedAs, expected, outcome }]
     })
   )
 }
@@ -72,7 +71,8 @@ export function mappingRows(mappings) {
     'not-pushed': () => 'Not pushed',
     unavailable: () => 'Not available',
     unknown: () => 'Not known',
-    pushed: ({ expected }) => statusTag(expected).text
+    pushed: ({ expected }) => statusTag(expected).text,
+    partial: ({ expected }) => statusTag(expected).text
   }
   return [...mappings.values()].map((mapping) => ({
     state: mapping.label,

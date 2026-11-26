@@ -39,7 +39,8 @@ const managementBe = (user) => ({
  * failure is logged.
  */
 function signedInUser(user, path, logger) {
-  const name = user?.name?.trim()
+  // toWellFormed: a lone surrogate would make encodeURIComponent throw.
+  const name = user?.name?.trim().toWellFormed()
   if (!user?.id || !name) {
     logger.error(
       `${UPSTREAM} GET ${path} not called: the signed-in user has no ${user?.id ? 'name' : 'ID'} to send`

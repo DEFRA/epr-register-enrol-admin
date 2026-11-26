@@ -70,10 +70,7 @@ function legacyColumn(item, { legacy, mappings }) {
     pushed: ({ expected }) =>
       expected === found.applicationStatus
         ? { text: 'Matches' }
-        : { mismatch: true, text: `Expected ${statusTag(expected).text}` },
-    partial: () => ({
-      text: 'Not checked: only some routes into this state are pushed'
-    })
+        : { mismatch: true, text: `Expected ${statusTag(expected).text}` }
   }
   return {
     status,

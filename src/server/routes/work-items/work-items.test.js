@@ -811,7 +811,7 @@ describe('Searching case management work items', () => {
       expect($('[data-testid="mismatch"]')).toHaveLength(0)
     })
 
-    test('is not flagged for a state only some routes into push, and says why', async () => {
+    test('flags a state only some routes into push when Legacy differs', async () => {
       withLegacy(
         [workItem({ stateId: 'awaiting-decision' })],
         [legacyStatus(workItem().id, 'Updated')]
@@ -820,8 +820,20 @@ describe('Searching case management work items', () => {
       const { $ } = await get('/work-items')
 
       expect(text($, '[data-testid="legacy-status"]')).toBe(
-        'Updated Not checked: only some routes into this state are pushed'
+        'Updated Mismatch Expected Awaiting decision'
       )
+      expect($('[data-testid="mismatch"]')).toHaveLength(1)
+    })
+
+    test('matches a state only some routes into push when Legacy agrees', async () => {
+      withLegacy(
+        [workItem({ stateId: 'awaiting-decision' })],
+        [legacyStatus(workItem().id, 'AwaitingDecision')]
+      )
+
+      const { $ } = await get('/work-items')
+
+      expect(text($, '[data-testid="legacy-status"]')).toMatch(/ Matches$/)
       expect($('[data-testid="mismatch"]')).toHaveLength(0)
     })
 
@@ -1263,7 +1275,9 @@ describe('Searching case management work items', () => {
         ['O’Brien', 'O%E2%80%99Brien'],
         ['Siân Ŵyn', 'Si%C3%A2n%20%C5%B4yn'],
         ['Łukasz', '%C5%81ukasz'],
-        ['  Support User  ', 'Support%20User']
+        ['  Support User  ', 'Support%20User'],
+        // A lone surrogate, which encodeURIComponent cannot encode
+        ['Ann\uD800', 'Ann%EF%BF%BD']
       ])(
         'sends %j URI-encoded and trimmed, signed as sent',
         async (name, sent) => {

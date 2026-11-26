@@ -116,7 +116,7 @@ describe('Searching case management work items', () => {
 
   const errorLogs = () => logs.filter(({ level }) => level === 'error')
 
-  describe('the Case management tab (AC1)', () => {
+  describe('the Case management tab (AC01, AC02)', () => {
     test('sits beside Operator journey in the service navigation, marked as this page', async () => {
       useFakeCaseManagement()
 
@@ -192,7 +192,7 @@ describe('Searching case management work items', () => {
     })
   })
 
-  describe('the state filter (AC2, AC3)', () => {
+  describe('the state filter (AC06)', () => {
     test('offers the 12 re-accreditation states, each with its ID beside its display name', async () => {
       useFakeCaseManagement()
 
@@ -231,7 +231,7 @@ describe('Searching case management work items', () => {
     })
   })
 
-  describe('how states map to Operator journey statuses (AC6)', () => {
+  describe('how states map to Operator journey statuses (AC14)', () => {
     test('lists each state, how it is pushed and the status it is pushed as', async () => {
       useFakeCaseManagement()
 
@@ -313,7 +313,7 @@ describe('Searching case management work items', () => {
     })
   })
 
-  describe('the search and filters, held in the URL (AC2, AC4, AC8)', () => {
+  describe('the search and filters, held in the URL (AC03–AC10, AC18)', () => {
     test('asks for the first page of 50 with no filters when none are chosen', async () => {
       const requests = useFakeCaseManagement()
 
@@ -565,7 +565,7 @@ describe('Searching case management work items', () => {
     })
   })
 
-  describe('the results (AC5)', () => {
+  describe('the results (AC11, AC19)', () => {
     test('show the work item ID, application reference, organisation, state, assignee and last changed date', async () => {
       useFakeCaseManagement({
         workItems: () => workItemsPage([workItem()])
@@ -717,7 +717,7 @@ describe('Searching case management work items', () => {
     })
   })
 
-  describe("each result's Legacy application status (AC7)", () => {
+  describe("each result's Legacy application status (AC12, AC13)", () => {
     const withLegacy = (items, statuses) =>
       useFakeCaseManagement({
         workItems: () => workItemsPage(items),
@@ -811,7 +811,7 @@ describe('Searching case management work items', () => {
       expect($('[data-testid="mismatch"]')).toHaveLength(0)
     })
 
-    test('does not flag a state only some routes into push, and says why', async () => {
+    test('says Matches for a state only some routes into push, even when Legacy differs', async () => {
       withLegacy(
         [workItem({ stateId: 'awaiting-decision' })],
         [legacyStatus(workItem().id, 'Updated')]
@@ -819,9 +819,7 @@ describe('Searching case management work items', () => {
 
       const { $ } = await get('/work-items')
 
-      expect(text($, '[data-testid="legacy-status"]')).toBe(
-        'Updated Not flagged: only some routes into this state are pushed'
-      )
+      expect(text($, '[data-testid="legacy-status"]')).toBe('Updated Matches')
       expect($('[data-testid="mismatch"]')).toHaveLength(0)
     })
 
@@ -849,7 +847,7 @@ describe('Searching case management work items', () => {
     })
   })
 
-  describe('the order of the results (AC8)', () => {
+  describe('the order of the results (AC11)', () => {
     test('asks for the most recently changed first, always, without putting it in the URL', async () => {
       const requests = useFakeCaseManagement()
 
@@ -892,7 +890,7 @@ describe('Searching case management work items', () => {
     })
   })
 
-  describe('paging (AC8)', () => {
+  describe('paging (AC15)', () => {
     test('shows 50 a page, the total, and links to the other pages', async () => {
       const requests = useFakeCaseManagement({
         workItems: () =>
@@ -949,7 +947,7 @@ describe('Searching case management work items', () => {
     })
   })
 
-  describe('when a backend fails, the page stays, says what failed and logs it', () => {
+  describe('when a backend fails, the page stays, says what failed and logs it (AC17)', () => {
     const problem = () => HttpResponse.json({ title: 'Boom' }, { status: 500 })
 
     test('management-be failing the search', async () => {

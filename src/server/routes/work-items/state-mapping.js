@@ -2,7 +2,7 @@ import { statusTag } from '#/server/common/helpers/legacy-application.js'
 
 /**
  * A state as the page shows it: its display name with its ID beside it,
- * since some display names are shared by more than one state (AC3), or its ID
+ * since some display names are shared by more than one state (AC06), or its ID
  * alone when the state list is unavailable or doesn't have it.
  *
  * @param {Map<string, string>} stateNames display names by state ID
@@ -21,7 +21,7 @@ const PUSHED_AS = {
 }
 
 /**
- * How each re-accreditation state reaches the Operator journey (AC6): how it
+ * How each re-accreditation state reaches the Operator journey (AC14): how it
  * is pushed, from management-be, and the Legacy status that push sets, from
  * epr-register-enrol-backend. A state pushed as a status the backend's
  * mapping doesn't list is shown as not known, and logged: the two services
@@ -64,7 +64,7 @@ export function stateMappings(states, mapping, logger) {
 }
 
 /**
- * The mapping table (AC6), one row per state, in workflow order.
+ * The mapping table (AC14), one row per state, in workflow order.
  */
 export function mappingRows(mappings) {
   const shown = {

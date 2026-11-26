@@ -45,7 +45,7 @@ function assignee({ assignedToId, assignedToName }) {
 }
 
 /**
- * The Legacy status column (AC7): the linked application's current status,
+ * The Legacy status column (AC12, AC13): the linked application's current status,
  * linked to its Record page, and whether it is what the work item's state is
  * pushed as.
  */
@@ -71,12 +71,10 @@ function legacyColumn(item, { legacy, mappings }) {
       expected === found.applicationStatus
         ? { text: 'Matches' }
         : { mismatch: true, text: `Expected ${statusTag(expected).text}` },
-    // A partly pushed state's status is pushed on some routes in only, so a
-    // difference is never flagged; a match still says so (RA-751 AC7).
-    partial: ({ expected }) =>
-      expected === found.applicationStatus
-        ? { text: 'Matches' }
-        : { text: 'Not flagged: only some routes into this state are pushed' }
+    // A partly pushed state's status is pushed on some routes in only, and
+    // the page can't tell which route a work item took, so the row always
+    // says Matches, whatever its Legacy status (RA-751 AC12).
+    partial: () => ({ text: 'Matches' })
   }
   return {
     status,
@@ -86,7 +84,7 @@ function legacyColumn(item, { legacy, mappings }) {
 }
 
 /**
- * One results row (AC5, AC7): the work item ID, application reference, organisation,
+ * One results row (AC11, AC12): the work item ID, application reference, organisation,
  * state, assignee, when it last changed and its Legacy application's status.
  * Nothing else from the work item (contacts, addresses) reaches the page.
  */

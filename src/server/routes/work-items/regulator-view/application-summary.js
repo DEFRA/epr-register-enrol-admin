@@ -1,5 +1,13 @@
-// Ported from management-fe (origin/main b0b9694), src/server/routes/work-items/application-summary.js. A copy: there is no shared package to import it from.
-// Admin UI changes: files carry no download link (fileViewModel takes no work item ID).
+// Ported from management-fe (origin/main 0bd3b85), src/server/routes/work-items/application-summary.js. A copy: there is no shared package to import it from.
+// Admin UI changes, besides import paths:
+// - files carry no download link (fileViewModel takes no work item ID, and
+//   buildCoreSummaryRows no workItemId);
+// - a file with no scan status has scanStatus null and scanStatusMissing,
+//   where management-fe shows it as Pending;
+// - processingType(payload), which regulatorView reads, is added;
+// - a file's upload date that cannot be parsed throws (format-date.js);
+// - the beads ids in comments are named as management-fe's, as is
+//   recycling-operations.controller.js.
 import { formatDateTimeGds } from '#/config/nunjucks/filters/format-date.js'
 import { formatSiteAddress, getSitePostcode } from './site-address.js'
 import { materialLabel } from './materials.js'
@@ -57,6 +65,24 @@ const BUSINESS_PLAN_CATEGORIES = [
 ]
 
 /**
+ * Admin UI: what payload.wasteProcessingType records, case-insensitively:
+ * 'exporter', 'reprocessor', 'absent' (a work item stored before RA-314
+ * added it) or 'unrecognised'. regulatorView logs the last two and decides
+ * what to show.
+ *
+ * @param {object} payload
+ * @returns {'exporter' | 'reprocessor' | 'absent' | 'unrecognised'}
+ */
+export function processingType(payload) {
+  const value = payload.wasteProcessingType
+  if (value === undefined || value === null) {
+    return 'absent'
+  }
+  const kind = String(value).toLowerCase()
+  return ['exporter', 'reprocessor'].includes(kind) ? kind : 'unrecognised'
+}
+
+/**
  * AC02 items 9 and 10 (BES and ORS) render for exporter applications only.
  *
  * RA-412: this used to read `payload.overseasSites.length > 0` as a PROXY for
@@ -77,24 +103,6 @@ const BUSINESS_PLAN_CATEGORIES = [
  * all, and is treated as a reprocessor (`false`) — matching how every such
  * item already rendered.
  */
-/**
- * Admin UI: what payload.wasteProcessingType records, case-insensitively:
- * 'exporter', 'reprocessor', 'absent' (a work item stored before RA-314
- * added it) or 'unrecognised'. regulatorView logs the last two and decides
- * what to show.
- *
- * @param {object} payload
- * @returns {'exporter' | 'reprocessor' | 'absent' | 'unrecognised'}
- */
-export function processingType(payload) {
-  const value = payload.wasteProcessingType
-  if (value === undefined || value === null) {
-    return 'absent'
-  }
-  const kind = String(value).toLowerCase()
-  return ['exporter', 'reprocessor'].includes(kind) ? kind : 'unrecognised'
-}
-
 export function isExporterApplication(workItem) {
   const wasteProcessingType = workItem?.payload?.wasteProcessingType
   return (
@@ -207,7 +215,7 @@ export function fileViewModel(file) {
     // The read is kept — unlike the speculative authority-to-issue reads
     // below, which were removed — because the template already renders the
     // two halves independently and an uploader name is a natural additive
-    // field. TODO(epr-ow16): drop this if the producer confirms it will
+    // field. TODO(management-fe's epr-ow16): drop this if the producer confirms it will
     // never emit one.
     uploadedAt: file?.uploadedAt ? formatDateTimeGds(file.uploadedAt) : null,
     uploadedBy: file?.uploadedBy || null
@@ -273,7 +281,7 @@ function authoriserEmail(authoriser) {
  * have had `true` written back permanently, and any submission freezes
  * whatever it read into the work-item payload, which is never re-derived.
  * A work item may therefore carry a `true` that is not true. Tracked as
- * `epr-2uxy`; remediation, if any, is on the stored payloads, not here.
+ * management-fe's `epr-2uxy`; remediation, if any, is on the stored payloads, not here.
  *
  * Do NOT try to compensate for that in this file. The tempting heuristic —
  * "every site on this item is flagged, so probably none of them are" — would
@@ -535,7 +543,7 @@ const ORS_DETAIL_FIELDS = [
  * R3/R4/R5, inherited material) — mirrored here as a single display-only
  * `operation-code` field, same key/label/reader shape as the ORS list's own
  * entry. There is no edit capability for these on the regulator side (see
- * `recycling-operations.controller.js`'s `hasAccompanimentCode` removal) —
+ * management-fe's `recycling-operations.controller.js` `hasAccompanimentCode` removal) —
  * this tab only ever displays whatever the interim site carries. It does
  * carry `stateOrRegion` and `postcode`, which the ORS shape does not.
  */
@@ -655,7 +663,7 @@ export function buildOverseasSite(site) {
 /**
  * Resolve "Authority to issue" (AC02 item 6, RA-292 AC03).
  *
- * TODO(epr-ow16): there is no separate authority-to-issue field on the wire.
+ * TODO(management-fe's epr-ow16): there is no separate authority-to-issue field on the wire.
  * `HttpCaseWorkingApiAdapter.BuildPayload` emits `prns` as exactly
  * `{ plannedTonnageBand, authorisers[] }`, so the PRN authorisers ARE the
  * people holding authority to issue, and AC02's items 5 and 6 necessarily

@@ -1,4 +1,7 @@
-// Ported from management-fe (origin/main b0b9694), src/server/common/helpers/format/mongo-date.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/server/common/helpers/format/mongo-date.js. A copy: there is no shared package to import it from.
+// Admin UI changes: absent is only undefined, null or an empty string, and any
+// other shape (a number, false, { $date } without a string) throws, where
+// management-fe returns null for it and so shows the date as absent.
 /**
  * Extract a plain ISO-8601 string from a value that is either already a
  * string or the Mongo relaxed extended-JSON `{ "$date": "ISO-8601" }` shape
@@ -11,10 +14,10 @@
  * here rather than being re-implemented per controller (RA-295).
  *
  * @param {unknown} value
- * @returns {string|null} the ISO string, or null for absent / unexpected shapes.
+ * @returns {string|null} the ISO string, or null when absent.
  */
 export function unwrapMongoDate(value) {
-  if (!value) {
+  if (value === undefined || value === null || value === '') {
     return null
   }
   if (typeof value === 'string') {
@@ -23,5 +26,7 @@ export function unwrapMongoDate(value) {
   if (typeof value === 'object' && typeof value.$date === 'string') {
     return value.$date
   }
-  return null
+  throw new TypeError(
+    `Expected an ISO-8601 string or { $date } to read a date from, got ${typeof value}`
+  )
 }

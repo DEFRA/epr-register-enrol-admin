@@ -1,9 +1,10 @@
-// The work item page (RA-752). The Regulator view's styles are ported from
-// management-fe (origin/main b0b9694)
-// src/client/stylesheets/components/_case-header.scss and _work-items.scss;
-// colours come from the GOV.UK palette rather than management-fe's own
-// (RA-752 AC09: colours can differ).
-@use "govuk-frontend" as *;
+// The work item page (RA-752). The Regulator view's styles follow
+// management-fe's (origin/main 0bd3b85)
+// src/client/stylesheets/components/_case-header.scss and _work-items.scss,
+// but are not a line-for-line copy: only the classes the Regulator view uses,
+// written again with GOV.UK palette colours rather than management-fe's own
+// (RA-752 AC09: colours can differ). Compare them by the class names.
+@use 'govuk-frontend' as *;
 
 .app-regulator-view {
   padding-top: govuk-spacing(2);
@@ -13,7 +14,7 @@
   margin-bottom: govuk-spacing(4);
   padding-top: govuk-spacing(4);
   padding-bottom: govuk-spacing(4);
-  background-color: govuk-colour("green", $variant: "tint-95");
+  background-color: govuk-colour('green', $variant: 'tint-95');
 }
 
 .app-case-header__breadcrumbs-list {
@@ -27,7 +28,7 @@
   display: inline;
 
   & + &::before {
-    content: "\002F";
+    content: '\002F';
     margin: 0 govuk-spacing(1);
     color: $govuk-secondary-text-colour;
   }
@@ -57,7 +58,10 @@
 
 @include govuk-media-query($from: desktop) {
   .app-case-header__meta {
-    grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr) minmax(
+        0,
+        1.25fr
+      ) minmax(0, 1fr);
   }
 }
 
@@ -92,7 +96,7 @@
 }
 
 .app-case-tabs__link--active {
-  border-bottom: 4px solid govuk-colour("green");
+  border-bottom: 4px solid govuk-colour('green');
   color: $govuk-text-colour;
   text-decoration: none;
 }
@@ -115,7 +119,7 @@
 
 // "NEW:" flag prefix (RA-292).
 .app-new-flag {
-  color: govuk-colour("blue", $variant: "shade-25");
+  color: govuk-colour('blue', $variant: 'shade-25');
   font-weight: bold;
 }
 

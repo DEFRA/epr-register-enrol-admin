@@ -1,0 +1,7 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <h1 class="govuk-heading-l">Tab not found</h1>
+  <p class="govuk-body" data-testid="tab-not-found">Work item <span class="app-details__reference">{{ id }}</span> has no such tab in its Regulator view.</p>
+  <p class="govuk-body"><a class="govuk-link" href="{{ href }}" data-testid="work-item-link">Open work item {{ id }}</a></p>
+{% endblock %}

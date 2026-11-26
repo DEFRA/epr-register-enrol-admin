@@ -1,5 +1,22 @@
-// Ported from management-fe (origin/main b0b9694), src/server/routes/work-items/case-header.js. A copy: there is no shared package to import it from.
-// Admin UI changes: state names come from management-be's state list; the tabs are AC09's three, on this page.
+// Ported from management-fe (origin/main 0bd3b85), src/server/routes/work-items/case-header.js. A copy: there is no shared package to import it from.
+// Admin UI changes, besides import paths:
+// - buildCaseHeader: a missing application reference is applicationRef null
+//   with applicationRefMissing on a re-accreditation (and "None" for other
+//   types), where management-fe falls back to the work item ID; and it has no
+//   fallback for a type it doesn't know (callers only build a header for a
+//   type work-item-types.js has).
+// - stateDisplayName and decorateForCaseHeader read state names from
+//   management-be's state list (a Map), not the type's own states, and
+//   decorateForCaseHeader has no fallback for a type it doesn't know.
+// - formatHeaderDate and formatPaymentDate throw for a date that cannot be
+//   parsed (format-date.js), where management-fe shows the em dash or "Not
+//   received".
+// - Tabs: only the three AC09 names, as links to this page with ?tab=;
+//   DEFAULT_CASE_TAB_KEYS is exported; caseHasTab, HIDDEN_TAB_KEYS, the
+//   Recycling operations, Accreditation summary and Related change requests
+//   tab keys and relatedChangeRequestsTabText are left out (the work item
+//   route checks the type's caseTabs itself).
+// - Comments that pointed at management-fe files name the Admin UI's.
 import { formatDateShortGds } from '#/config/nunjucks/filters/format-date.js'
 import { formatChargeAmount } from './charge-amount.js'
 import { unwrapMongoDate } from './mongo-date.js'
@@ -32,7 +49,7 @@ import { EM_DASH } from './application-summary.js'
  *
  * RA-739. A type with a header of its own supplies
  * `buildCaseHeader({ header, workItem, assignment })`, given the fields every
- * header shares: add-ORS's is in `routes/add-overseas-site/case-header.js`.
+ * header shares: add-ORS's is in `add-overseas-site-case-header.js`.
  *
  * The model is intentionally pre-formatted strings only: the macro that
  * renders it stays pure presentation and cannot reach into the payload.
@@ -46,8 +63,9 @@ export const NOT_RECEIVED = 'Not received'
 /**
  * The header's payment date (RA-493). management-be stamps
  * `payload.paymentDate` (a `yyyy-MM-dd` DateOnly) when the work item is
- * marked Duly made, and it is null before then, so until it is present (or
- * if it cannot be parsed) it reads "Not received" (AC04). Duly making records
+ * marked Duly made, and it is null before then, so until it is present it
+ * reads "Not received" (AC04; Admin UI: one that cannot be parsed throws,
+ * where management-fe reads "Not received"). Duly making records
  * no amount paid, so the header shows the charge itself (see `chargeEntry`)
  * and this date alone says whether it has been paid (user, 2026-11-19).
  *
@@ -81,22 +99,19 @@ export function paymentDateEntry(payload) {
 
 /**
  * A date for the case header ("12 Feb 2027"), or the em dash when it is
- * absent or cannot be parsed: add-ORS's Date added (RA-495), and the SLA due
- * date, which management-be leaves null until the SLA clock starts (RA-295).
+ * absent: add-ORS's Date added (RA-495), and the SLA due date, which
+ * management-be leaves null until the SLA clock starts (RA-295). Admin UI:
+ * one that cannot be parsed throws, where management-fe shows the em dash.
  */
 export function formatHeaderDate(value) {
   const iso = unwrapMongoDate(value)
-  if (!iso) {
-    return EM_DASH
-  }
-  const formatted = formatDateShortGds(iso)
-  return formatted === '' ? EM_DASH : formatted
+  return iso ? formatDateShortGds(iso) : EM_DASH
 }
 
 // RA-503: operatorOrganisationId means two different things depending on how the work item was
 // created. Real operator submissions (epr-register-enrol-backend's HttpCaseWorkingApiAdapter)
 // send ReEx's internal Mongo ObjectId — never safe to show an operator or regulator. The
-// case-management admin "create work item" form (re-accreditation/create/schema.js) instead
+// case-management admin "create work item" form (management-fe's re-accreditation/create/schema.js) instead
 // validates it as a genuine 6-digit organisation number before submission (RA-448), so for THOSE
 // items it's already the correct value. A 24-char hex ObjectId can never match this pattern, so
 // shape alone tells the two apart.
@@ -126,7 +141,7 @@ export function resolveOrganisationId(payload) {
 
 /**
  * @param {object} args
- * @param {object} args.workItem decorated work item (see detail.controller.js)
+ * @param {object} args.workItem decorated work item (see decorateForCaseHeader)
  * @param {object} [args.assignment] assignment view model, when available
  * @returns {object} the `appCaseHeader` macro params
  */
@@ -211,9 +226,9 @@ export function statusEntry(workItem) {
     value: workItem?.stateDisplayName || workItem?.stateId || EM_DASH,
     // RA-324 (AC08). Status keeps the shared state-badge colour so the
     // case header and the Applications list colour a given status
-    // identically. `stateTagClass` is set by `decorateForCaseHeader` (or
-    // the detail controller's decorator); when it is absent (a caller that
-    // has not decorated the work item) the value simply renders as text.
+    // identically. `stateTagClass` is set by `decorateForCaseHeader`; when
+    // it is absent (a caller that has not decorated the work item) the value
+    // simply renders as text.
     tagClass: workItem?.stateTagClass ?? null
   }
 }
@@ -293,9 +308,9 @@ export function stateDisplayName(stateNames, stateId) {
 /**
  * Decorate a raw work item with the fields the case header and tabs read:
  * its type's display name, and its state's display name and
- * badge colour. Every work item page builds its header from a work item
+ * badge colour. The Regulator view builds its header from a work item
  * decorated this way, so a case type gets its own header on every tab
- * (RA-739). The detail page's own decorator sets the same fields.
+ * (RA-739).
  *
  * @param {object} workItem raw work item from management-be
  * @param {Map<string, string>} stateNames display names by state id
@@ -315,10 +330,10 @@ export const APPLICATION_SUMMARY_TAB_KEY = 'application-summary'
 export const APPLICATION_HISTORY_TAB_KEY = 'application-history'
 export const ADDITIONAL_INFORMATION_TAB_KEY = 'additional-information'
 
-// The tabs a type's case has unless it declares its own `caseTabs` (RA-739,
-// RA-495). Admin UI: only the three tabs RA-752 AC09 names. management-fe's
-// Recycling operations tab is hidden there too; its Accreditation summary
-// (add-ORS only, RA-769) is not in AC09, and Related applications is RA-755.
+// Re-accreditation's tabs (RA-739, RA-495), which work-item-types.js gives
+// it. Admin UI: only the three tabs RA-752 AC09 names. management-fe hides
+// its Recycling operations tab; its add-ORS Accreditation summary (RA-769)
+// and Related change requests (RA-770) tabs are not in AC09.
 export const DEFAULT_CASE_TAB_KEYS = [
   APPLICATION_SUMMARY_TAB_KEY,
   APPLICATION_HISTORY_TAB_KEY,
@@ -332,8 +347,8 @@ const TAB_TEXT = {
 }
 
 /**
- * The tab strip of the Regulator view, in management-fe's order, narrowed to
- * the type's own `caseTabs` when it declares them (RA-739). management-fe's
+ * The tab strip of the Regulator view: the type's own `caseTabs`
+ * (work-item-types.js), in management-fe's order (RA-739). management-fe's
  * tabs are separate pages; the Admin UI's are the same page with the tab in
  * its query, opened on the Regulator view.
  *

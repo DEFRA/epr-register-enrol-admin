@@ -1,5 +1,6 @@
-// Ported from management-fe (origin/main b0b9694), src/server/work-items/core/materials.js. A copy: there is no shared package to import it from.
-// Admin UI changes: only materialLabel; the filter helpers have no use here.
+// Ported from management-fe (origin/main 0bd3b85), src/server/work-items/core/materials.js. A copy: there is no shared package to import it from.
+// Admin UI changes: only materialLabel and the map it reads; the filter
+// helpers, their constants and their comments have no use here.
 /**
  * Packaging material tokens ↔ display labels (RA-324 phase-2).
  *

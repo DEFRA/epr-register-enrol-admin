@@ -1,4 +1,6 @@
-// Ported from management-fe (origin/main b0b9694), src/config/nunjucks/filters/format-date.test.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/config/nunjucks/filters/format-date.test.js. A copy: there is no shared package to import it from.
+// Admin UI changes: an unparseable string, a value that is not a date or a
+// string, and an invalid Date are expected to throw (see format-date.js).
 import { vi } from 'vitest'
 
 import {
@@ -41,6 +43,18 @@ describe('#formatDate', () => {
           "h:mm aaa 'on' EEEE do MMMM yyyy"
         )
       ).toBe('11:40 am on Wednesday 1st February 2023')
+    })
+  })
+
+  // Admin UI: formatDate has no empty result, so an absent value is an
+  // error too.
+  describe('With no date', () => {
+    test('Throws, naming null', () => {
+      expect(() => formatDate(null)).toThrow(
+        new TypeError(
+          'Expected a Date or an ISO-8601 string to format, got null'
+        )
+      )
     })
   })
 
@@ -106,8 +120,28 @@ describe('#formatDateTimeGds', () => {
     expect(formatDateTimeGds(undefined)).toBe('')
   })
 
-  test('Returns an empty string for an unparseable string', () => {
-    expect(formatDateTimeGds('not-a-date')).toBe('')
+  // Admin UI: management-fe returns an empty string here.
+  test('Throws for an unparseable string, rather than showing nothing', () => {
+    expect(() => formatDateTimeGds('not-a-date')).toThrow(
+      new RangeError('Expected a valid date to format, got an invalid one')
+    )
+  })
+
+  // Admin UI: management-fe throws date-fns's own TypeError here.
+  test.each([
+    [{ $date: '2026-04-27T09:00:00Z' }, 'object'],
+    [1777280400000, 'number'],
+    [false, 'boolean']
+  ])('Throws for %j, which is not a date or a string', (value, type) => {
+    expect(() => formatDateTimeGds(value)).toThrow(
+      new TypeError(
+        `Expected a Date or an ISO-8601 string to format, got ${type}`
+      )
+    )
+  })
+
+  test('Throws for an invalid Date', () => {
+    expect(() => formatDateTimeGds(new Date('not-a-date'))).toThrow(RangeError)
   })
 
   // ---------------------------------------------------------------- //
@@ -190,13 +224,13 @@ describe('#formatDateGds', () => {
     expect(formatDateGds(undefined)).toBe('')
   })
 
-  test('Returns an empty string for an unparseable string (never throws)', () => {
-    // The guard uses the SAME parser (parseISO) it formats with, so a value
-    // that would throw in `format` is caught here instead — e.g. a US-style
-    // date that `new Date` would accept but `parseISO` rejects.
-    expect(formatDateGds('not-a-date')).toBe('')
-    expect(formatDateGds('01/15/2026')).toBe('')
-    expect(formatDateGds('January 15, 2026')).toBe('')
+  // Admin UI: management-fe returns an empty string for each of these.
+  test('Throws for an unparseable string, rather than showing nothing', () => {
+    // The guard uses the SAME parser (parseISO) it formats with, so a
+    // US-style date that `new Date` would accept is rejected too.
+    expect(() => formatDateGds('not-a-date')).toThrow(RangeError)
+    expect(() => formatDateGds('01/15/2026')).toThrow(RangeError)
+    expect(() => formatDateGds('January 15, 2026')).toThrow(RangeError)
   })
 })
 
@@ -220,9 +254,11 @@ describe('#formatDateShortGds', () => {
     )
   })
 
-  test('Returns an empty string for an absent or unparseable value', () => {
+  // Admin UI: management-fe returns an empty string for an unparseable one.
+  test('Returns an empty string for an absent value, and throws for an unparseable one', () => {
     expect(formatDateShortGds(null)).toBe('')
     expect(formatDateShortGds(undefined)).toBe('')
-    expect(formatDateShortGds('not-a-date')).toBe('')
+    expect(formatDateShortGds('')).toBe('')
+    expect(() => formatDateShortGds('not-a-date')).toThrow(RangeError)
   })
 })

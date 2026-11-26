@@ -1,4 +1,4 @@
-// Ported from management-fe (origin/main b0b9694), src/server/common/helpers/format/charge-amount.test.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/server/common/helpers/format/charge-amount.test.js. A copy: there is no shared package to import it from.
 import { describe, expect, test } from 'vitest'
 
 import { formatChargeAmount } from './charge-amount.js'

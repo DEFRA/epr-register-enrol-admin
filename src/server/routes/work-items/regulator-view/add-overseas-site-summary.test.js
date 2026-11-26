@@ -1,4 +1,6 @@
-// Ported from management-fe (origin/main b0b9694), src/server/routes/add-overseas-site/application-summary.test.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/server/routes/add-overseas-site/application-summary.test.js. A copy: there is no shared package to import it from.
+// Admin UI changes, besides import paths: the BES file test expects no
+// download link, and a Valid from date that is not a date to throw.
 import { describe, expect, test } from 'vitest'
 
 import { buildAddOverseasSiteSummary } from './add-overseas-site-summary.js'
@@ -138,12 +140,17 @@ describe('RA-739: #buildAddOverseasSiteSummary', () => {
       expect(withEffectiveDate('2027-03-01', stateId).validFrom).toBeNull()
     })
 
-    test.each([undefined, null, '', 'not a date'])(
+    test.each([undefined, null, ''])(
       'is absent, not a dash, when an approved case has the date %j',
       (effectiveDate) => {
         expect(withEffectiveDate(effectiveDate).validFrom).toBeNull()
       }
     )
+
+    // Admin UI: management-fe leaves the date out for it.
+    test('throws when an approved case has a date that is not one', () => {
+      expect(() => withEffectiveDate('not a date')).toThrow(RangeError)
+    })
 
     test('is not one of the site rows', () => {
       const { rows } = withEffectiveDate('2027-03-01')

@@ -1,4 +1,13 @@
-{# Ported from management-fe (origin/main b0b9694), src/server/common/components/case-header/template.njk. A copy: there is no shared package to import it from. #}
+{# Ported from management-fe (origin/main 0bd3b85), src/server/common/components/case-header/template.njk. A copy: there is no shared package to import it from. #}
+{# Admin UI changes:                                                   #}
+{#  - the reference line shows "Missing from work item" or "None" when #}
+{#    there is no application reference (buildCaseHeader), where        #}
+{#    management-fe shows the work item ID it falls back to;            #}
+{#  - the title is an h3, as the header sits under the page's           #}
+{#    "Regulator view" h2, where management-fe's is the page's h1;      #}
+{#  - the back link and reference are a plain list, not a second        #}
+{#    "Breadcrumb" nav (the page has its own breadcrumbs), and the      #}
+{#    reference is not marked as the current page.                      #}
 {# ------------------------------------------------------------------ #}
 {# Case header (RA-295 AC01).                                          #}
 {#                                                                     #}
@@ -21,7 +30,7 @@
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 <div class="app-case-header" data-testid="case-header">
   <div class="govuk-width-container">
-    <nav class="app-case-header__breadcrumbs" aria-label="Breadcrumb">
+    <div class="app-case-header__breadcrumbs">
       <ol class="app-case-header__breadcrumbs-list">
         <li class="app-case-header__breadcrumbs-item">
           <a class="govuk-link app-case-header__back-link"
@@ -29,7 +38,6 @@
              data-testid="case-header-applications-link">{{ params.backText }}</a>
         </li>
         <li class="app-case-header__breadcrumbs-item"
-            aria-current="page"
             data-testid="case-header-accreditation-ref">
           {%- if params.applicationRef -%}
             {{ params.applicationRef }}
@@ -40,19 +48,19 @@
           {%- endif -%}
         </li>
       </ol>
-    </nav>
+    </div>
 
     {% if params.caption %}
       <span class="govuk-caption-l app-case-header__caption"
             data-testid="case-header-caption">{{ params.caption }}</span>
     {% endif %}
-    <h1 class="govuk-heading-l app-case-header__title">
+    <h3 class="govuk-heading-l app-case-header__title">
       {%- if params.title -%}
         <span data-testid="case-header-title">{{ params.title }}</span>
       {%- else -%}
         <span data-testid="case-header-org-name">{{ params.organisationName }}</span>{% if params.organisationId %} <span class="app-case-header__org-id">(<span data-testid="case-header-org-id">{{ params.organisationId }}</span>)</span>{% endif %}
       {%- endif -%}
-    </h1>
+    </h3>
 
     <dl class="app-case-header__meta" data-testid="case-header-meta">
       {% for entry in params.meta %}

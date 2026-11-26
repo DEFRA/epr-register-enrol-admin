@@ -1,5 +1,6 @@
-// Ported from management-fe (origin/main b0b9694), src/server/work-items/core/audit-log-payment-date.js. A copy: there is no shared package to import it from.
-// Admin UI changes: no fallback for an entry without details.
+// Ported from management-fe (origin/main 0bd3b85), src/server/work-items/core/audit-log-payment-date.js. A copy: there is no shared package to import it from.
+// Admin UI changes: no fallback for an entry without details (the Admin
+// UI's client accepts only entries with details).
 /**
  * Audit log rendering for payment date changes (RA-576).
  *

@@ -1,4 +1,4 @@
-// Ported from management-fe (origin/main b0b9694), src/server/work-items/core/withdrawn-notice.test.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/server/work-items/core/withdrawn-notice.test.js. A copy: there is no shared package to import it from.
 import {
   buildWithdrawnNotice,
   WITHDRAWN_NOTICE_TAIL,
@@ -144,7 +144,8 @@ describe('#buildWithdrawnNotice (RA-358)', () => {
   // The reference format is the backend's to decide (it has already changed
   // once, RA-318), so this module deliberately does NOT pattern-match it.
   // Safety therefore rests entirely on the template autoescaping the value —
-  // see the render-level regression test in detail.controller.test.js.
+  // see the render-level regression test in management-fe's
+  // detail.controller.test.js.
   test('passes an unusual reference through untouched — escaping is the template’s job', () => {
     const notice = buildWithdrawnNotice({
       stateId: 'withdrawn',

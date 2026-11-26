@@ -1,14 +1,19 @@
 /**
- * Ported from management-fe (origin/main b0b9694)
- * src/server/routes/work-items/re-accreditation-decision-metadata.js. Admin UI
- * changes: it logs through the request's logger, at error, and imports the
- * state ids from work-item-types.js.
+ * Ported from management-fe (origin/main 0bd3b85),
+ * src/server/routes/work-items/re-accreditation-decision-metadata.js. A copy:
+ * there is no shared package to import it from. Admin UI changes, besides
+ * import paths: it logs a start date it cannot format through the request's
+ * logger, at error with the work item ID only, where management-fe warns
+ * through a logger of its own with the error and the value; its approved
+ * states are work-item-types.js's APPROVED_STATE_IDS; and it has no guard
+ * for a work item without a payload (the Admin UI's client accepts only work
+ * items that have one).
  *
  * Approved-item display metadata for a re-accreditation work item — Granted
  * (`approved`) or, since RA-527, approved at step 1 and awaiting applicant
  * contact (`approved-pending-contact`), when the number is already minted.
  *
- * Split out of `detail.controller.js` (RA-523) because it answers a
+ * Split out of management-fe's `detail.controller.js` (RA-523) because it answers a
  * different question from everything around it: the rest of that file
  * decides WHICH controls render, while this formats the record of a
  * decision already taken. It also owns the only date-formatting and
@@ -24,7 +29,7 @@
 import { formatDate } from '#/config/nunjucks/filters/format-date.js'
 import { unwrapMongoDate } from './mongo-date.js'
 import {
-  STATE_APPROVED,
+  APPROVED_STATE_IDS,
   STATE_APPROVED_PENDING_CONTACT
 } from './work-item-types.js'
 
@@ -33,10 +38,7 @@ import {
 // is Granted. The start date and year are stamped at step 2 (task 007), so
 // their rows show only once Granted (`showIssuedDetails`) — even if an item
 // from an earlier build still carries step 1 values for them.
-const APPROVED_STATE_IDS = new Set([
-  STATE_APPROVED,
-  STATE_APPROVED_PENDING_CONTACT
-])
+// APPROVED_STATE_IDS is work-item-types.js's.
 
 /**
  * @param {object} workItem the work item, already masked

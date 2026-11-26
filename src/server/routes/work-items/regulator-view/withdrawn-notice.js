@@ -1,4 +1,4 @@
-// Ported from management-fe (origin/main b0b9694), src/server/work-items/core/withdrawn-notice.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/server/work-items/core/withdrawn-notice.js. A copy: there is no shared package to import it from.
 /**
  * Withdrawn-application notice (RA-358).
  *
@@ -11,7 +11,7 @@
  * of which tells a regulator, prominently and in application terms, that the
  * application they followed a link to has been withdrawn.
  *
- * This helper lives in `core/` rather than in the re-accreditation module
+ * This helper lives in management-fe's `core/` rather than in the re-accreditation module
  * because the message belongs to the WITHDRAWAL CONCEPT, not to one type's
  * template: `withdrawn` happens to be a re-accreditation state today, but
  * any future module that declares it gets the banner for free, and no module

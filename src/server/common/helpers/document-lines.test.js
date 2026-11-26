@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { documentLines } from './document-lines.js'
+import { documentLines, jsonLines } from './document-lines.js'
 
 // Each line as it reads on the page.
 const asText = (lines) =>
@@ -112,6 +112,30 @@ describe('Showing a stored document', () => {
       '  ],',
       '  "plannedTonnageBand": "UpTo500",',
       '  "year": 2027',
+      '}'
+    ])
+  })
+})
+
+describe('Showing JSON as it was sent (a work item, RA-752 AC08)', () => {
+  test('shows an extended JSON value as the object it is, and names no enums', () => {
+    expect(
+      asText(
+        jsonLines({
+          submittedAt: { $date: '2026-10-01T09:00:00Z' },
+          id: { $oid: '6716a3c09e4b2d1f8a5c7e30' },
+          sectionStatus: 2
+        })
+      )
+    ).toEqual([
+      '{',
+      '  "submittedAt": {',
+      '    "$date": "2026-10-01T09:00:00Z"',
+      '  },',
+      '  "id": {',
+      '    "$oid": "6716a3c09e4b2d1f8a5c7e30"',
+      '  },',
+      '  "sectionStatus": 2',
       '}'
     ])
   })

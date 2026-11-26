@@ -79,6 +79,47 @@ example, one returning records as stored, personal data included) goes under
 `/admin/` on the backend, with its own OpenAPI spec, apart from the API other
 services use. `epr-register-enrol-backend`'s is `docs/openapi/admin-api.yaml`.
 
+### The Regulator view is a copy of management-fe's
+
+A work item's Regulator view (RA-752 AC09) shows a work item laid out as
+Case management shows it, so it reuses
+[`DEFRA/epr-register-enrol-management-fe`](https://github.com/DEFRA/epr-register-enrol-management-fe)'s
+view code. There is no shared package to import it from, so it is a copy, of
+management-fe `origin/main` at **`0bd3b85`**:
+
+- `src/server/routes/work-items/regulator-view/`: every file but
+  `regulator-view.js` and `work-item-types.js`, which are built from several
+  management-fe files (each header names them), and `regulator-view.test.js`,
+  which is the Admin UI's own;
+- `src/server/common/components/case-header/` and `case-tabs/`;
+- `src/server/common/templates/partials/work-items/summary-macros.njk`, and
+  `regulator-view.njk`, built from several management-fe templates;
+- `src/config/nunjucks/filters/format-date.js` and its test;
+- `test-helpers/real-operator-submission-payload.js`, which the ported tests
+  read.
+
+The Regulator view styles in `src/client/stylesheets/components/_work-item.scss`
+follow management-fe's but are written again with GOV.UK colours, not copied:
+compare them by class name.
+
+Each file's header names its management-fe source and lists every change the
+Admin UI makes to it, besides import paths. Comments copied from
+management-fe describe management-fe: a file, layer or beads id named in one
+is management-fe's unless the comment says otherwise.
+
+To bring the copy up to date with management-fe:
+
+1. Fetch management-fe and list what changed in each source file since the
+   copy: `git -C <management-fe> diff 0bd3b85 origin/main -- <source path>`
+   (the paths are in the headers).
+2. Apply each change to the copy, keeping the changes its header lists.
+3. Diff each copy against its source,
+   `diff <(git -C <management-fe> show origin/main:<source path>) <copy>`,
+   and check that every difference other than an import path is in its
+   header.
+4. Change `0bd3b85` to the new commit in every header and here, and run the
+   tests.
+
 ## Auth: user auth and service-to-service auth are separate
 
 Keep the two apart in code, config and conversation.

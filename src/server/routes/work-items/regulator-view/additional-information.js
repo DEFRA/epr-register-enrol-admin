@@ -1,22 +1,34 @@
-/**
- * Ported from management-fe (origin/main b0b9694),
- * src/server/routes/work-items/additional-information.controller.js
- * `buildAdditionalInformationRows` (RA-434, RA-480), unchanged.
- */
+// Ported from management-fe (origin/main 0bd3b85), src/server/routes/work-items/additional-information.controller.js. A copy: there is no shared package to import it from.
+// Admin UI changes: only `buildAdditionalInformationRows` (the controller is
+// work-item-route.js and regulator-view.js here); it is given the masked work
+// item rather than a decorated one, and has no guard for a work item without
+// a payload (the Admin UI's client accepts only work items that have one).
 import { formatSiteAddress } from './site-address.js'
 import { deriveSiteAddress } from './application-summary.js'
 
 /**
- * Build the "Additional information" rows for a work item, in fixed order,
- * omitting any row whose value is absent or empty.
+ * RA-434 / RA-480. The "Additional information" tab's row view model, in the
+ * fixed order: Registered name, Companies house number, Registered address,
+ * Site name, Location, Permit numbers, Last year's accreditation number,
+ * Contact full name, Contact email, Contact phone, Contact job title.
+ *
+ * Missing values are OMITTED rather than rendered as a placeholder, so a
+ * pre-RA-434 work item with none of these fields simply renders a shorter
+ * list. The exception is Last year's accreditation number, which shows
+ * "None" so a caseworker can see there isn't one.
  *
  * @param {object} args
  * @param {object} args.workItem the work item, already masked
- * @returns {{ key: string, label: string, value: string }[]}
+ * @returns {object[]} ordered `{ key, label, value }` rows
  */
 export function buildAdditionalInformationRows({ workItem }) {
   const payload = workItem.payload
 
+  // The full registered address is already computed and single-lined by
+  // the operator backend (`AccreditationApplicationModel.CompanyRegisteredAddress`).
+  // Run it through `formatSiteAddress` only for the trimming/blank handling
+  // that helper already gives the Location row, for visual consistency
+  // between the two.
   const registeredAddress = formatSiteAddress({
     siteAddress: payload.companyRegisteredAddress
   })
@@ -36,12 +48,22 @@ export function buildAdditionalInformationRows({ workItem }) {
       payload.companiesHouseNumber
     ],
     ['company-registered-address', 'Registered address', registeredAddress],
+    // No producer field exists for a site NAME anywhere in the chain today
+    // — always absent, kept here so the row-omission below applies the
+    // moment re-ex (or a manual Case Management service work item) can
+    // supply one.
+    ['site-name', 'Site name', null],
     ['site-address', 'Location', deriveSiteAddress(payload, registeredAddress)],
     [
       'permit-numbers',
       'Permit numbers',
+      // Comma-joined on one line, matching the mockup's "[xxxx], [xxxx]" —
+      // the fuller permit metadata is not shown, only the numbers.
       permitNumbers.length > 0 ? permitNumbers.join(', ') : null
     ],
+    // RA-763 AC03. Last year's accreditation number, kept from ReEx when the
+    // application was created and sent by the operator backend as
+    // `{ year, accreditationNumber }`. Absent for a first-time accreditation.
     [
       'last-years-accreditation-number',
       "Last year's accreditation number",

@@ -1,5 +1,6 @@
-// Ported from management-fe (origin/main b0b9694), src/server/routes/add-overseas-site/case-header.js. A copy: there is no shared package to import it from.
-// Admin UI changes: its payload guard is gone (the Admin UI only builds a header for a work item it has read).
+// Ported from management-fe (origin/main 0bd3b85), src/server/routes/add-overseas-site/case-header.js. A copy: there is no shared package to import it from.
+// Admin UI changes, besides import paths: no guard for a work item without a
+// payload (the Admin UI's client accepts only work items that have one).
 import {
   assignedToEntry,
   chargeEntry,

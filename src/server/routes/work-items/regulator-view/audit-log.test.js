@@ -1,4 +1,5 @@
-// Ported from management-fe (origin/main b0b9694), src/server/work-items/core/audit-log.test.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/server/work-items/core/audit-log.test.js. A copy: there is no shared package to import it from.
+// Admin UI changes, besides import paths: a describe title names management-fe's beads id as its.
 import { describe, expect, test } from 'vitest'
 import {
   decorateAuditLog,
@@ -720,7 +721,7 @@ describe('decorateAuditLog — workItemSnapshot rows', () => {
   })
 })
 
-describe('decorateAuditLog — per-entry State row (epr-rr9s)', () => {
+describe("decorateAuditLog — per-entry State row (management-fe's epr-rr9s)", () => {
   const snapshot = {
     orgId: 'APP-001',
     typeDisplayName: 'Re-accreditation',

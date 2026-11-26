@@ -1,6 +1,6 @@
 {# ------------------------------------------------------------------ #}
 {# Regulator view (RA-752 AC09): management-fe's work item page,       #}
-{# read-only. Ported from management-fe origin/main b0b9694:           #}
+{# read-only. Ported from management-fe origin/main 0bd3b85:           #}
 {#  - banners: src/server/routes/work-items/detail.njk (withdrawn      #}
 {#    notice, notification failed) and                                 #}
 {#    src/server/routes/standard-lifecycle/detail.njk (pending contact) #}
@@ -15,6 +15,16 @@
 {# Left out, as each changes the work item: the actions and assignment #}
 {# panel, flash and success banners, and the "Back to work item" links #}
 {# (the tabs are on this page).                                        #}
+{# Admin UI changes to what is kept:                                   #}
+{#  - one template, its tabs chosen by regulator.tab, inside the page's #}
+{#    Regulator view tab; each heading one level down (h2 to h3), as   #}
+{#    the page has its own h1 and the "Regulator view" h2;             #}
+{#  - the banners show on the Application summary only, as in          #}
+{#    management-fe, where only the summary page is given them;        #}
+{#  - notices of its own: a type with no Regulator view, a Regulator   #}
+{#    view that failed to build, and a processing type that is neither #}
+{#    reprocessor nor exporter (on the summary and Additional          #}
+{#    information, which depend on it).                                #}
 {# ------------------------------------------------------------------ #}
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
@@ -32,11 +42,16 @@
 <div class="app-regulator-view" data-testid="regulator-view">
 {% if regulator.typeUnsupported %}
   <p class="govuk-body" data-testid="regulator-view-unsupported">This work item type has no Regulator view in the Admin UI.</p>
+{% elif regulator.failed %}
+  <p class="govuk-body" data-testid="regulator-view-failed">The Regulator view of this work item can't be shown. The Document tab shows the work item as Case management sends it.</p>
 {% else %}
   {{ appCaseHeader(regulator.caseHeader) }}
 
   {{ appCaseTabs({ tabs: regulator.caseTabs }) }}
 
+  {# management-fe shows these banners on the Application summary only: its #}
+  {# other tab pages are not given them.                                  #}
+  {% if regulator.tab == 'application-summary' %}
   {% if regulator.pendingContactBanner %}
     {% set pendingContactHtml %}
       <p class="govuk-notification-banner__heading">{{ regulator.pendingContactBanner.text }}</p>
@@ -74,6 +89,7 @@
       disableAutoFocus: true,
       attributes: { "data-testid": "work-item-notification-failed-banner" }
     }) }}
+  {% endif %}
   {% endif %}
 
   <div class="govuk-grid-row">

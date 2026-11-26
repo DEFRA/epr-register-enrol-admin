@@ -1,7 +1,7 @@
 /**
  * The Regulator view of a work item (RA-752 AC09): what management-fe's work
  * item page shows a caseworker, read-only. Built as management-fe's
- * controllers build it (origin/main b0b9694):
+ * controllers build it (origin/main 0bd3b85):
  * src/server/routes/work-items/detail.controller.js `renderDetail` and
  * `loadPriorYear`, audit-log.controller.js and
  * additional-information.controller.js, with
@@ -162,8 +162,9 @@ const problemReporter = (workItem, logger) => ({
 // payload.wasteProcessingType, logged when it is not one the summary can
 // show. Absent is old stored data: items stored before RA-314 have no
 // wasteProcessingType, and management-fe shows them as a reprocessor's, so
-// the Admin UI does too, logging at warn every time until they are migrated
-// (beads epr-obyr.4).
+// the Admin UI does too, logging at warn every time. The follow-up is to
+// backfill wasteProcessingType on the work items stored without it, then
+// remove this default and its warning.
 function checkedProcessingType(workItem, report) {
   const kind = processingType(workItem.payload)
   if (kind === 'absent') {

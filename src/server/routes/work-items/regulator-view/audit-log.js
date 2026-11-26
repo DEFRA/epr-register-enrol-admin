@@ -1,5 +1,17 @@
-// Ported from management-fe (origin/main b0b9694), src/server/work-items/core/audit-log.js. A copy: there is no shared package to import it from.
-// Admin UI changes: nation names are the Admin UI's; guards for entries the Admin UI's client never accepts are gone.
+// Ported from management-fe (origin/main 0bd3b85), src/server/work-items/core/audit-log.js. A copy: there is no shared package to import it from.
+// Admin UI changes, besides import paths:
+// - nation names are the Admin UI's (legacy-application.js nationName), in
+//   place of management-fe's core/nations.js;
+// - buildEntryStateRow has no guard for an entry that is not an object, nor
+//   for a state with an empty display name (the Admin UI's client accepts
+//   only object entries, and stateDisplayName always returns a name or the
+//   ID); the other functions keep management-fe's guards;
+// - an "assigned" entry that names no assignee shows "Missing from audit
+//   entry" (ASSIGNEE_MISSING) in its summary and in a "Now assigned to" row
+//   that is always shown, where management-fe says "unknown user" and leaves
+//   the row out; isAssignmentWithoutAssignee lets regulatorView log it;
+// - the beads id in comments is named as management-fe's, as are its core/
+//   and routes/ layers.
 import { formatDateTimeGds } from '#/config/nunjucks/filters/format-date.js'
 // Admin UI: the Admin UI's own nation names, in place of management-fe's
 // core/nations.js; the same names, with the same fallback to the value.
@@ -51,7 +63,7 @@ import {
  * EXCEPT the routing/correction actions in `NO_SNAPSHOT_CONTEXT_ACTIONS`.
  *
  * The "State" row is special: it is per-entry, resolved from each entry's
- * OWN `stateId` (the work-item state as-of that event — epr-rr9s) via the
+ * OWN `stateId` (the work-item state as-of that event — management-fe's epr-rr9s) via the
  * optional `resolveStateDisplayName(stateId)` callback, NOT from the live
  * work-item state on the snapshot. Passing the live state onto every entry
  * was the historical-state bug this contract fixes.
@@ -140,8 +152,8 @@ const ACTION_SLA_EXTENDED = 'sla-extended'
 /**
  * Human-readable labels for the query `details.sections` values — the same
  * closed set the query form renders as checkboxes (RA-291). Kept local, like
- * `DERIVED_FROM_DISPLAY_NAMES` above, so `core/` does not import from the
- * `routes/` layer; an unknown value renders verbatim rather than being
+ * `DERIVED_FROM_DISPLAY_NAMES` above, so management-fe's `core/` does not
+ * import from its `routes/` layer; an unknown value renders verbatim rather than being
  * dropped.
  */
 const QUERY_SECTION_DISPLAY_NAMES = {
@@ -223,7 +235,7 @@ const NO_SNAPSHOT_CONTEXT_ACTIONS = new Set([
 
 /**
  * Build the context-block "State" row for a single audit entry from that
- * entry's OWN `stateId` (epr-rr9s): the work-item state as-of the event,
+ * entry's OWN `stateId` (management-fe's epr-rr9s): the work-item state as-of the event,
  * resolved to a display name via the SAME state-definition machinery the
  * controller uses for the live state. Returns null when the row should be
  * omitted:
@@ -417,11 +429,6 @@ function actionDisplayNameFor(entry) {
   return ACTION_DISPLAY_NAMES[entry.action] ?? entry.action ?? ''
 }
 
-/**
- * Build a one-line summary of an audit entry from its `action` and
- * `details`. Falls back to an empty string when there is nothing useful to
- * add (the template already shows the action display name).
- */
 // Admin UI: shown in place of an assignee an "assigned" entry doesn't name.
 export const ASSIGNEE_MISSING = 'Missing from audit entry'
 
@@ -436,6 +443,11 @@ const assigneeOf = (details) => details.assigneeName ?? details.assigneeId
 export const isAssignmentWithoutAssignee = (entry) =>
   entry.action === ACTION_ASSIGNED && assigneeOf(entry.details) == null
 
+/**
+ * Build a one-line summary of an audit entry from its `action` and
+ * `details`. Falls back to an empty string when there is nothing useful to
+ * add (the template already shows the action display name).
+ */
 export function summariseAuditEntry(entry) {
   if (entry == null || typeof entry !== 'object') {
     return ''

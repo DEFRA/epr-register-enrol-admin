@@ -1,4 +1,4 @@
-// Ported from management-fe (origin/main b0b9694), src/server/work-items/core/audit-log-delivery.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/server/work-items/core/audit-log-delivery.js. A copy: there is no shared package to import it from.
 /**
  * Audit log detail rows for delivery to systems outside the Case Management
  * service: GOV.UK Notify notifications and Registration & Accreditation

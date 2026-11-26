@@ -1,6 +1,10 @@
-{# Ported from management-fe (origin/main b0b9694), src/server/routes/work-items/summary-macros.njk. A copy: there is no shared package to import it from. Admin UI change: documentItem never links to a download. #}
+{# Ported from management-fe (origin/main 0bd3b85), src/server/routes/work-items/summary-macros.njk. A copy: there is no shared package to import it from. #}
+{# Admin UI changes: documentItem never links to a download; a clean   #}
+{# file has no tag (management-fe links it, with no tag), and one with  #}
+{# no scan status says so. The templates named below are management-fe's; #}
+{# the Admin UI's is partials/work-items/regulator-view.njk.            #}
 {# ------------------------------------------------------------------- #}
-{# Summary fragments shared by the work item detail templates: the     #}
+{# Summary fragments shared by management-fe's work item templates: the #}
 {# generic (re-accreditation) Application summary in `detail.njk`, the  #}
 {# add-ORS one in `add-overseas-site/detail-v1.njk` (RA-739) and the     #}
 {# Accreditation summary tab in `accreditation-summary.njk` (RA-769).    #}
@@ -26,7 +30,8 @@
 {# the word "NEW:" is still there for a colour-blind user, a screen-reader   #}
 {# user, and anyone copying the value out. That is precisely what makes      #}
 {# colouring it safe. The contrast working — measured against this page's    #}
-{# GREY background, not white — is in `_work-items.scss`.                    #}
+{# GREY background, not white — is in `_work-items.scss` (Admin UI:    #}
+{# `_work-item.scss`).                                                       #}
 {#                                                                          #}
 {# An icon was raised and deferred by the requester ("bigger fish to fry").  #}
 {# If one is ever added it belongs inside this macro, beside the text and    #}
@@ -61,11 +66,14 @@
 {% macro documentItem(file, showUpdated=false, showDates=false, newTestId='') %}
   <li>
     {% if newTestId %}{{ newPrefix(newTestId) }}{% endif %}
-    {# Admin UI: never a download link; the Regulator view reads, and does not fetch documents. #}
+    {# Admin UI: never a download link; the Regulator view reads, and does  #}
+    {# not fetch documents. Where management-fe links a clean file, the    #}
+    {# file name is shown without a tag, as there; a file not yet clean has #}
+    {# its scan tag, as there; a missing scan status is shown as missing.   #}
     <span data-testid="app-detail-document">{{ file.filename }}</span>
     {% if file.scanStatusMissing %}
       <strong class="app-missing" data-testid="app-detail-scan-status-missing">Scan status missing</strong>
-    {% else %}
+    {% elif file.scanStatus != 'Clean' %}
       {{ govukTag({ text: file.scanStatus, classes: file.scanTagClass }) }}
     {% endif %}
     {% if showUpdated and (file.uploadedAt or file.uploadedBy) %}

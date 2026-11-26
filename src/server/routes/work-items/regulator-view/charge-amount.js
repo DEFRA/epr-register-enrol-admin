@@ -1,4 +1,4 @@
-// Ported from management-fe (origin/main b0b9694), src/server/common/helpers/format/charge-amount.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/server/common/helpers/format/charge-amount.js. A copy: there is no shared package to import it from.
 // Lifted out of the re-accreditation duly-making module (RA-493) so the
 // generic case header can format the charge without a route depending on a
 // work item module.

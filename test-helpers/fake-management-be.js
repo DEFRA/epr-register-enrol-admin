@@ -284,6 +284,27 @@ export function workItemResponse(overrides = {}, payload = {}) {
   }
 }
 
+/**
+ * A ProblemDetails response as management-be sends one
+ * (application/problem+json), with its `errorCode` extension when given. A
+ * 404 without one is what ASP.NET's status code pages send for a route
+ * management-be doesn't have.
+ *
+ * @param {number} status
+ * @param {string} [errorCode] e.g. work-item-not-found
+ */
+export const problem = (status, errorCode) =>
+  HttpResponse.json(
+    {
+      type: 'https://tools.ietf.org/html/rfc9110',
+      title: 'Problem',
+      status,
+      traceId: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+      ...(errorCode && { errorCode })
+    },
+    { status, headers: { 'content-type': 'application/problem+json' } }
+  )
+
 /** The previous year's accreditation, as GET .../prior-year returns it. */
 export const priorYear = () => ({
   year: 2026,

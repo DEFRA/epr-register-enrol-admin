@@ -12,11 +12,7 @@ export const WORK_ITEMS_PATH = '/work-items'
 // /work-items/re-accreditation/states lists.
 export const RE_ACCREDITATION = 're-accreditation'
 
-/**
- * A work item page's address (RA-752).
- *
- * @param {string} id the work item's ID
- */
+/** @param {string} id the work item's ID */
 export const workItemHref = (id) =>
   `${WORK_ITEMS_PATH}/${encodeURIComponent(id)}`
 

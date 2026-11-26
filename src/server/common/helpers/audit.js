@@ -42,7 +42,8 @@ export function auditSearch(action, user, criteria) {
  * @param {'view-legacy-accreditation-application' | 'view-case-management-work-item'} action which kind of record
  * @param {{ id: string, email: string }} user who viewed it
  * @param {{ reference: string } | { workItemId: string }} record the identifier asked for
- * @param {'found' | 'not-found' | 'unavailable'} outcome
+ * @param {'found' | 'not-found' | 'tab-not-found' | 'unavailable'} outcome
+ *   tab-not-found: a work item that exists, asked for with a tab it doesn't have
  */
 export function auditRecordView(action, user, record, outcome) {
   audit({

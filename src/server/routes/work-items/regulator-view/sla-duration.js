@@ -1,4 +1,4 @@
-// Ported from management-fe (origin/main b0b9694), src/server/work-items/core/sla-duration.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/server/work-items/core/sla-duration.js. A copy: there is no shared package to import it from.
 import { formatDateGds } from '#/config/nunjucks/filters/format-date.js'
 
 /**

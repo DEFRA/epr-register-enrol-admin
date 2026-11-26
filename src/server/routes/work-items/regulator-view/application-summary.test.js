@@ -1,4 +1,7 @@
-// Ported from management-fe (origin/main b0b9694), src/server/routes/work-items/application-summary.test.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/server/routes/work-items/application-summary.test.js. A copy: there is no shared package to import it from.
+// Admin UI changes, besides import paths, as application-summary.js changes:
+// the file tests expect no download link (and so no longer check the file's
+// ID), and a file with no scan status to be shown as missing it, not Pending.
 import { describe, expect, test } from 'vitest'
 
 import { realOperatorSubmissionPayload } from '#/test-helpers/real-operator-submission-payload.js'
@@ -323,7 +326,7 @@ describe('#deriveSiteAddressLines / #deriveSiteAddress (RA-447 CM2)', () => {
   })
 
   // RA-447 standardises on `isExporterApplication`'s case-insensitive match,
-  // where the pre-RA-447 local check in additional-information.controller.js
+  // where the pre-RA-447 local check in management-fe's additional-information.controller.js
   // was exact-case only.
   test('is case-insensitive, matching isExporterApplication', () => {
     const payload = { wasteProcessingType: 'Exporter' }

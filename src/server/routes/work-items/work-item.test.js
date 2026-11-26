@@ -17,6 +17,7 @@ import { recordLogs } from '#/test-helpers/record-logs.js'
 import { signIn, supportUser, useFakeEntra } from '#/test-helpers/fake-entra.js'
 import {
   WORK_ITEM_ID,
+  problem,
   useFakeWorkItem,
   workItemResponse
 } from '#/test-helpers/fake-management-be.js'
@@ -189,7 +190,7 @@ describe('Viewing a case management work item', () => {
   describe('a work item that cannot be shown (AC04)', () => {
     test('says so for an ID no work item has, and records the view', async () => {
       useFakeWorkItem({
-        workItem: () => new HttpResponse(null, { status: 404 })
+        workItem: () => problem(404, 'work-item-not-found')
       })
 
       const { response, $ } = await get(PAGE)
@@ -221,27 +222,77 @@ describe('Viewing a case management work item', () => {
       }
     )
 
-    test('says so for a Regulator view tab there is no such thing as', async () => {
+    const addOverseasSite = () =>
+      HttpResponse.json(
+        workItemResponse({ typeId: 'add-overseas-site' }, { site: {} })
+      )
+
+    test.each([
+      ['a tab there is no such thing as', '?tab=recycling-operations', {}],
+      ['an empty tab', '?tab=', {}],
+      ['two tabs', '?tab=application-summary&tab=application-history', {}],
+      [
+        "a tab the work item's type does not have, as Case management",
+        '?tab=additional-information',
+        { workItem: addOverseasSite }
+      ]
+    ])(
+      'says the work item has no such tab for %s, links to the work item, and records it',
+      async (_case, query, respond) => {
+        const requests = useFakeWorkItem(respond)
+
+        const { response, $ } = await get(`${PAGE}${query}`)
+
+        expect(response.statusCode).toBe(404)
+        expect(response.headers['cache-control']).toBe('no-store')
+        expect(text($, 'h1')).toBe('Tab not found')
+        expect(text($, '[data-testid="tab-not-found"]')).toBe(
+          `Work item ${WORK_ITEM_ID} has no such tab in its Regulator view.`
+        )
+        expect($('[data-testid="work-item-link"]').attr('href')).toBe(PAGE)
+        expect(viewAudits().map(({ context }) => context)).toEqual([
+          { workItemId: WORK_ITEM_ID, outcome: 'tab-not-found' }
+        ])
+        expect(requests.priorYear).toEqual([])
+        expect(errorLogs()).toEqual([])
+      }
+    )
+
+    test('opens the tab asked for, whatever else the link carries', async () => {
       useFakeWorkItem()
 
-      const { response, $ } = await get(`${PAGE}?tab=recycling-operations`)
+      const { response, $ } = await get(
+        `${PAGE}?tab=application-history&utm_source=email`
+      )
 
-      expect(response.statusCode).toBe(404)
-      expect(text($, 'h1')).toBe('Work item not found')
+      expect(response.statusCode).toBe(200)
+      expect(
+        squash($('[data-testid="case-tabs"] [aria-current="page"]').text())
+      ).toBe('Application history')
+      expect(viewAudits().map(({ context }) => context)).toEqual([
+        { workItemId: WORK_ITEM_ID, outcome: 'found' }
+      ])
     })
 
-    test("says so for a tab the work item's type does not have, as Case management does", async () => {
-      useFakeWorkItem({
-        workItem: () =>
-          HttpResponse.json(
-            workItemResponse({ typeId: 'add-overseas-site' }, { site: {} })
-          )
-      })
+    test.each([
+      ['in upper case', WORK_ITEM_ID.toUpperCase()],
+      ['in braces', `{${WORK_ITEM_ID}}`]
+    ])(
+      "opens the work item's own ID for one written another way (%s), and records the view only there",
+      async (_case, id) => {
+        useFakeWorkItem()
 
-      const { response } = await get(`${PAGE}?tab=additional-information`)
+        const { response } = await get(
+          `/work-items/${encodeURIComponent(id)}?tab=application-history`
+        )
 
-      expect(response.statusCode).toBe(404)
-    })
+        expect(response.statusCode).toBe(302)
+        expect(response.headers.location).toBe(
+          `${PAGE}?tab=application-history`
+        )
+        expect(viewAudits()).toEqual([])
+      }
+    )
   })
 
   describe('when Case management cannot be read (AC05)', () => {
@@ -257,6 +308,18 @@ describe('Viewing a case management work item', () => {
         'refuses the Admin UI with 403',
         () => new HttpResponse(null, { status: 403 }),
         'returned 403'
+      ],
+      [
+        // A route management-be doesn't have (a wrong path prefix), or a
+        // proxy: not a work item that is missing.
+        'answers 404 without saying the work item is not found',
+        () => problem(404),
+        'returned 404'
+      ],
+      [
+        'answers 404 for something other than the work item',
+        () => problem(404, 'prior-year-not-found'),
+        'returned 404'
       ],
       ['cannot be reached', () => HttpResponse.error(), 'failed (TypeError)'],
       [
@@ -501,7 +564,7 @@ describe('Viewing a case management work item', () => {
       expect(errorLogs()).toEqual([
         `${UPSTREAM} work item has a type the Admin UI does not know (mystery-type)`
       ])
-      // Finding 5: no default layout for a type the Admin UI doesn't know.
+      // No default layout for a type the Admin UI doesn't know.
       // coreDetails' error log above is the only one.
       expect(text($, '[data-testid="regulator-view-unsupported"]')).toBe(
         'This work item type has no Regulator view in the Admin UI.'
@@ -531,6 +594,25 @@ describe('Viewing a case management work item', () => {
       expect(document).toContain('  "auditLog": [\n')
       expect(document).toContain('      "action": "status-push-sent",\n')
       expect(document).toContain('  "slaState": "OnTrack",\n')
+    })
+
+    test('shows an extended JSON value as the object management-be sent, not as a Mongo shell value', async () => {
+      useFakeWorkItem({
+        workItem: () =>
+          HttpResponse.json(
+            workItemResponse(
+              {},
+              { accreditationStartDate: { $date: '2027-01-01T00:00:00Z' } }
+            )
+          )
+      })
+
+      const { $ } = await get(PAGE)
+
+      expect(documentText($)).toContain(
+        '    "accreditationStartDate": {\n      "$date": "2027-01-01T00:00:00Z"\n    }\n'
+      )
+      expect(documentText($)).not.toContain('ISODate')
     })
 
     test("masks people's names and email addresses (AC10)", async () => {
@@ -623,8 +705,10 @@ describe('Viewing a case management work item', () => {
         ['PRN authorisers', 'P** A*********'],
         ['Authority to issue', 'P** A********* (p***@e******.com)'],
         [
+          // A clean file has no tag, as Case management shows it (where it
+          // is a download link).
           'Sampling and inspection plan',
-          'sampling-plan.pdf Clean Updated 30 September 2026 at 11:00am'
+          'sampling-plan.pdf Updated 30 September 2026 at 11:00am'
         ],
         [
           'Business plan',
@@ -643,9 +727,36 @@ describe('Viewing a case management work item', () => {
       ])
     })
 
+    test('tags a document that is not yet clean with its scan status, as Case management does', async () => {
+      useFakeWorkItem({
+        workItem: () =>
+          HttpResponse.json(
+            workItemResponse(
+              {},
+              {
+                samplingPlan: {
+                  files: [
+                    { filename: 'pending.pdf', scanStatus: 'Pending' },
+                    { filename: 'infected.pdf', scanStatus: 'Infected' }
+                  ]
+                }
+              }
+            )
+          )
+      })
+
+      const { $ } = await get(PAGE)
+
+      expect(
+        $('[data-testid="app-detail-value-sampling-inspection-plan"] li')
+          .map((_i, item) => squash($(item).text()))
+          .get()
+      ).toEqual(['pending.pdf Pending', 'infected.pdf Infected'])
+    })
+
     test('leaves the previous year out when management-be has none for it, as Case management does', async () => {
       useFakeWorkItem({
-        priorYear: () => new HttpResponse(null, { status: 404 })
+        priorYear: () => problem(404, 'prior-year-not-found')
       })
 
       const { $ } = await get(PAGE)
@@ -655,19 +766,92 @@ describe('Viewing a case management work item', () => {
       expect(errorLogs()).toEqual([])
     })
 
-    test('says when the previous year is unavailable, and logs it', async () => {
+    test.each([
+      ['ReEx is unavailable', () => problem(502, 'reex-unavailable'), 502],
+      [
+        'management-be no longer has the work item',
+        () => problem(404, 'work-item-not-found'),
+        404
+      ],
+      [
+        // A route management-be doesn't have, or a proxy.
+        'management-be answers 404 without saying why',
+        () => problem(404),
+        404
+      ]
+    ])(
+      'says when the previous year is unavailable because %s, and logs it',
+      async (_case, respond, status) => {
+        useFakeWorkItem({ priorYear: respond })
+
+        const { $ } = await get(PAGE)
+
+        expect($('[data-testid="prior-year-heading"]')).toHaveLength(0)
+        expect(bannerText($)).toBe(
+          "Important The previous year's accreditation is unavailable right now, so the Regulator view leaves it out. Try again later."
+        )
+        expect(errorLogs()).toEqual([
+          `${UPSTREAM} GET /work-items/re-accreditation/{id}/prior-year returned ${status}`
+        ])
+        expect(viewAudits().map(({ context }) => context.outcome)).toEqual([
+          'found'
+        ])
+      }
+    )
+
+    test.each(['application-history', 'additional-information'])(
+      'does not ask for the previous year on the %s tab, which does not show it, as Case management',
+      async (tab) => {
+        const requests = useFakeWorkItem({
+          priorYear: () => problem(502, 'reex-unavailable')
+        })
+
+        const { $ } = await get(`${PAGE}?tab=${tab}`)
+
+        expect(requests.priorYear).toEqual([])
+        expect($('[data-testid="unavailable"]')).toHaveLength(0)
+        expect(errorLogs()).toEqual([])
+      }
+    )
+
+    test("still shows the core details and the Document tab when the Regulator view can't be built, and logs it", async () => {
+      // A { $date } where management-fe's view code expects a string.
       useFakeWorkItem({
-        priorYear: () => new HttpResponse(null, { status: 502 })
+        workItem: () =>
+          HttpResponse.json(
+            workItemResponse(
+              {},
+              {
+                samplingPlan: {
+                  files: [
+                    {
+                      filename: 'sampling-plan.pdf',
+                      scanStatus: 'Clean',
+                      uploadedAt: { $date: '2026-09-30T10:00:00Z' }
+                    }
+                  ]
+                }
+              }
+            )
+          )
       })
 
-      const { $ } = await get(PAGE)
+      const { response, $ } = await get(PAGE)
 
-      expect($('[data-testid="prior-year-heading"]')).toHaveLength(0)
-      expect(bannerText($)).toBe(
-        "Important The previous year's accreditation is unavailable right now, so the Regulator view leaves it out. Try again later."
+      expect(response.statusCode).toBe(200)
+      expect(text($, '[data-testid="regulator-view-failed"]')).toBe(
+        "The Regulator view of this work item can't be shown. The Document tab shows the work item as Case management sends it."
+      )
+      expect($('[data-testid="case-header"]')).toHaveLength(0)
+      expect(coreDetails($)[0]).toEqual(['Work item ID', WORK_ITEM_ID])
+      expect($('[data-testid="document"]').text()).toContain(
+        '"uploadedAt": {\n'
       )
       expect(errorLogs()).toEqual([
-        `${UPSTREAM} GET /work-items/re-accreditation/{id}/prior-year returned 502`
+        `${UPSTREAM} work item could not be shown in the Regulator view (TypeError: Expected a Date or an ISO-8601 string to format, got object)`
+      ])
+      expect(viewAudits().map(({ context }) => context.outcome)).toEqual([
+        'found'
       ])
     })
 
@@ -774,6 +958,29 @@ describe('Viewing a case management work item', () => {
         'A notification email for this application could not be sent.'
       )
     })
+
+    test.each(['application-history', 'additional-information'])(
+      'shows no banners on the %s tab, as Case management shows them on the summary only',
+      async (tab) => {
+        useFakeWorkItem({
+          workItem: () =>
+            HttpResponse.json(
+              workItemResponse(
+                { stateId: 'approved-pending-contact' },
+                { accreditationId: 'A27ER5001120246PL' }
+              )
+            )
+        })
+
+        const { $ } = await get(`${PAGE}?tab=${tab}`)
+
+        expect(
+          $(
+            '[data-testid="work-item-notification-failed-banner"], [data-testid="standard-lifecycle-pending-contact-banner"]'
+          )
+        ).toHaveLength(0)
+      }
+    )
 
     test('shows an add overseas site work item with its own header and summary, as Case management does', async () => {
       useFakeWorkItem({

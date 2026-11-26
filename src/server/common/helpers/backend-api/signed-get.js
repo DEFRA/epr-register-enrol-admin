@@ -3,10 +3,12 @@ import { withTraceId } from '@defra/hapi-tracing'
 import { config } from '#/config/config.js'
 import { signRequestHeaders } from './sign-request.js'
 
-// A problem body's code (e.g. invalid_signature) and traceId say what went
-// wrong, and neither holds personal data. Only values shaped like those are
-// logged, never the body itself.
-const PROBLEM_CODE = /^[a-z][a-z_]{0,63}$/
+// A problem body's code and traceId say what went wrong, and neither holds
+// personal data. Only values shaped like those are logged, never the body
+// itself. epr-register-enrol-backend sends its code as `code`, snake_case
+// (e.g. invalid_signature); epr-register-enrol-management-be sends its as the
+// `errorCode` extension, kebab-case (e.g. work-item-not-found).
+const PROBLEM_CODE = /^[a-z][a-z_-]{0,63}$/
 // A .NET backend's traceId is a W3C trace ID (00-<trace>-<span>-<flags>), or
 // Kestrel's connection:request identifier when there's no trace.
 const TRACE_ID =
@@ -16,7 +18,7 @@ async function problemFields(response) {
   const body = await response.json().catch(() => undefined)
   const ifMatches = (value, pattern) =>
     typeof value === 'string' && pattern.test(value) ? value : undefined
-  const code = ifMatches(body?.code, PROBLEM_CODE)
+  const code = ifMatches(body?.code ?? body?.errorCode, PROBLEM_CODE)
   const id = ifMatches(body?.traceId, TRACE_ID)
   return code || id ? { error: { code, id } } : {}
 }

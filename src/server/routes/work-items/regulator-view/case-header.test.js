@@ -1,7 +1,15 @@
-// Ported from management-fe (origin/main b0b9694)
-// src/server/routes/work-items/case-header.test.js. Admin UI changes: the
-// tab and state-name tests at the end, for the Admin UI's tabs (RA-752 AC09)
-// and state names from management-be.
+// Ported from management-fe (origin/main 0bd3b85), src/server/routes/work-items/case-header.test.js. A copy: there is no shared package to import it from.
+// Admin UI changes, besides import paths, as case-header.js changes:
+// - nothing is registered first (work-item-types.js is static), and each
+//   work item names its type;
+// - the two application reference fallback tests are replaced by a missing
+//   reference (re-accreditation) and no reference (add-ORS) test;
+// - unparseable header and payment dates are expected to throw;
+// - the #buildCaseTabs, state name and type tab tests are the Admin UI's:
+//   its three tabs as ?tab= links, add-ORS's two, and state names from
+//   management-be's list. management-fe's caseHasTab, hidden-tab and
+//   four-tab tests are left out with the code they test.
+// - management-fe's re-accreditation/create/schema.js is named as its.
 import { describe, expect, test } from 'vitest'
 
 import {
@@ -39,8 +47,9 @@ describe('#formatHeaderDate (RA-295 AC01)', () => {
     expect(formatHeaderDate(undefined)).toBe(EM_DASH)
   })
 
-  test('renders an em dash rather than throwing on an unparseable value', () => {
-    expect(formatHeaderDate('not-a-date')).toBe(EM_DASH)
+  // Admin UI: management-fe renders an em dash for it.
+  test('throws on an unparseable value, rather than rendering an em dash', () => {
+    expect(() => formatHeaderDate('not-a-date')).toThrow(RangeError)
   })
 })
 
@@ -59,8 +68,11 @@ describe('#formatPaymentDate (RA-493)', () => {
     expect(formatPaymentDate({ paymentDate: '2026-11-01' })).toBe('01 Nov 2026')
   })
 
-  test('shows "Not received" rather than throwing on an unparseable payment date', () => {
-    expect(formatPaymentDate({ paymentDate: 'not-a-date' })).toBe(NOT_RECEIVED)
+  // Admin UI: management-fe shows "Not received" for it.
+  test('throws on an unparseable payment date, rather than showing "Not received"', () => {
+    expect(() => formatPaymentDate({ paymentDate: 'not-a-date' })).toThrow(
+      RangeError
+    )
   })
 
   test('unwraps the Mongo extended-JSON date shape', () => {
@@ -333,7 +345,7 @@ describe('#buildCaseHeader (RA-295 AC01)', () => {
   // RA-503: operatorOrganisationId means two different things depending on how the work item
   // was created — ReEx's internal ObjectId for a real operator submission (never safe to show),
   // or a genuine 6-digit organisation number for a case-management admin-created item (RA-448
-  // validates this shape before submission, see re-accreditation/create/schema.js). Shape alone
+  // validates this shape before submission, see management-fe's re-accreditation/create/schema.js). Shape alone
   // tells the two apart: an ObjectId can never match ^\d{6}$.
   describe('organisation id resolution (RA-503)', () => {
     test('prefers operatorOrgNumber when present, even alongside an ObjectId-shaped operatorOrganisationId', () => {

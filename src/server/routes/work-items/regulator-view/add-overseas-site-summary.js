@@ -1,11 +1,12 @@
-// Ported from management-fe (origin/main b0b9694), src/server/routes/add-overseas-site/application-summary.js. A copy: there is no shared package to import it from.
-// Admin UI changes: files carry no download link; state ids come from work-item-types.js.
+// Ported from management-fe (origin/main 0bd3b85), src/server/routes/add-overseas-site/application-summary.js. A copy: there is no shared package to import it from.
+// Admin UI changes, besides import paths: files carry no download link, so no
+// work item ID is passed down to besFileViewModel; the approved states are
+// work-item-types.js's APPROVED_STATE_IDS, not a set of its own; and a Valid
+// from or BES date that cannot be parsed throws (format-date.js), where
+// management-fe leaves it out or shows the em dash.
 import { formatDateShortGds } from '#/config/nunjucks/filters/format-date.js'
 import { formatHeaderDate } from './case-header.js'
-import {
-  STATE_APPROVED,
-  STATE_APPROVED_PENDING_CONTACT
-} from './work-item-types.js'
+import { APPROVED_STATE_IDS } from './work-item-types.js'
 import {
   EM_DASH,
   buildInterimSites,
@@ -49,12 +50,6 @@ export function buildAddOverseasSiteSummary({ workItem }) {
     )
   }
 }
-
-// "Approved" (awaiting the applicant contact) and "Granted".
-const APPROVED_STATE_IDS = new Set([
-  STATE_APPROVED_PENDING_CONTACT,
-  STATE_APPROVED
-])
 
 /**
  * The Valid from date: the
@@ -195,7 +190,7 @@ function besFilesOf(site) {
   return Array.isArray(files) ? files : []
 }
 
-/** The shared file view model (Clean-only link), plus the BES dates. */
+/** The shared file view model, plus the BES dates. */
 function besFileViewModel(file) {
   return {
     ...fileViewModel(file),

@@ -1,4 +1,4 @@
-// Ported from management-fe (origin/main b0b9694), src/server/work-items/core/state-badge.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/server/work-items/core/state-badge.js. A copy: there is no shared package to import it from.
 // The neutral grey tag. Used both by the states that deliberately render grey
 // and as the fallback for an unrecognised state id (see `stateTagClass`).
 const DEFAULT_STATE_TAG_CLASS = 'govuk-tag--grey'

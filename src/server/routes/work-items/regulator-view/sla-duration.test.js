@@ -1,4 +1,5 @@
-// Ported from management-fe (origin/main b0b9694), src/server/work-items/core/sla-duration.test.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/server/work-items/core/sla-duration.test.js. A copy: there is no shared package to import it from.
+// Admin UI changes: import paths only.
 import { parseSlaDurationMs, slaDeadlineDisplay } from './sla-duration.js'
 
 const HOUR_MS = 3_600_000

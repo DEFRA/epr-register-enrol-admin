@@ -203,10 +203,11 @@ export async function searchWorkItems(
   return result.ok ? { ok: true, page: result.body } : result
 }
 
-// management-be answers an unknown work item ID with a bare 404 and no
-// problem code (RA-752 ticket, technical notes; WorkItemEndpoints.GetById),
-// so any 404 from a work item's own GET is that work item not existing.
-const anyNotFound = () => true
+// management-be names why it answered 404 in the problem's `errorCode`. Only
+// that code means the record is not there: a 404 without it (a route
+// management-be doesn't have, a wrong path prefix, a proxy) is a failure,
+// shown as the banner and logged, not read as "no such record".
+const notFoundCode = (code) => (problem) => problem.error?.code === code
 
 // What the work item page reads from a work item (WorkItemResponse in
 // management-be). The rest of the projection is shown as it comes, in the
@@ -253,7 +254,11 @@ export async function getWorkItem(id, user, logger) {
     managementBe(asUser),
     `/work-items/${encodeURIComponent(id)}`,
     logger,
-    { logPath, schema: workItemSchema, isNotFound: anyNotFound }
+    {
+      logPath,
+      schema: workItemSchema,
+      isNotFound: notFoundCode('work-item-not-found')
+    }
   )
   return result.ok ? { ok: true, workItem: result.body } : result
 }
@@ -271,10 +276,10 @@ const priorYearSchema = Joi.object({
  * The previous year's accreditation for a re-accreditation work item, read
  * live from ReEx by management-be
  * (`GET /work-items/re-accreditation/{id}/prior-year`). management-be
- * answers 404 when the work item has none (it was created by form, or ReEx
- * has no record), which is not a failure: management-fe leaves the section
- * out then, and so does the Admin UI. Called only once getWorkItem has
- * read the work item, as the same user, so the user has an ID and a name.
+ * answers 404 `prior-year-not-found` when the work item has none (it was
+ * created by form, or ReEx has no record), which is not a failure:
+ * management-fe leaves the section out then, and so does the Admin UI. It
+ * answers 502 `reex-unavailable` when it could not ask ReEx, which is.
  *
  * @param {string} id the work item's ID, a GUID
  * @param {{ id: string, name: string }} user the signed-in user
@@ -283,13 +288,22 @@ const priorYearSchema = Joi.object({
  */
 export async function getReAccreditationPriorYear(id, user, logger) {
   const logPath = '/work-items/re-accreditation/{id}/prior-year'
-  // The user getWorkItem has already checked, trimmed as it was sent there.
   const asUser = signedInUser(user, logPath, logger)
+  if (!asUser) {
+    return { ok: false }
+  }
   const result = await signedGet(
     managementBe(asUser),
     `/work-items/re-accreditation/${encodeURIComponent(id)}/prior-year`,
     logger,
-    { logPath, schema: priorYearSchema, isNotFound: anyNotFound }
+    {
+      logPath,
+      schema: priorYearSchema,
+      // The work item has no previous year (it was created by form, or ReEx
+      // has no record of one). A work item that is gone between the two
+      // reads answers work-item-not-found, which is a failure here.
+      isNotFound: notFoundCode('prior-year-not-found')
+    }
   )
   return result.ok ? { ok: true, priorYear: result.body } : result
 }

@@ -1,6 +1,7 @@
-// Ported from management-fe (origin/main b0b9694)
-// src/server/routes/add-overseas-site/case-header.test.js; the Admin UI's
-// type lookup is static, so nothing is registered first.
+// Ported from management-fe (origin/main 0bd3b85), src/server/routes/add-overseas-site/case-header.test.js. A copy: there is no shared package to import it from.
+// Admin UI changes, besides import paths: nothing is registered first
+// (work-item-types.js is static), and decorateForCaseHeader is given the
+// state names management-be's state list would give (STATE_NAMES).
 import { describe, expect, test } from 'vitest'
 
 import { NOT_RECEIVED, decorateForCaseHeader } from './case-header.js'

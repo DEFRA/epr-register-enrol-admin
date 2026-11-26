@@ -1,7 +1,7 @@
 /**
- * A stored document or a backend's JSON as lines to show on a page, as the
- * Mongo shell would print it: the Legacy Record page's stored document
- * (RA-750) and the work item page's Document tab (RA-752).
+ * A document as lines to show on a page: a Legacy application as the Mongo
+ * shell would print it (the Record page, RA-750), or a work item as the JSON
+ * management-be sends (the work item page's Document tab, RA-752).
  */
 // Enums the Legacy collection stores as numbers, by the field they are under,
 // in the backend's order (docs/openapi/admin-api.yaml in
@@ -60,22 +60,11 @@ function shellValue(value) {
   }
 }
 
-/**
- * The document as lines to show, each with its indent, field name, value and,
- * for an enum stored as a number, the enum's name. Empty values are shown as
- * they are stored.
- *
- * @param {object} document relaxed extended JSON, or plain JSON
- * @param {object} [options]
- * @param {Record<string, string[]>} [options.numberedEnums] the enums stored
- *   as numbers, by the field they are under: Legacy's by default; a work item
- *   stores its enums as names, so it has none
- * @returns {{ indent: string, key?: string, text: string, type: string, enumName?: string, comma: boolean }[]}
- */
-export function documentLines(
-  document,
-  { numberedEnums = NUMBERED_ENUMS } = {}
-) {
+// The document as lines, each with its indent, field name, value and, for an
+// enum stored as a number, the enum's name. Empty values are shown as they
+// are. typedValue writes an extended JSON value ({ $date }, …) as one value,
+// or leaves it to be shown as the object it is.
+function lines(document, { numberedEnums, typedValue }) {
   const enumName = (key, value) =>
     Number.isInteger(value) ? numberedEnums[key]?.[value] : undefined
   const lines = []
@@ -109,9 +98,9 @@ export function documentLines(
       return add(depth, undefined, ']', 'punctuation')
     }
     if (typeof value === 'object') {
-      const shell = shellValue(value)
-      if (shell) {
-        return add(depth, key, shell, 'typed')
+      const typed = typedValue(value)
+      if (typed) {
+        return add(depth, key, typed, 'typed')
       }
       const entries = Object.entries(value)
       if (entries.length === 0) {
@@ -141,3 +130,24 @@ export function documentLines(
   walk(document, 0)
   return lines
 }
+
+/**
+ * A Legacy application, as relaxed extended JSON, as the Mongo shell would
+ * print it, with each enum Legacy stores as a number named.
+ *
+ * @param {object} document relaxed extended JSON
+ * @returns {{ indent: string, key?: string, text: string, type: string, enumName?: string, comma: boolean }[]}
+ */
+export const documentLines = (document) =>
+  lines(document, { numberedEnums: NUMBERED_ENUMS, typedValue: shellValue })
+
+/**
+ * JSON as it was sent: RA-752 AC08's "formatted JSON". A work item stores
+ * its enums as names, and any extended JSON value in it ({ "$date": … }) is
+ * shown as the object management-be sent.
+ *
+ * @param {object} value plain JSON
+ * @returns {{ indent: string, key?: string, text: string, type: string, comma: boolean }[]}
+ */
+export const jsonLines = (value) =>
+  lines(value, { numberedEnums: {}, typedValue: () => undefined })

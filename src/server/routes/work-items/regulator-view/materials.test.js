@@ -1,4 +1,5 @@
-// Ported from management-fe (origin/main b0b9694), src/server/work-items/core/materials.test.js. A copy: there is no shared package to import it from.
+// Ported from management-fe (origin/main 0bd3b85), src/server/work-items/core/materials.test.js. A copy: there is no shared package to import it from.
+// Admin UI changes: only the materialLabel tests, as materials.js has only materialLabel.
 import { describe, test, expect } from 'vitest'
 
 import { materialLabel } from './materials.js'

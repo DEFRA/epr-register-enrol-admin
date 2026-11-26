@@ -9,8 +9,16 @@ import {
   recordHref,
   statusTag
 } from '#/server/common/helpers/legacy-application.js'
-
-export const PAGE_SIZE = 50
+import {
+  asList,
+  formErrors,
+  labelOf,
+  listOf,
+  pageHref,
+  searchTerm,
+  without
+} from '#/server/common/helpers/search-form.js'
+import { ukDateTime } from '#/server/common/helpers/uk-date-time.js'
 
 // The fields q can search, in the order the form shows them.
 export const SEARCH_FIELDS = [
@@ -32,27 +40,8 @@ export function accreditationYears(today = new Date()) {
   return Array.from({ length: last - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i)
 }
 
-const optionFor = (options, value) =>
-  options.find((option) => option.value === value)
-
-const labelOf = (options, value) => optionFor(options, value).text
-
-const listOf = (options) =>
-  Joi.array()
-    .single()
-    .items(Joi.string().valid(...options.map((option) => option.value)))
-    .unique()
-    .default([])
-
 export const searchQuery = Joi.object({
-  // The backend refuses a control character (char.IsControl) in q, so it is
-  // a form error here rather than a failed search.
-  q: Joi.string()
-    .trim()
-    .max(100)
-    .pattern(/^\P{Cc}*$/u, 'no control characters')
-    .allow('')
-    .default(''),
+  q: searchTerm,
   searchFields: listOf(SEARCH_FIELDS),
   status: listOf(STATUSES),
   year: Joi.number().integer().min(2000).max(9999).empty(''),
@@ -68,12 +57,6 @@ const ERROR_MESSAGES = {
   page: 'Page must be a whole number, 1 or more'
 }
 
-// Where one field can be wrong in more than one way, the message for each.
-const ERROR_MESSAGES_BY_TYPE = {
-  'q:string.pattern.name':
-    'Search must not include line breaks, tabs or other hidden characters'
-}
-
 // Where each error summary entry takes the user.
 const ERROR_TARGETS = {
   q: '#q',
@@ -82,22 +65,11 @@ const ERROR_TARGETS = {
   year: '#year'
 }
 
-export function searchErrors(validationError) {
-  const typeOf = new Map(
-    validationError.details.map((detail) => [detail.path[0], detail.type])
-  )
-  return Object.keys(ERROR_MESSAGES)
-    .filter((field) => typeOf.has(field))
-    .map((field) => ({
-      field,
-      text:
-        ERROR_MESSAGES_BY_TYPE[`${field}:${typeOf.get(field)}`] ??
-        ERROR_MESSAGES[field],
-      href: ERROR_TARGETS[field]
-    }))
-}
-
-const asList = (value) => [value ?? []].flat()
+export const searchErrors = (validationError) =>
+  formErrors(validationError, {
+    messages: ERROR_MESSAGES,
+    targets: ERROR_TARGETS
+  })
 
 /**
  * The form as the user sent it, to show it back to them when it was not
@@ -112,16 +84,8 @@ export function formFromRawQuery(query) {
   }
 }
 
-export function searchHref({ page, ...criteria }) {
-  const params = searchCriteriaParams(criteria)
-  if (page > 1) {
-    params.append('page', String(page))
-  }
-  const query = params.toString()
-  return query ? `/search?${query}` : '/search'
-}
-
-const without = (list, value) => list.filter((item) => item !== value)
+export const searchHref = ({ page, ...criteria }) =>
+  pageHref('/search', searchCriteriaParams(criteria), page)
 
 /**
  * The search term, ticked fields and filters in force, each as a tag whose
@@ -168,67 +132,6 @@ export function selectedFilters(criteria) {
 }
 
 /**
- * GOV.UK pagination for the results: the first and last pages, the current
- * page and its neighbours, and an ellipsis for each gap. Pages are counted by
- * the backend's page size (`limit`), which may not be the one asked for.
- */
-export function pagination(criteria, { totalItems, limit }) {
-  const totalPages = Math.ceil(totalItems / limit)
-  if (totalPages < 2) {
-    return undefined
-  }
-  const current = criteria.page
-  const hrefFor = (page) => searchHref({ ...criteria, page })
-  const items = []
-  let lastShown = 0
-  for (let page = 1; page <= totalPages; page++) {
-    if (page === 1 || page === totalPages || Math.abs(page - current) <= 1) {
-      if (page - lastShown > 1) {
-        items.push({ ellipsis: true })
-      }
-      items.push({
-        number: page,
-        href: hrefFor(page),
-        current: page === current
-      })
-      lastShown = page
-    }
-  }
-  return {
-    items,
-    previous:
-      current > 1
-        ? { href: hrefFor(Math.min(current - 1, totalPages)) }
-        : undefined,
-    next: current < totalPages ? { href: hrefFor(current + 1) } : undefined
-  }
-}
-
-// When the application was last updated, in UK time (the service runs in
-// UTC), as a date and a time.
-const ukDate = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Europe/London',
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric'
-})
-const ukTime = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Europe/London',
-  hour: '2-digit',
-  minute: '2-digit'
-})
-
-function updated(value) {
-  if (!value) {
-    return undefined
-  }
-  const date = new Date(value)
-  return Number.isNaN(date.getTime())
-    ? undefined
-    : { date: ukDate.format(date), time: ukTime.format(date) }
-}
-
-/**
  * One results row: its reference, status, organisation, registration number,
  * material (with type and nation), year and when it was last updated. Nothing
  * else from the stored application (contacts, addresses, signatories, the
@@ -247,6 +150,6 @@ export function resultRow(application) {
       .filter(Boolean)
       .join(' · '),
     year: application.year,
-    updated: updated(application.updatedAt)
+    updated: ukDateTime(application.updatedAt)
   }
 }

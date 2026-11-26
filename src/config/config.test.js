@@ -74,3 +74,13 @@ describe('The backend URL', () => {
     expect(config.get('backendApi.url')).toBe('https://backend.example.com')
   })
 })
+
+describe('The management-be URL', () => {
+  test('without a scheme stops the service starting, not the first search', async () => {
+    vi.stubEnv('MANAGEMENT_API_URL', 'management-be.example.com')
+
+    await expect(loadConfig('development')).rejects.toThrow(
+      'must be an http or https URL'
+    )
+  })
+})

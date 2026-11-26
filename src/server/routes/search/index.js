@@ -1,12 +1,15 @@
 import { auditSearch } from '#/server/common/helpers/audit.js'
 import { searchLegacyAccreditationApplications } from '#/server/common/helpers/backend-api/backend-api.js'
 import { STATUSES } from '#/server/common/helpers/legacy-application.js'
+import { PAGE_SIZE, resultsSummary } from '#/server/common/helpers/paging.js'
 import {
-  PAGE_SIZE,
+  checkboxItems,
+  errorByField
+} from '#/server/common/helpers/search-form.js'
+import {
   SEARCH_FIELDS,
   accreditationYears,
   formFromRawQuery,
-  pagination,
   resultRow,
   searchErrors,
   searchHref,
@@ -15,13 +18,6 @@ import {
 } from './search-form.js'
 
 const PAGE_TITLE = 'Search accreditation applications'
-
-const checkboxItems = (options, ticked) =>
-  options.map(({ value, text }) => ({
-    value,
-    text,
-    checked: ticked.includes(value)
-  }))
 
 // A year from a shared URL that isn't one of the usual ones is offered too,
 // so the form still shows what is being filtered on. Something that isn't a
@@ -46,28 +42,9 @@ function searchPage(h, { form, errors = [], ...model }) {
     yearItems: yearItems(form.year),
     searchFieldItems: checkboxItems(SEARCH_FIELDS, form.searchFields),
     errors,
-    errorByField: Object.fromEntries(
-      errors.map(({ field, text }) => [field, { text }])
-    ),
+    errorByField: errorByField(errors),
     ...model
   })
-}
-
-function results(criteria, page) {
-  const from = (page.pageNumber - 1) * page.limit + 1
-  const lastPage = Math.ceil(page.totalItems / page.limit)
-  return {
-    rows: page.items.map(resultRow),
-    totalItems: page.totalItems,
-    from,
-    to: from + page.items.length - 1,
-    // A shared link to a page the results no longer reach.
-    pastEnd:
-      page.items.length === 0 && page.totalItems > 0 && criteria.page > lastPage
-        ? { lastPage, href: searchHref({ ...criteria, page: lastPage }) }
-        : undefined,
-    pagination: pagination(criteria, page)
-  }
 }
 
 export const search = {
@@ -93,7 +70,11 @@ export const search = {
         },
         async handler(request, h) {
           const criteria = request.query
-          auditSearch(request.auth.credentials.user, criteria)
+          auditSearch(
+            'search-legacy-accreditation-applications',
+            request.auth.credentials.user,
+            criteria
+          )
 
           const result = await searchLegacyAccreditationApplications(
             { ...criteria, limit: PAGE_SIZE },
@@ -104,7 +85,16 @@ export const search = {
             form: { ...criteria, year: String(criteria.year ?? '') },
             selectedFilters: selectedFilters(criteria),
             ...(result.ok
-              ? { results: results(criteria, result.page) }
+              ? {
+                  results: {
+                    rows: result.page.items.map(resultRow),
+                    ...resultsSummary(
+                      criteria,
+                      { ...result.page, itemCount: result.page.items.length },
+                      searchHref
+                    )
+                  }
+                }
               : { unavailable: true })
           })
         }

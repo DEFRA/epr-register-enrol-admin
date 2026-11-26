@@ -14,6 +14,7 @@ import {
   useFakeBackend,
   useFakeRecord
 } from '#/test-helpers/fake-backend.js'
+import { useFakeCaseManagement } from '#/test-helpers/fake-management-be.js'
 
 // The only routes anyone can reach without the role, and why. Adding a route
 // here is a decision for review: everything else needs a signed-in user with
@@ -81,8 +82,10 @@ describe('Every route', () => {
         .filter((route) => route.method === 'get' && needsRole(route))
         .map((route) => route.path.replaceAll(/{[^}]+}/g, 'placeholder'))
 
-    test('includes the search page', () => {
-      expect(protectedPages()).toContain('/search')
+    test('includes the search pages', () => {
+      expect(protectedPages()).toEqual(
+        expect.arrayContaining(['/search', '/work-items'])
+      )
     })
 
     test('sends a signed-out user to sign in', async () => {
@@ -103,6 +106,7 @@ describe('Every route', () => {
     test('serves a signed-in user with the role', async () => {
       useFakeBackend(() => resultsPage([]))
       useFakeRecord(() => HttpResponse.json(storedApplication()))
+      useFakeCaseManagement()
       const { cookie } = await signIn(server, useFakeEntra(), supportUser)
       for (const path of protectedPages()) {
         const response = await server.inject({ url: path, headers: { cookie } })

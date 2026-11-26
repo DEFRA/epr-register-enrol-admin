@@ -191,6 +191,7 @@ describe('Searching Legacy accreditation applications', () => {
 
       expect(navigation).toEqual([
         { text: 'Operator journey', href: '/search', current: 'page' },
+        { text: 'Case management', href: '/work-items', current: null },
         { text: 'Sign out', href: '/auth/sign-out', current: null }
       ])
     })
@@ -863,6 +864,18 @@ describe('Searching Legacy accreditation applications', () => {
         expect(searchAudits()).toEqual([])
       }
     )
+
+    test('a search term sent twice asks for one, and searches nothing', async () => {
+      const requests = useFakeBackend(() => resultsPage([]))
+
+      const { response, $ } = await get('/search?q=Calder&q=Harbour')
+
+      expect(response.statusCode).toBe(400)
+      expect(text($, '.govuk-error-summary__list')).toBe(
+        'Enter one search term'
+      )
+      expect(requests).toEqual([])
+    })
 
     test('a line break before or after the search term is trimmed with the spaces, as the backend does', async () => {
       const requests = useFakeBackend(() => resultsPage([]))

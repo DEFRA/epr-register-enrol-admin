@@ -116,3 +116,17 @@
     float: right;
   }
 }
+
+// A work item whose Legacy status is not what its state is pushed as (RA-751).
+.app-results__row--mismatch {
+  background-color: govuk-colour("light-grey");
+}
+
+.app-mismatch {
+  margin-left: govuk-spacing(1);
+}
+
+// A field a work item should have but doesn't.
+.app-missing {
+  color: govuk-colour("red");
+}

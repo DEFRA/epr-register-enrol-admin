@@ -45,8 +45,9 @@ picking one silently.
 - It reads from two Reg-Accred backends. More may follow.
   - **Accreditation API**: `DEFRA/epr-register-enrol-backend` (operator journey
     data). The client is `src/server/common/helpers/backend-api/` (RA-740).
-  - **Case Management API**: `DEFRA/epr-register-enrol-management-be` (no
-    client yet).
+  - **Case Management API**: `DEFRA/epr-register-enrol-management-be` (case
+    management work items). The client is
+    `src/server/common/helpers/backend-api/management-api.js` (RA-751).
 - Internal only: served on `*.cdp-int.defra.cloud` URLs, reachable over the
   CDP VPN. There is no public route.
 - Users hold SC clearance. That is a people and process control; the code
@@ -120,18 +121,27 @@ drift: HMAC request signing and the backend client in
 `epr-register-enrol-management-fe`, `src/server/common/helpers/backend-api/`
 (`sign-request.js`, `backend-api.js`).
 
-**Service-to-service auth is built** for the Accreditation API (RA-740), in
-`src/server/common/helpers/backend-api/`. The signing in `sign-request.js`
-follows management-fe's, with one difference: management-be's signed payload
-also carries the user's role and nation, and `epr-register-enrol-backend`'s
-does not. Each backend's payload must match what that backend verifies; for
-this one that is `ServiceClientAuthenticationHandler`, and
-`sign-request.test.js` pins the backend's own known signature.
+**Service-to-service auth is built** for both backends, in
+`src/server/common/helpers/backend-api/`: one signer (`sign-request.js`) and
+one signed GET (`signed-get.js`) that each backend's client
+(`backend-api.js`, `management-api.js`) calls with its own URL, secret and
+trust headers. The signing follows management-fe's. It signs the six-line v3
+payload when a call sends no role or nation, and the eight-line one (role and
+nation after the user name) when it sends either, as management-be's
+`ClientIdAuthenticationHandler.ComputeSignature` chooses (its ADR-0007).
 
-`sign-request.js` takes only the client ID and signs empty user lines, so it
-cannot call the Case Management API as it stands. Before it can, it has to
-sign the signed-in user's ID, name, role and nation, as management-fe's does,
-and be checked against what management-be verifies.
+- `epr-register-enrol-backend` is called as the Admin UI alone: client ID,
+  empty user lines, six-line form, as its `ServiceClientAuthenticationHandler`
+  checks.
+- `epr-register-enrol-management-be` is called on behalf of the signed-in
+  user: client ID, the user's ID and name (trimmed and URI-encoded, since a
+  header carries only Latin-1 and loses outer spaces; signed as sent), the role
+  `Waste.SupportUser.ReadOnly` and no nation header (the nation line is
+  signed empty), eight-line form. management-be knows this caller as
+  `Auth__AdminUiClientId` and lets it read `GET /work-items` and
+  `GET /work-items/re-accreditation/states` only.
+
+`sign-request.test.js` pins each backend's own known signature.
 
 ## Errors: tell the user, keep them on the page
 

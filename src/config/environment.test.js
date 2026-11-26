@@ -11,7 +11,9 @@ const productionValues = {
   SESSION_COOKIE_SECURE: 'true',
   SESSION_CACHE_ENGINE: 'redis',
   BACKEND_URL: 'https://backend.example.com',
-  BACKEND_API_SHARED_SECRET: 'a-real-hmac-secret'
+  BACKEND_API_SHARED_SECRET: 'a-real-hmac-secret',
+  MANAGEMENT_API_URL: 'https://management-be.example.com',
+  MANAGEMENT_API_SHARED_SECRET: 'another-real-hmac-secret'
 }
 
 async function problemsWith(env) {
@@ -20,8 +22,8 @@ async function problemsWith(env) {
     vi.stubEnv(name, value)
   }
   const { config } = await import('./config.js')
-  const { productionConfigProblems } = await import('./environment.js')
-  return productionConfigProblems(config)
+  const { configProblems } = await import('./environment.js')
+  return configProblems(config)
 }
 
 describe('Settings for each environment', () => {
@@ -29,21 +31,71 @@ describe('Settings for each environment', () => {
     vi.unstubAllEnvs()
   })
 
+  const upstreamValues = {
+    BACKEND_URL: productionValues.BACKEND_URL,
+    BACKEND_API_SHARED_SECRET: productionValues.BACKEND_API_SHARED_SECRET,
+    MANAGEMENT_API_URL: productionValues.MANAGEMENT_API_URL,
+    MANAGEMENT_API_SHARED_SECRET: productionValues.MANAGEMENT_API_SHARED_SECRET
+  }
+
+  test('local may use the stub, default secrets and unsigned calls to local backends', async () => {
+    expect(
+      await problemsWith({ ENVIRONMENT: 'local', AUTH_PROVIDER: 'defra-stub' })
+    ).toEqual([])
+  })
+
   test.each([
-    'local',
     'infra-dev',
     'management',
     'dev',
     'test',
     'ext-test',
     'perf-test'
-  ])('%s may use the stub and default secrets', async (environment) => {
-    expect(
-      await problemsWith({
-        ENVIRONMENT: environment,
-        AUTH_PROVIDER: 'defra-stub'
-      })
-    ).toEqual([])
+  ])(
+    '%s may use the stub and default secrets, given its backends',
+    async (environment) => {
+      expect(
+        await problemsWith({
+          ENVIRONMENT: environment,
+          AUTH_PROVIDER: 'defra-stub',
+          ...upstreamValues
+        })
+      ).toEqual([])
+    }
+  )
+
+  describe.each(['dev', 'test'])('%s', (environment) => {
+    test.each([
+      ['BACKEND_URL', 'BACKEND_URL must be set'],
+      ['BACKEND_API_SHARED_SECRET', 'BACKEND_API_SHARED_SECRET must be set'],
+      ['MANAGEMENT_API_URL', 'MANAGEMENT_API_URL must be set'],
+      [
+        'MANAGEMENT_API_SHARED_SECRET',
+        'MANAGEMENT_API_SHARED_SECRET must be set'
+      ]
+    ])('refuses to run without %s', async (name, problem) => {
+      const { [name]: _missing, ...withoutIt } = upstreamValues
+
+      expect(
+        await problemsWith({
+          ENVIRONMENT: environment,
+          AUTH_PROVIDER: 'defra-stub',
+          ...withoutIt
+        })
+      ).toEqual([problem])
+    })
+  })
+
+  test('a deployed environment without its backends refuses to start, naming each', async () => {
+    vi.resetModules()
+    vi.stubEnv('ENVIRONMENT', 'test')
+    vi.stubEnv('PORT', '3097')
+    const { startServer } =
+      await import('#/server/common/helpers/start-server.js')
+
+    await expect(startServer()).rejects.toThrow(
+      'Refusing to start in test: BACKEND_URL must be set; BACKEND_API_SHARED_SECRET must be set; MANAGEMENT_API_URL must be set; MANAGEMENT_API_SHARED_SECRET must be set'
+    )
   })
 
   test('production accepts the Defra tenant with its own secrets', async () => {
@@ -61,9 +113,23 @@ describe('Settings for each environment', () => {
       'SESSION_COOKIE_SECURE must be true',
       'SESSION_CACHE_ENGINE must be redis',
       'BACKEND_URL must be set',
-      'BACKEND_API_SHARED_SECRET must be set'
+      'BACKEND_API_SHARED_SECRET must be set',
+      'MANAGEMENT_API_URL must be set',
+      'MANAGEMENT_API_SHARED_SECRET must be set'
     ])
   })
+
+  test.each([
+    ['MANAGEMENT_API_URL', 'MANAGEMENT_API_URL must be set'],
+    ['MANAGEMENT_API_SHARED_SECRET', 'MANAGEMENT_API_SHARED_SECRET must be set']
+  ])(
+    'production refuses to run without %s, as it cannot call case management',
+    async (name, problem) => {
+      const { [name]: _missing, ...withoutIt } = productionValues
+
+      expect(await problemsWith(withoutIt)).toEqual([problem])
+    }
+  )
 
   test('production refuses the Defra Dev tenant', async () => {
     expect(

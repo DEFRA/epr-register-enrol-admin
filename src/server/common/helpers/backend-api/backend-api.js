@@ -1,11 +1,21 @@
 import Joi from 'joi'
-import { withTraceId } from '@defra/hapi-tracing'
 
 import { config } from '#/config/config.js'
-import { signRequestHeaders } from './sign-request.js'
+import { STATUSES } from '#/server/common/helpers/legacy-application.js'
+import { signedGet as upstreamGet } from './signed-get.js'
 
-// Named in every failure log, so an alert says which service failed.
-const UPSTREAM = 'epr-register-enrol-backend'
+// epr-register-enrol-backend, called as this service: the client ID only, with
+// no user identity (AGENTS.md, Auth), so the six-line v3 form is signed.
+const backend = () => ({
+  name: 'epr-register-enrol-backend',
+  url: config.get('backendApi.url'),
+  timeoutMs: config.get('backendApi.timeoutMs'),
+  sharedSecret: config.get('backendApi.sharedSecret'),
+  trustHeaders: { 'x-cdp-client-id': config.get('backendApi.clientId') }
+})
+
+const signedGet = (path, logger, options) =>
+  upstreamGet(backend(), path, logger, options)
 
 // Only the page around the results. Items are not checked: the search page
 // shows whatever fields an item has, and a missing one as "None" or blank.
@@ -114,98 +124,118 @@ export async function getLegacyAccreditationApplication(reference, logger) {
   return result.ok ? { ok: true, application: result.body } : result
 }
 
-// A problem body's code (e.g. invalid_signature) and traceId say what went
-// wrong, and neither holds personal data. Only values shaped like those are
-// logged, never the body itself.
-const PROBLEM_CODE = /^[a-z][a-z_]{0,63}$/
-// The backend's traceId is a W3C trace ID (00-<trace>-<span>-<flags>), or
-// Kestrel's connection:request identifier when there's no trace.
-const TRACE_ID =
-  /^(?:00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}|[\dA-Z]{13}:[\dA-F]{8})$/
+// One of the Legacy ApplicationStatus values, and nothing else.
+const legacyStatus = Joi.string()
+  .valid(...STATUSES.map(({ value }) => value))
+  .required()
 
-async function problemFields(response) {
-  const body = await response.json().catch(() => undefined)
-  const ifMatches = (value, pattern) =>
-    typeof value === 'string' && pattern.test(value) ? value : undefined
-  const code = ifMatches(body?.code, PROBLEM_CODE)
-  const id = ifMatches(body?.traceId, TRACE_ID)
-  return code || id ? { error: { code, id } } : {}
-}
+// One Legacy application's status, looked up by the case management work item
+// it is linked to. A found application must have an _id and one of the Legacy
+// statuses; anything else is a response this service can't read, not a
+// status to guess at.
+const statusItemSchema = Joi.alternatives().try(
+  Joi.object({
+    workItemId: Joi.string().guid().required(),
+    found: Joi.valid(true).required(),
+    applicationId: Joi.string().required(),
+    applicationStatus: legacyStatus
+  }).unknown(true),
+  Joi.object({
+    workItemId: Joi.string().guid().required(),
+    found: Joi.valid(false).required()
+  }).unknown(true)
+)
+
+const statusesSchema = Joi.object({
+  items: Joi.array().items(statusItemSchema).required()
+})
+  .unknown(true)
+  .required()
 
 /**
- * GET from the backend as this service, signed, and check the body against
- * `schema`. Every failure (no response, an error status, or a body that isn't
- * JSON or doesn't match) is logged at error (CDP's logger adds the trace ID)
- * and returned as { ok: false }: the caller shows a banner and the page
- * carries on. A 404 whose problem code is `notFoundCode` is the record not
- * existing, not a failure: it is returned as { ok: false, notFound: true } and
- * not logged. Nothing from the request's path or query, or from the response
- * body, is logged, as any of them can hold personal data.
+ * The current Legacy status of the application linked to each case management
+ * work item (`GET /admin/accreditation-application-statuses`,
+ * docs/openapi/admin-api.yaml in epr-register-enrol-backend), in one call.
+ * The backend answers every id it is asked about, found or not; a response
+ * that leaves one out, or adds one, is a failure.
  *
- * @param {string} path
- * @param {import('pino').Logger} logger
- * @param {object} options
- * @param {import('joi').Schema} options.schema what the body must be
- * @param {URLSearchParams} [options.params] the query
- * @param {string} [options.logPath] the path as logged, when the real one holds an ID
- * @param {string} [options.notFoundCode] the problem code that means "no such record"
- * @returns {Promise<{ ok: true, body: any } | { ok: false, notFound?: true }>}
+ * @param {string[]} workItemIds 1 to 50 work item ids
+ * @param {import('pino').Logger} logger the request's logger, for failures
+ * @returns {Promise<{ ok: true, statuses: Map<string, { found: true, applicationId: string, applicationStatus: string } | { found: false }>} | { ok: false }>}
  */
-async function signedGet(
-  path,
-  logger,
-  { schema, params, logPath = path, notFoundCode }
-) {
-  const query = params ? `?${params}` : ''
-  const url = `${config.get('backendApi.url').replace(/\/$/, '')}${path}${query}`
-  const clientId = config.get('backendApi.clientId')
-  const timeoutMs = config.get('backendApi.timeoutMs')
-  const headers = withTraceId(config.get('tracing.header'), {
-    accept: 'application/json',
-    'x-cdp-client-id': clientId,
-    ...signRequestHeaders(clientId)
+export async function getLegacyStatusesForWorkItems(workItemIds, logger) {
+  const path = '/admin/accreditation-application-statuses'
+  const params = new URLSearchParams(
+    workItemIds.map((id) => ['workItemId', id])
+  )
+  const result = await signedGet(path, logger, {
+    params,
+    schema: statusesSchema
   })
+  if (!result.ok) {
+    return result
+  }
 
-  const fail = (fields, reason) => {
-    logger.error(fields, `${UPSTREAM} GET ${logPath} ${reason}`)
+  const statuses = new Map(
+    result.body.items.map(({ workItemId, ...status }) => [workItemId, status])
+  )
+  const answersEveryId =
+    statuses.size === workItemIds.length &&
+    workItemIds.every((id) => statuses.has(id))
+  if (!answersEveryId) {
+    logger.error(
+      `epr-register-enrol-backend GET ${path} did not answer for exactly the work items asked about`
+    )
     return { ok: false }
   }
+  return { ok: true, statuses }
+}
 
-  let response
-  try {
-    response = await fetch(url, {
-      headers,
-      signal: AbortSignal.timeout(timeoutMs)
-    })
-  } catch (error) {
-    return error.name === 'TimeoutError'
-      ? fail({ error: { code: error.name } }, `timed out after ${timeoutMs}ms`)
-      : // Not error.message: for some failures it holds the full URL, and so
-        // the search term or application reference. The code (e.g.
-        // ECONNREFUSED) says enough.
-        fail(
-          { error: { code: error.cause?.code ?? error.name } },
-          `failed (${error.cause?.code ?? error.name})`
-        )
-  }
+const statusMappingSchema = Joi.object({
+  statusPush: Joi.array()
+    .items(
+      Joi.object({
+        stateId: Joi.string().required(),
+        applicationStatus: legacyStatus
+      }).unknown(true)
+    )
+    .unique('stateId')
+    .required(),
+  queryPush: Joi.object({ applicationStatus: legacyStatus })
+    .unknown(true)
+    .required()
+})
+  .unknown(true)
+  .required()
 
-  const httpFields = { http: { response: { status_code: response.status } } }
-  if (!response.ok) {
-    const problem = await problemFields(response)
-    if (
-      notFoundCode &&
-      response.status === 404 &&
-      problem.error?.code === notFoundCode
-    ) {
-      return { ok: false, notFound: true }
-    }
-    return fail({ ...httpFields, ...problem }, `returned ${response.status}`)
-  }
-
-  const { error, value } = schema.validate(
-    await response.json().catch(() => undefined)
+/**
+ * The Legacy status each case management push sets
+ * (`GET /admin/case-management-status-mapping`, docs/openapi/admin-api.yaml
+ * in epr-register-enrol-backend): for a status push, by the state it is
+ * pushed for, and for a query push. The backend's receivers read the same
+ * table, so this is what they do, not a copy of it.
+ *
+ * @param {import('pino').Logger} logger the request's logger, for failures
+ * @returns {Promise<{ ok: true, mapping: { statusPush: Map<string, string>, queryPush: string } } | { ok: false }>}
+ */
+export async function getCaseManagementStatusMapping(logger) {
+  const result = await signedGet(
+    '/admin/case-management-status-mapping',
+    logger,
+    { schema: statusMappingSchema }
   )
-  return error
-    ? fail(httpFields, 'returned a response it could not read')
-    : { ok: true, body: value }
+  return result.ok
+    ? {
+        ok: true,
+        mapping: {
+          statusPush: new Map(
+            result.body.statusPush.map(({ stateId, applicationStatus }) => [
+              stateId,
+              applicationStatus
+            ])
+          ),
+          queryPush: result.body.queryPush.applicationStatus
+        }
+      }
+    : result
 }

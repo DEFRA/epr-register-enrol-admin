@@ -173,7 +173,7 @@ export const config = convict({
   },
   backendApi: {
     url: {
-      doc: 'Base URL of epr-register-enrol-backend (the Accreditation API). Set per environment in cdp-app-config. The default is where the epr-register-enrol umbrella Compose stack serves it.',
+      doc: 'Base URL of epr-register-enrol-backend (the Accreditation API). Set per environment in cdp-app-config; every deployed environment refuses to start with the default, which is where the epr-register-enrol umbrella Compose stack serves it locally.',
       format: httpUrl,
       default: 'http://localhost:8080',
       env: 'BACKEND_URL'
@@ -191,11 +191,38 @@ export const config = convict({
       env: 'BACKEND_API_CLIENT_ID'
     },
     sharedSecret: {
-      doc: 'HMAC-SHA256 secret this service signs its calls to epr-register-enrol-backend with. The backend verifies it as AUTH_SHARED_SECRET__ADMIN. Empty sends calls unsigned (a fake backend, or none); a real backend refuses them. Production refuses to start without it.',
+      doc: 'HMAC-SHA256 secret this service signs its calls to epr-register-enrol-backend with. The backend verifies it as AUTH_SHARED_SECRET__ADMIN. Every deployed environment refuses to start without it. Only local may leave it empty, which sends calls unsigned (a fake backend, or none).',
       format: String,
       default: '',
       sensitive: true,
       env: 'BACKEND_API_SHARED_SECRET'
+    }
+  },
+  managementApi: {
+    url: {
+      doc: 'Base URL of epr-register-enrol-management-be (the Case Management API). Set per environment in cdp-app-config; every deployed environment refuses to start with the default, which is where the epr-register-enrol umbrella Compose stack serves it locally.',
+      format: httpUrl,
+      default: 'http://localhost:8085',
+      env: 'MANAGEMENT_API_URL'
+    },
+    timeoutMs: {
+      doc: 'How long to wait for epr-register-enrol-management-be before showing the "unavailable" banner, in milliseconds.',
+      format: 'nat',
+      default: 12000,
+      env: 'MANAGEMENT_API_TIMEOUT_MS'
+    },
+    clientId: {
+      doc: 'Who this service is to epr-register-enrol-management-be: the x-cdp-client-id it sends, which management-be knows as Auth__AdminUiClientId.',
+      format: String,
+      default: 'epr-register-enrol-admin',
+      env: 'MANAGEMENT_API_CLIENT_ID'
+    },
+    sharedSecret: {
+      doc: 'HMAC-SHA256 secret this service signs its calls to epr-register-enrol-management-be with. management-be verifies it as AUTH_SHARED_SECRET__ADMIN_UI. Every deployed environment refuses to start without it. Only local may leave it empty, which sends calls unsigned: only management-be running in Development accepts them.',
+      format: String,
+      default: '',
+      sensitive: true,
+      env: 'MANAGEMENT_API_SHARED_SECRET'
     }
   },
   httpProxy: {

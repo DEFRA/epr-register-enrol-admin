@@ -18,6 +18,7 @@ import {
   searchTerm,
   selectedFilterGroups
 } from '#/server/common/helpers/search-form.js'
+import { maskName } from '#/server/common/helpers/mask-personal-data.js'
 import { ukDateTime } from '#/server/common/helpers/uk-date-time.js'
 
 // The fields q can search, in the order the form shows them.
@@ -101,16 +102,18 @@ export const selectedFilters = (criteria) =>
 
 /**
  * One results row: its reference, status, organisation, registration number,
- * material (with type and nation), year and when it was last updated. Nothing
- * else from the stored application (contacts, addresses, signatories, the
- * business plan) reaches the page.
+ * material (with type and nation), year and when it was last updated, with
+ * the organisation name masked. Nothing else from the stored application
+ * (contacts, addresses, signatories, the business plan) reaches the page.
  */
 export function resultRow(application) {
   return {
     reference: mostSpecificReference(application) || application.applicationId,
     href: recordHref(application),
     status: statusTag(application.applicationStatus),
-    organisationName: application.organisationName,
+    // Masked: it can be a sole trader's own name.
+    organisationName:
+      application.organisationName && maskName(application.organisationName),
     organisationNumber: application.orgId,
     registrationNumber: application.registrationReference,
     material: application.materialType,

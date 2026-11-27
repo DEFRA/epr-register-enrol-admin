@@ -32,7 +32,12 @@ function payloadFields(item, logger) {
         fields[name] = { missing: true }
       }
     } else {
-      fields[name] = { value: String(value) }
+      // The organisation name can be a sole trader's own name, so it is
+      // masked (RA-753, Tom's decision).
+      fields[name] = {
+        value:
+          name === 'organisationName' ? maskName(String(value)) : String(value)
+      }
     }
   }
   return fields

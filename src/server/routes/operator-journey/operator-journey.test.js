@@ -436,7 +436,7 @@ describe('Searching Operator journey records', () => {
       ],
       ['overseas-sites', 'ORS ID', ['ORS-0001', 'Active']]
     ])(
-      '%s: shows its reference, status, organisation and when it last changed',
+      '%s: shows its reference, status, organisation (its name masked) and when it last changed',
       async (type, referenceHeading, [reference, status]) => {
         serveCountries()
         useFakeOperatorJourney(`${API}/${type}`, () =>
@@ -455,14 +455,14 @@ describe('Searching Operator journey records', () => {
           [
             reference,
             status,
-            'Harbourside Plastics Ltd 500112',
+            'H********** P******* L** 500112',
             '20 Nov 2026 09:14'
           ]
         ])
       }
     )
 
-    test('organisations: shows the organisation number, with no status, as an organisation has none', async () => {
+    test('organisations: shows the organisation number, with no status, as an organisation has none, and the name masked', async () => {
       useFakeOperatorJourney(`${API}/organisations`, () =>
         resultsPage([items.organisations()])
       )
@@ -475,7 +475,7 @@ describe('Searching Operator journey records', () => {
         'Last changed'
       ])
       expect(tableRows($)).toEqual([
-        ['500112', 'Harbourside Plastics Ltd 500112', '20 Nov 2026 09:14']
+        ['500112', 'H********** P******* L** 500112', '20 Nov 2026 09:14']
       ])
     })
 
@@ -589,6 +589,7 @@ describe('Searching Operator journey records', () => {
       const { response } = await get('/operator-journey?type=overseas-sites')
 
       expect(response.payload).not.toContain('Rotterdam Polymer Works')
+      expect(response.payload).not.toContain('Harbourside Plastics Ltd')
       expect(response.payload).not.toContain('R25EX5001120018PL')
       expect(response.headers['referrer-policy']).toBe('no-referrer')
     })

@@ -571,7 +571,7 @@ describe('Searching case management work items', () => {
   })
 
   describe('the results (AC11, AC19)', () => {
-    test('show the work item ID, application reference, organisation, state, assignee and last changed date', async () => {
+    test('show the work item ID, application reference, organisation (its name masked), state, assignee and last changed date', async () => {
       useFakeCaseManagement({
         workItems: () => workItemsPage([workItem()])
       })
@@ -596,7 +596,7 @@ describe('Searching case management work items', () => {
         [
           '3f9a1c2e-4b5d-4e6f-8a7b-9c0d1e2f3a4b',
           'AP27EA500112ABPL',
-          'Calder Valley Recycling Ltd 500112',
+          'C***** V***** R******** L** 500112',
           'Updated (assessment-in-progress)',
           'M***** C*********',
           '18 Nov 2026 10:00',

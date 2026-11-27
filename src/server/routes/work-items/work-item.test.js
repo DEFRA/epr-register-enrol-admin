@@ -904,7 +904,7 @@ describe('Viewing a case management work item', () => {
   describe('the Regulator view (AC09)', () => {
     const regulator = ($) => $('[data-testid="regulator-view"]')
 
-    test('shows the case header as Case management does, with names masked', async () => {
+    test("shows the case header as Case management does, with names masked, the organisation's included", async () => {
       useFakeWorkItem()
 
       const { $ } = await get(PAGE)
@@ -913,7 +913,7 @@ describe('Viewing a case management work item', () => {
         'RA-000000123'
       )
       expect(text($, '[data-testid="case-header-org-name"]')).toBe(
-        'Calder Valley Recycling Ltd'
+        'C***** V***** R******** L**'
       )
       expect(text($, '[data-testid="case-header-org-id"]')).toBe('500112')
       expect(caseHeaderMeta($)).toEqual([
@@ -1157,13 +1157,13 @@ describe('Viewing a case management work item', () => {
       )
     })
 
-    test('shows Additional information as Case management does, with the contact masked', async () => {
+    test('shows Additional information as Case management does, with the contact and registered name masked', async () => {
       useFakeWorkItem()
 
       const { $ } = await get(`${PAGE}?tab=additional-information`)
 
       expect(summaryRows($, 'additional-information')).toEqual([
-        ['Registered name', 'Calder Valley Recycling Ltd'],
+        ['Registered name', 'C***** V***** R******** L**'],
         ['Companies house number', '01234567'],
         ['Location', '1 Mill Lane, Halifax, HX1 1AA'],
         ['Permit numbers', 'EPR/AB1234CD'],

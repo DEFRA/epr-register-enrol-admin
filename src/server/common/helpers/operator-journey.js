@@ -6,6 +6,7 @@ import {
   STATUSES as APPLICATION_STATUSES,
   nationName
 } from './legacy-application.js'
+import { maskName } from './mask-personal-data.js'
 import { ukDateTime } from './uk-date-time.js'
 
 /**
@@ -351,7 +352,11 @@ export function resultRow(type, item) {
     reference: String(fieldOf(item, type.reference.field) ?? item.id),
     href: recordHref(type, item),
     status: status && { text: status.text, classes: status.classes },
-    organisationName: item.organisation.name ?? NOT_HELD,
+    // Masked: it can be a sole trader's own name (AC14).
+    organisationName:
+      item.organisation.name === null
+        ? NOT_HELD
+        : maskName(item.organisation.name),
     organisationNumber: String(item.organisation.number ?? NOT_HELD),
     updated: ukDateTime(item.updatedAt)
   }

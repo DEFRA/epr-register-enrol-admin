@@ -265,7 +265,7 @@ describe('Searching Legacy accreditation applications', () => {
       expect(tableRows($)[0][4]).toContain('Reprocessor · Northern Ireland')
     })
 
-    test('shows the most specific reference, status, organisation, registration number, material with type and nation, year and last update, in the order the backend gives', async () => {
+    test('shows the most specific reference, status, organisation (its name masked), registration number, material with type and nation, year and last update, in the order the backend gives', async () => {
       useFakeBackend(() =>
         resultsPage([
           legacyApplication({ applicationReference: 'AP27EA500112PL' }),
@@ -322,7 +322,7 @@ describe('Searching Legacy accreditation applications', () => {
         [
           'A27ER5001120018PL',
           'Approved',
-          'Calder Valley Recycling Ltd 500112',
+          'C***** V***** R******** L** 500112',
           'R25ER5001120018PL',
           'Plastic Reprocessor · England',
           '2027',
@@ -331,7 +331,7 @@ describe('Searching Legacy accreditation applications', () => {
         [
           'AP27EA500641PL',
           'Awaiting decision',
-          'Mersey Plastics Ltd 500641',
+          'M***** P******* L** 500641',
           'R25EX5006410022PL',
           'Plastic Exporter · Wales',
           '2028',
@@ -340,7 +340,7 @@ describe('Searching Legacy accreditation applications', () => {
         [
           'A27EX5003180009GL',
           'Duly made',
-          'Testmore Glass Ltd 500318',
+          'T******* G**** L** 500318',
           'R25ER5001120018PL',
           'Glass Exporter · Scotland',
           '2027',
@@ -358,7 +358,7 @@ describe('Searching Legacy accreditation applications', () => {
         [
           'R25ER5001120018PL',
           'Approved',
-          'Calder Valley Recycling Ltd 500112',
+          'C***** V***** R******** L** 500112',
           'R25ER5001120018PL',
           'Plastic Reprocessor · England',
           '2027',

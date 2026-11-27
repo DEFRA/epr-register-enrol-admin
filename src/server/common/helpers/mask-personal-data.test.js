@@ -115,9 +115,14 @@ describe('Masking personal data', () => {
     })
   })
 
-  test('leaves everything else as stored: organisation names, phones, addresses, empty values', () => {
+  test("masks an organisation name, as it can be a sole trader's own name", () => {
+    expect(
+      maskPersonalData({ organisationName: 'Mary Clarke Recycling' })
+    ).toEqual({ organisationName: 'M*** C***** R********' })
+  })
+
+  test('leaves everything else as stored: site names, phones, addresses, empty values', () => {
     const document = {
-      organisationName: 'Testmore Glass Ltd',
       // A regulator's name (management-be NotifyConfig.GetRegulatorName), not a person's.
       regulatorName: 'Environment Agency',
       siteName: 'Furnace Site',

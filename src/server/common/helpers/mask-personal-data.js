@@ -9,8 +9,10 @@
  * ones.
  */
 // Fields that hold a person's name, matched on the field's name wherever it
-// is in the document. Organisation and site names are not people's names.
-// Legacy documents: fullName and contactName. Work items (management-be's
+// is in the document. An organisation name can be a sole trader's own name,
+// so organisationName is masked too (RA-753, Tom's decision). Site names
+// (siteName) are not matched, so they are shown as stored.
+// Legacy documents: fullName, contactName and organisationName. Work items (management-be's
 // WorkItemResponse and the audit details and payloads it writes): the
 // caseworkers and operators named on the case, as well as fullName and
 // contactName in the payload.
@@ -18,6 +20,7 @@ const NAME_FIELDS = new Set(
   [
     'fullName',
     'contactName',
+    'organisationName',
     'assignedToName',
     'createdByName',
     'assigneeName',

@@ -165,7 +165,7 @@ export function workItemResponse(overrides = {}, payload = {}) {
     submittedBy: 'operator@example.com',
     templateVersion: 'v12',
     payload: {
-      applicationReference: 'RA-000000123',
+      applicationReference: 'AP27EA500500ABPL',
       operatorOrganisationId: '500112',
       organisationName: 'Calder Valley Recycling Ltd',
       registrationNumber: 'R25ER5001120018PL',
@@ -278,7 +278,7 @@ export function workItemResponse(overrides = {}, payload = {}) {
     slaState: 'OnTrack',
     slaDueDate: '2027-01-10T00:00:00Z',
     slaStartedAt: '2026-09-30T00:00:00Z',
-    applicationReference: 'RA-000000123',
+    applicationReference: 'AP27EA500500ABPL',
     originStateId: 'assessment-in-progress',
     ...overrides
   }

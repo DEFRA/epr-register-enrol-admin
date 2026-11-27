@@ -89,7 +89,7 @@ describe('Viewing a Legacy accreditation application', () => {
           legacyApplication({ applicationReference: 'AP27EA500500ABPL' }),
           legacyApplication({
             accreditationReference: null,
-            applicationReference: 'RA-000004562'
+            applicationReference: 'AP27EA500456ABPL'
           }),
           legacyApplication({
             accreditationReference: null,
@@ -117,7 +117,7 @@ describe('Viewing a Legacy accreditation application', () => {
         .get()
       expect(links).toEqual([
         ['A27ER5001120018PL', '/accreditation-applications/AP27EA500500ABPL'],
-        ['RA-000004562', '/accreditation-applications/RA-000004562'],
+        ['AP27EA500456ABPL', '/accreditation-applications/AP27EA500456ABPL'],
         [
           'R25ER5001120018PL',
           '/accreditation-applications/6716a3c09e4b2d1f8a5c7e30'

@@ -38,7 +38,7 @@ const items = {
   accreditations: operatorJourneyAccreditation,
   'accreditation-applications': (overrides = {}) => ({
     id: '6650f1c2a1b2c3d4e5f60901',
-    applicationReference: 'RA-000000123',
+    applicationReference: 'AP27EA500500ABPL',
     accreditationNumber: 'A27ER5001120018PL',
     status: 'DulyMade',
     year: 2027,
@@ -426,7 +426,7 @@ describe('Searching Operator journey records', () => {
       [
         'accreditation-applications',
         'Application reference',
-        ['RA-000000123', 'Duly made']
+        ['AP27EA500500ABPL', 'Duly made']
       ],
       [
         'registrations',
@@ -542,7 +542,7 @@ describe('Searching Operator journey records', () => {
       ['accreditations', 'A27ER5001120018PL', '6650f1c2a1b2c3d4e5f60801'],
       [
         'accreditation-applications',
-        'RA-000000123',
+        'AP27EA500500ABPL',
         '6650f1c2a1b2c3d4e5f60901'
       ],
       ['registrations', 'R25ER5001120018PL', '6650f1c2a1b2c3d4e5f60802'],

@@ -146,3 +146,45 @@ export function useFakeRecord(respond) {
   )
   return requests
 }
+
+/**
+ * An Operator journey item as GET /admin/operator-journey/accreditations
+ * returns it (RA-753 contract).
+ */
+export function operatorJourneyAccreditation(overrides = {}) {
+  return {
+    id: '6650f1c2a1b2c3d4e5f60801',
+    accreditationNumber: 'A27ER5001120018PL',
+    status: 'Approved',
+    year: 2027,
+    tonnageBand: 'up_to_5000',
+    registrationId: '6650f1c2a1b2c3d4e5f60802',
+    registrationNumber: 'R25ER5001120018PL',
+    material: 'Plastic',
+    organisation: {
+      id: '6650f1c2a1b2c3d4e5f60718',
+      name: 'Harbourside Plastics Ltd',
+      number: 500112
+    },
+    updatedAt: '2026-11-20T09:14:03.123Z',
+    ...overrides
+  }
+}
+
+/**
+ * Serve one of epr-register-enrol-backend's Operator journey searches, or its
+ * overseas site countries, for this test, and record each request it receives.
+ *
+ * @param {string} path e.g. /admin/operator-journey/accreditations
+ * @param {(request: Request) => Response | Promise<Response>} respond
+ */
+export function useFakeOperatorJourney(path, respond) {
+  const requests = []
+  mswServer.use(
+    http.get(`${BACKEND_URL}${path}`, ({ request }) => {
+      requests.push(request)
+      return respond(request)
+    })
+  )
+  return requests
+}

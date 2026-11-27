@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { accreditationYears } from './search-form.js'
+import { accreditationYears } from './accreditation-years.js'
 
 describe('The accreditation years offered', () => {
   test('run from 2026 to two years ahead', () => {

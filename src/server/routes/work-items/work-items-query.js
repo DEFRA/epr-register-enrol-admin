@@ -13,7 +13,7 @@ import {
   listOf,
   pageHref,
   searchTerm,
-  without
+  selectedFilterGroups
 } from '#/server/common/helpers/search-form.js'
 import { stateLabel } from './state-mapping.js'
 
@@ -136,47 +136,27 @@ export const workItemsHref = ({ page, ...criteria }) =>
  * The search term and filters in force, each as a tag whose link shows the
  * results without it, back on the first page.
  */
-export function selectedFilters(criteria, stateNames) {
-  const base = { ...criteria, page: 1 }
-  const listTags = (name, label) =>
-    criteria[name].map((value) => ({
-      text: label(value),
-      href: workItemsHref({ ...base, [name]: without(criteria[name], value) })
-    }))
-  const choiceTags = (name, options) =>
-    criteria[name]
-      ? [
-          {
-            text: labelOf(options, criteria[name]),
-            href: workItemsHref({ ...base, [name]: undefined })
-          }
-        ]
-      : []
-  const groups = [
-    {
-      heading: 'Search',
-      tags: criteria.q
-        ? [{ text: criteria.q, href: workItemsHref({ ...base, q: '' }) }]
-        : []
-    },
-    {
-      heading: 'State',
-      tags: listTags('stateId', (id) => stateLabel(stateNames, id))
-    },
-    {
-      heading: 'Work item type',
-      tags: listTags('typeId', (value) => labelOf(TYPES, value))
-    },
-    {
-      heading: 'Nation',
-      tags: listTags('nation', (value) => labelOf(NATIONS, value))
-    },
-    {
-      heading: 'Material',
-      tags: listTags('material', (value) => labelOf(MATERIALS, value))
-    },
-    { heading: 'Assigned', tags: choiceTags('assigned', ASSIGNED) },
-    { heading: 'Archived', tags: choiceTags('archived', ARCHIVED) }
-  ]
-  return groups.filter((group) => group.tags.length > 0)
-}
+export const selectedFilters = (criteria, stateNames) =>
+  selectedFilterGroups(
+    criteria,
+    [
+      { heading: 'Search', name: 'q' },
+      {
+        heading: 'State',
+        name: 'stateId',
+        text: (id) => stateLabel(stateNames, id)
+      },
+      ...[
+        ['Work item type', 'typeId', TYPES],
+        ['Nation', 'nation', NATIONS],
+        ['Material', 'material', MATERIALS],
+        ['Assigned', 'assigned', ASSIGNED],
+        ['Archived', 'archived', ARCHIVED]
+      ].map(([heading, name, options]) => ({
+        heading,
+        name,
+        text: (value) => labelOf(options, value)
+      }))
+    ],
+    workItemsHref
+  )

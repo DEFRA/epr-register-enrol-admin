@@ -461,7 +461,7 @@ describe('Viewing a case management work item', () => {
       expect(coreDetails($)).toEqual([
         ['Work item id', WORK_ITEM_ID],
         ['Status', 'Granted stateId approved'],
-        ['Operator application', 'RA-000000123'],
+        ['Operator application', 'AP27EA500500ABPL'],
         ['Accreditation', 'A27ER5001120018PL'],
         ['Registration', 'R25ER5001120018PL']
       ])
@@ -476,7 +476,7 @@ describe('Viewing a case management work item', () => {
           .get()
       ).toEqual([
         [WORK_ITEM_ID, 'Copy work item id'],
-        ['RA-000000123', 'Copy operator application'],
+        ['AP27EA500500ABPL', 'Copy operator application'],
         ['A27ER5001120018PL', 'Copy accreditation'],
         ['R25ER5001120018PL', 'Copy registration']
       ])
@@ -509,7 +509,10 @@ describe('Viewing a case management work item', () => {
           .map((_i, link) => [[text($, link), $(link).attr('href')]])
           .get()
       ).toEqual([
-        ['RA-000000123', '/accreditation-applications/6716a3c09e4b2d1f8a5c7e30']
+        [
+          'AP27EA500500ABPL',
+          '/accreditation-applications/6716a3c09e4b2d1f8a5c7e30'
+        ]
       ])
       expect(
         requests.statuses.map(({ url }) =>
@@ -528,7 +531,7 @@ describe('Viewing a case management work item', () => {
 
       expect(coreDetails($)[2]).toEqual([
         'Operator application',
-        'RA-000000123'
+        'AP27EA500500ABPL'
       ])
       expect($('[data-testid="core-details"] a')).toHaveLength(0)
       expect(bannerText($)).toBe('')
@@ -547,7 +550,7 @@ describe('Viewing a case management work item', () => {
       )
       expect(coreDetails($)[2]).toEqual([
         'Operator application',
-        'RA-000000123'
+        'AP27EA500500ABPL'
       ])
       expect($('[data-testid="core-details"] a')).toHaveLength(0)
       expect(errorLogs()).toEqual([
@@ -904,16 +907,16 @@ describe('Viewing a case management work item', () => {
   describe('the Regulator view (AC09)', () => {
     const regulator = ($) => $('[data-testid="regulator-view"]')
 
-    test('shows the case header as Case management does, with names masked', async () => {
+    test("shows the case header as Case management does, with names masked, the organisation's included", async () => {
       useFakeWorkItem()
 
       const { $ } = await get(PAGE)
 
       expect(text($, '[data-testid="case-header-accreditation-ref"]')).toBe(
-        'RA-000000123'
+        'AP27EA500500ABPL'
       )
       expect(text($, '[data-testid="case-header-org-name"]')).toBe(
-        'Calder Valley Recycling Ltd'
+        'C***** V***** R******** L**'
       )
       expect(text($, '[data-testid="case-header-org-id"]')).toBe('500112')
       expect(caseHeaderMeta($)).toEqual([
@@ -1157,13 +1160,13 @@ describe('Viewing a case management work item', () => {
       )
     })
 
-    test('shows Additional information as Case management does, with the contact masked', async () => {
+    test('shows Additional information as Case management does, with the contact and registered name masked', async () => {
       useFakeWorkItem()
 
       const { $ } = await get(`${PAGE}?tab=additional-information`)
 
       expect(summaryRows($, 'additional-information')).toEqual([
-        ['Registered name', 'Calder Valley Recycling Ltd'],
+        ['Registered name', 'C***** V***** R******** L**'],
         ['Companies house number', '01234567'],
         ['Location', '1 Mill Lane, Halifax, HX1 1AA'],
         ['Permit numbers', 'EPR/AB1234CD'],
@@ -1210,7 +1213,7 @@ describe('Viewing a case management work item', () => {
       const { $ } = await get(PAGE)
 
       expect(text($, '[data-testid="work-item-withdrawn-reference"]')).toBe(
-        'RA-000000123'
+        'AP27EA500500ABPL'
       )
     })
 

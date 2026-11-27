@@ -17,8 +17,7 @@ const backend = () => ({
 const signedGet = (path, logger, options) =>
   upstreamGet(backend(), path, logger, options)
 
-// Only the page around the results. Items are not checked: the search page
-// shows whatever fields an item has, and a missing one as "None" or blank.
+// Only the page around the results. Each record type checks its own items.
 const pageSchema = Joi.object({
   pageNumber: Joi.number().integer().min(1).required(),
   limit: Joi.number().integer().min(1).required(),
@@ -39,67 +38,6 @@ const applicationSchema = Joi.object({
 // The backend's code for "no record has that reference", as opposed to a
 // route it doesn't have.
 const NOT_FOUND_CODE = 'application_not_found'
-
-/**
- * The search term, fields and filters as query parameters. The Admin UI's own
- * /search URLs use the same names as the backend, so its links and its calls
- * build them here, in one place.
- *
- * @param {object} criteria
- * @param {string} [criteria.q]
- * @param {string[]} criteria.searchFields
- * @param {string[]} criteria.status
- * @param {number} [criteria.year]
- * @returns {URLSearchParams}
- */
-export function searchCriteriaParams({ q, searchFields, status, year }) {
-  const params = new URLSearchParams()
-  if (q) {
-    params.append('q', q)
-  }
-  searchFields.forEach((field) => params.append('searchFields', field))
-  status.forEach((value) => params.append('status', value))
-  if (year) {
-    params.append('year', String(year))
-  }
-  return params
-}
-
-/**
- * Search the Legacy accreditation applications
- * (`GET /admin/accreditation-applications`, docs/openapi/admin-api.yaml in
- * epr-register-enrol-backend).
- *
- * @param {object} criteria
- * @param {string} [criteria.q] all or part of a number or organisation name
- * @param {string[]} criteria.searchFields which fields q searches; none means all
- * @param {string[]} criteria.status Legacy ApplicationStatus values
- * @param {number} [criteria.year] accreditation year
- * @param {number} criteria.page 1-based page number
- * @param {number} criteria.limit page size
- * @param {import('pino').Logger} logger the request's logger, for failures
- * @returns {Promise<{ ok: true, page: { pageNumber: number, limit: number, totalItems: number, items: object[] } } | { ok: false }>}
- */
-export async function searchLegacyAccreditationApplications(
-  { q, searchFields, status, year, page, limit },
-  logger
-) {
-  // searchFields only narrows q, so it goes only with one.
-  const params = searchCriteriaParams({
-    q,
-    searchFields: q ? searchFields : [],
-    status,
-    year
-  })
-  params.append('pageNumber', String(page))
-  params.append('limit', String(limit))
-
-  const result = await signedGet('/admin/accreditation-applications', logger, {
-    params,
-    schema: pageSchema
-  })
-  return result.ok ? { ok: true, page: result.body } : result
-}
 
 /**
  * Read one Legacy accreditation application, exactly as stored
@@ -238,4 +176,91 @@ export async function getCaseManagementStatusMapping(logger) {
         }
       }
     : result
+}
+
+/**
+ * A search of a record type (RA-740's Legacy applications, RA-753's
+ * Operator journey types) as query parameters: the term, the fields it
+ * searches and the type's filters, under the names the backend takes. The
+ * Admin UI's /search URLs use the same names, so its links and its calls
+ * build them here, in one place. Nothing else is sent: the Operator journey
+ * endpoints refuse a parameter they don't take.
+ *
+ * @param {{ filters: { name: string }[] }} recordType
+ * @param {{ q?: string, searchFields: string[] } & Record<string, unknown>} criteria
+ * @returns {URLSearchParams}
+ */
+export function searchParams(recordType, { q, searchFields, ...filters }) {
+  const params = new URLSearchParams()
+  if (q) {
+    params.append('q', q)
+  }
+  searchFields.forEach((field) => params.append('searchFields', field))
+  for (const { name } of recordType.filters) {
+    const value = filters[name]
+    if (Array.isArray(value)) {
+      value.forEach((v) => params.append(name, v))
+    } else if (value) {
+      params.append(name, String(value))
+    }
+  }
+  return params
+}
+
+/**
+ * Search one record type (`GET /admin/accreditation-applications` or
+ * `GET /admin/operator-journey/*`, docs/openapi/admin-api.yaml in
+ * epr-register-enrol-backend). Each item is checked against the type's
+ * `itemSchema`: one that isn't is a response this service can't read, so
+ * the search fails.
+ *
+ * @param {{ path: string, filters: { name: string }[], itemSchema: import('joi').Schema }} recordType
+ * @param {{ q?: string, searchFields: string[], page: number, limit: number } & Record<string, unknown>} criteria
+ * @param {import('pino').Logger} logger the request's logger, for failures
+ * @returns {Promise<{ ok: true, page: { pageNumber: number, limit: number, totalItems: number, items: object[] } } | { ok: false }>}
+ */
+export async function searchRecords(
+  recordType,
+  { q, searchFields, page, limit, ...filters },
+  logger
+) {
+  // searchFields only narrows q, so it goes only with one.
+  const params = searchParams(recordType, {
+    q,
+    searchFields: q ? searchFields : [],
+    ...filters
+  })
+  params.append('pageNumber', String(page))
+  params.append('limit', String(limit))
+
+  const result = await signedGet(recordType.path, logger, {
+    params,
+    schema: pageSchema.keys({
+      items: Joi.array().items(recordType.itemSchema).required()
+    })
+  })
+  return result.ok ? { ok: true, page: result.body } : result
+}
+
+const countriesSchema = Joi.object({
+  items: Joi.array().items(Joi.string()).required()
+})
+  .unknown(true)
+  .required()
+
+/**
+ * The countries current overseas reprocessing sites are in, A to Z, for the
+ * Operator journey search's Country filter
+ * (`GET /admin/operator-journey/overseas-site-countries`).
+ *
+ * @param {import('pino').Logger} logger the request's logger, for failures
+ * @returns {Promise<{ ok: true, values: string[] } | { ok: false }>}
+ */
+export async function getOverseasSiteCountries(logger) {
+  const result = await signedGet(
+    '/admin/operator-journey/overseas-site-countries',
+    logger,
+    { schema: countriesSchema }
+  )
+  return result.ok ? { ok: true, values: result.body.items } : result
 }

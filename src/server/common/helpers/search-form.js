@@ -2,8 +2,10 @@ import Joi from 'joi'
 
 /**
  * What every search page's form shares: its option lists, the search box
- * rule, its error messages and summary, and the URLs of its results. Each
- * page (RA-740's /search, RA-751's /work-items) adds only its own fields.
+ * rule, its error messages and summary, its filter tags and the URLs of its
+ * results. Each page (/search, with a record type's own fields for each of
+ * its types (RA-740, RA-753), and RA-751's /work-items) adds only its own
+ * fields.
  */
 
 export const asList = (value) => [value ?? []].flat()
@@ -91,4 +93,33 @@ export function pageHref(path, params, page) {
   }
   const query = params.toString()
   return query ? `${path}?${query}` : path
+}
+
+/**
+ * The search term and filters in force, as groups of tags, each tag a link
+ * that shows the results without it, back on the first page. A list's values
+ * are a tag each; a single value is one tag. Groups with nothing in force are
+ * left out.
+ *
+ * @param {object} criteria the search, as validated
+ * @param {{ heading: string, name: string, text?: (value: any) => string }[]} groups
+ *   each criterion that can be in force, in the order the page shows them,
+ *   with its words for a value (the value itself when not given)
+ * @param {(criteria: object) => string} href the URL of the search with some criteria
+ */
+export function selectedFilterGroups(criteria, groups, href) {
+  const base = { ...criteria, page: 1 }
+  return groups
+    .map(({ heading, name, text = String }) => {
+      const value = criteria[name]
+      const tag = (shown, rest) => ({
+        text: text(shown),
+        href: href({ ...base, [name]: rest })
+      })
+      if (Array.isArray(value)) {
+        return { heading, tags: value.map((v) => tag(v, without(value, v))) }
+      }
+      return { heading, tags: value ? [tag(value, undefined)] : [] }
+    })
+    .filter((group) => group.tags.length > 0)
 }

@@ -89,7 +89,7 @@ describe('Viewing a Legacy accreditation application', () => {
           legacyApplication({ applicationReference: 'AP27EA500500ABPL' }),
           legacyApplication({
             accreditationReference: null,
-            applicationReference: 'RA-000004562'
+            applicationReference: 'AP27EA500456ABPL'
           }),
           legacyApplication({
             accreditationReference: null,
@@ -117,7 +117,7 @@ describe('Viewing a Legacy accreditation application', () => {
         .get()
       expect(links).toEqual([
         ['A27ER5001120018PL', '/accreditation-applications/AP27EA500500ABPL'],
-        ['RA-000004562', '/accreditation-applications/RA-000004562'],
+        ['AP27EA500456ABPL', '/accreditation-applications/AP27EA500456ABPL'],
         [
           'R25ER5001120018PL',
           '/accreditation-applications/6716a3c09e4b2d1f8a5c7e30'
@@ -260,7 +260,7 @@ describe('Viewing a Legacy accreditation application', () => {
   })
 
   describe('the core details (AC05, AC06)', () => {
-    test('are shown above the stored document, each with a button that copies it', async () => {
+    test('are shown above the stored document, each with a button that copies it, with the organisation name masked', async () => {
       useFakeRecord(() => HttpResponse.json(storedApplication()))
 
       const { $ } = await get(PAGE)
@@ -269,7 +269,7 @@ describe('Viewing a Legacy accreditation application', () => {
         ['Status', 'Approved'],
         ['Accreditation number', 'A27ER5003180009GL'],
         ['Application reference', 'AP27EA500500ABPL'],
-        ['Organisation', 'Testmore Glass Ltd'],
+        ['Organisation', 'T******* G**** L**'],
         ['Organisation number', '500318'],
         ['Registration number', 'R25ER5003180009GL'],
         ['Material', 'Glass'],
@@ -287,7 +287,7 @@ describe('Viewing a Legacy accreditation application', () => {
       ).toEqual([
         ['A27ER5003180009GL', 'Copy accreditation number'],
         ['AP27EA500500ABPL', 'Copy application reference'],
-        ['Testmore Glass Ltd', 'Copy organisation'],
+        ['T******* G**** L**', 'Copy organisation'],
         ['500318', 'Copy organisation number'],
         ['R25ER5003180009GL', 'Copy registration number'],
         ['Glass', 'Copy material'],
@@ -348,13 +348,14 @@ describe('Viewing a Legacy accreditation application', () => {
       expect(JSON.stringify(logs)).not.toContain('Mary')
     })
 
-    test('leaves other fields unmasked, as agreed for RA-750: organisation, phone, address', async () => {
+    test("masks the organisation name, as it can be a sole trader's own name, and leaves phone and address unmasked, as agreed for RA-750", async () => {
       useFakeRecord(() => HttpResponse.json(storedApplication()))
 
       const { $ } = await get(PAGE)
 
       const document = $('[data-testid="document"]').text()
-      expect(document).toContain('"organisationName": "Testmore Glass Ltd"')
+      expect(document).toContain('"organisationName": "T******* G**** L**"')
+      expect(document).not.toContain('Testmore Glass Ltd')
       expect(document).toContain('"phone": "07700 900123"')
       expect(document).toContain(
         '"siteAddress": "Unit 4, Furnace Industrial Estate, Glasgow"'

@@ -46,7 +46,7 @@ Compose starts Redis, the Entra ID stub and this service. If port 3000 is taken,
 
 ### Running against a local backend
 
-The search page reads Legacy accreditation applications from [`epr-register-enrol-backend`](https://github.com/DEFRA/epr-register-enrol-backend) (`GET /admin/accreditation-applications`, specified in its `docs/openapi/admin-api.yaml`). Run the backend from the [`epr-register-enrol`](https://github.com/DEFRA/epr-register-enrol) umbrella repo's Compose stack, which serves it on <http://localhost:8080>, the default `BACKEND_URL`, and run this service with `npm run dev`. Inside this repo's Compose stack, `localhost` is the admin container itself, so the default doesn't reach the backend.
+The search page reads Legacy accreditation applications (the record type a `/search` URL with no `type` shows) from [`epr-register-enrol-backend`](https://github.com/DEFRA/epr-register-enrol-backend) (`GET /admin/accreditation-applications`, specified in its `docs/openapi/admin-api.yaml`). Run the backend from the [`epr-register-enrol`](https://github.com/DEFRA/epr-register-enrol) umbrella repo's Compose stack, which serves it on <http://localhost:8080>, the default `BACKEND_URL`, and run this service with `npm run dev`. Inside this repo's Compose stack, `localhost` is the admin container itself, so the default doesn't reach the backend.
 
 The backend only answers clients it knows, and checks each call's HMAC signature, even locally. Give both sides the same secret:
 
@@ -54,6 +54,8 @@ The backend only answers clients it knows, and checks each call's HMAC signature
 - this service, in `.env` or the shell: `BACKEND_API_SHARED_SECRET=<the same secret>`.
 
 Without a backend, or with a mismatched secret, the search page stays up and shows "Legacy accreditation application data is unavailable right now", and the reason is logged at `error`.
+
+The search page's record type choice also offers the Operator journey collections, from the same backend with the same secret: one search per type under `GET /admin/operator-journey/` (accreditations, accreditation applications, registrations, organisations and overseas sites), and the countries for the overseas sites' Country filter from `GET /admin/operator-journey/overseas-site-countries`. Without them the page shows a banner saying which data is unavailable.
 
 | Variable                    | Default                    | What it is                                                                                                              |
 | --------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |

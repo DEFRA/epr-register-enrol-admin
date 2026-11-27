@@ -514,7 +514,7 @@ describe('Searching Operator journey records', () => {
       ])
     })
 
-    test('rows are in the order the backend gives, most recently changed first, and are not links until the record page exists', async () => {
+    test('rows are in the order the backend gives, most recently changed first', async () => {
       useFakeOperatorJourney(`${API}/registrations`, () =>
         resultsPage([
           items.registrations({
@@ -537,10 +537,50 @@ describe('Searching Operator journey records', () => {
       expect(text($, '.app-results-heading')).toBe(
         '2 registrations Most recently changed first'
       )
-      expect($('[data-testid="results"] a')).toHaveLength(0)
     })
 
-    test('never shows anything from the item but those columns (AC14)', async () => {
+    test.each([
+      ['accreditations', 'A27ER5001120018PL', '6650f1c2a1b2c3d4e5f60801'],
+      [
+        'accreditation-applications',
+        'RA-000000123',
+        '6650f1c2a1b2c3d4e5f60901'
+      ],
+      ['registrations', 'R25ER5001120018PL', '6650f1c2a1b2c3d4e5f60802'],
+      ['organisations', '500112', '6650f1c2a1b2c3d4e5f60718'],
+      ['overseas-sites', 'ORS-0001', '6650f1c2a1b2c3d4e5f60a01']
+    ])(
+      '%s: each reference links to its record page, by type and ID (AC10)',
+      async (type, reference, id) => {
+        serveCountries()
+        useFakeOperatorJourney(`${API}/${type}`, () =>
+          resultsPage([items[type]()])
+        )
+
+        const { $ } = await get(`/operator-journey?type=${type}`)
+
+        const links = $('[data-testid="results"] a')
+        expect(links).toHaveLength(1)
+        expect($('[data-testid="record-link"]').text()).toBe(reference)
+        expect($('[data-testid="record-link"]').attr('href')).toBe(
+          `/operator-journey/${type}/${id}`
+        )
+      }
+    )
+
+    test('a record ID is encoded in its link', async () => {
+      useFakeOperatorJourney(`${API}/registrations`, () =>
+        resultsPage([items.registrations({ id: 'a/b?c' })])
+      )
+
+      const { $ } = await get('/operator-journey?type=registrations')
+
+      expect($('[data-testid="record-link"]').attr('href')).toBe(
+        '/operator-journey/registrations/a%2Fb%3Fc'
+      )
+    })
+
+    test('never shows anything from the item but those columns, and its ID in the link (AC14)', async () => {
       serveCountries()
       useFakeOperatorJourney(`${API}/overseas-sites`, () =>
         resultsPage([items['overseas-sites']()])
@@ -549,7 +589,6 @@ describe('Searching Operator journey records', () => {
       const { response } = await get('/operator-journey?type=overseas-sites')
 
       expect(response.payload).not.toContain('Rotterdam Polymer Works')
-      expect(response.payload).not.toContain('6650f1c2a1b2c3d4e5f60a01')
       expect(response.payload).not.toContain('R25EX5001120018PL')
       expect(response.headers['referrer-policy']).toBe('no-referrer')
     })

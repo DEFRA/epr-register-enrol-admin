@@ -126,9 +126,9 @@
                 <tbody class="govuk-table__body">
                   {% for row in results.rows %}
                     <tr class="govuk-table__row">
-                      {#- Plain text until the record page exists (RA-754): it
-                          becomes a link here. -#}
-                      <td class="govuk-table__cell app-results__ref-cell">{{ row.reference }}</td>
+                      <td class="govuk-table__cell app-results__ref-cell">
+                        <a class="govuk-link" href="{{ row.href }}" data-testid="record-link">{{ row.reference }}</a>
+                      </td>
                       {% if recordType.statuses %}
                         <td class="govuk-table__cell">{{ govukTag({ text: row.status.text, classes: row.status.classes }) }}</td>
                       {% endif %}

@@ -19,6 +19,17 @@ import { ukDateTime } from './uk-date-time.js'
 
 export const OPERATOR_JOURNEY_PATH = '/operator-journey'
 
+/**
+ * Where a record's page is: `/operator-journey/{type}/{id}`. The page is
+ * RA-754's; until it ships, the link returns 404 (Tom's decision for AC10).
+ *
+ * @param {{ value: string }} type its record type
+ * @param {{ id: string }} item as the backend sends it
+ * @returns {string}
+ */
+export const recordHref = (type, item) =>
+  `${OPERATOR_JOURNEY_PATH}/${type.value}/${encodeURIComponent(item.id)}`
+
 // Shown for an organisation name or number the backend holds none of: ReEx
 // can leave either unset, and the backend's contract has them null then.
 const NOT_HELD = 'Not held'
@@ -325,8 +336,8 @@ const fieldOf = (item, field) =>
   field.split('.').reduce((value, key) => value[key], item)
 
 /**
- * One results row (AC09): the record's reference, or its ID when it has none
- * yet (as the backend's contract says), its status, its organisation's name
+ * One results row (AC09, AC10): the record's reference, or its ID when it has none
+ * yet (as the backend's contract says), linking to its record page, its status, its organisation's name
  * and number, and when it last changed. Nothing else from the item reaches
  * the page.
  *
@@ -338,6 +349,7 @@ export function resultRow(type, item) {
     type.statuses && type.statuses.find(({ value }) => value === item.status)
   return {
     reference: String(fieldOf(item, type.reference.field) ?? item.id),
+    href: recordHref(type, item),
     status: status && { text: status.text, classes: status.classes },
     organisationName: item.organisation.name ?? NOT_HELD,
     organisationNumber: String(item.organisation.number ?? NOT_HELD),

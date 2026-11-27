@@ -1,14 +1,12 @@
 import Joi from 'joi'
 
-import { searchCriteriaParams } from '#/server/common/helpers/backend-api/backend-api.js'
+import { searchParams } from '#/server/common/helpers/backend-api/backend-api.js'
 import {
-  STATUSES,
-  applicationType,
-  mostSpecificReference,
-  nationName,
-  recordHref,
-  statusTag
-} from '#/server/common/helpers/legacy-application.js'
+  RECORD_TYPES,
+  filterOptions,
+  recordTypeOf,
+  tickedValues
+} from '#/server/common/helpers/record-types.js'
 import {
   asList,
   formErrors,
@@ -18,69 +16,151 @@ import {
   searchTerm,
   selectedFilterGroups
 } from '#/server/common/helpers/search-form.js'
-import { maskName } from '#/server/common/helpers/mask-personal-data.js'
-import { ukDateTime } from '#/server/common/helpers/uk-date-time.js'
 
-// The fields q can search, in the order the form shows them.
-export const SEARCH_FIELDS = [
-  { value: 'accreditationNumber', text: 'Accreditation number' },
-  { value: 'registrationNumber', text: 'Registration number' },
-  { value: 'organisationNumber', text: 'Organisation number' },
-  { value: 'organisationName', text: 'Organisation name' }
-]
+export const SEARCH_PATH = '/search'
 
-export const searchQuery = Joi.object({
-  q: searchTerm,
-  searchFields: listOf(SEARCH_FIELDS),
-  status: listOf(STATUSES),
-  year: Joi.number().integer().min(2000).max(9999).empty(''),
-  page: Joi.number().integer().min(1).max(100000).default(1)
-}).options({ stripUnknown: true })
+const TYPE_MESSAGE = 'Select a record type from the list'
 
-// One message per field, whatever Joi found wrong with it.
-const ERROR_MESSAGES = {
-  q: 'Search must be 100 characters or fewer',
-  searchFields: 'Select fields to search from the list',
-  status: 'Select statuses from the list',
-  year: 'Select an accreditation year from the list',
-  page: 'Page must be a whole number, 1 or more'
+// The record type comes first: it decides which fields and filters there
+// are. An empty one is none, which is the Legacy type.
+const typeQuery = Joi.object({
+  type: Joi.string()
+    .valid(...RECORD_TYPES.map(({ value }) => value))
+    .empty('')
+}).unknown(true)
+
+const filterQuery = (filter) => {
+  if (filter.options) {
+    return listOf(filter.options)
+  }
+  if (filter.any !== undefined) {
+    return filter.value
+  }
+  return Joi.array().single().items(filter.value).unique().default([])
 }
 
-// Where each error summary entry takes the user.
-const ERROR_TARGETS = {
-  q: '#q',
-  searchFields: '#searchFields',
-  status: '#status',
-  year: '#year'
+// One record type's search: its term, fields, filters and page. Anything
+// that isn't one of them, such as another type's filter, is dropped.
+const searchQueryFor = (recordType) =>
+  Joi.object({
+    type: Joi.string(),
+    q: searchTerm,
+    searchFields: listOf(recordType.searchFields),
+    ...Object.fromEntries(
+      recordType.filters.map((filter) => [filter.name, filterQuery(filter)])
+    ),
+    page: Joi.number().integer().min(1).max(100000).default(1)
+  }).options({ stripUnknown: true })
+
+/**
+ * The query as a search: the record type, then that type's search term,
+ * fields, filters and page. Throws Joi's error, every problem in it, for
+ * the page to show.
+ *
+ * @param {Record<string, unknown>} query
+ */
+export function searchQuery(query) {
+  const options = { abortEarly: false }
+  const { error, value } = typeQuery.validate(query, options)
+  if (error) {
+    throw error
+  }
+  const search = searchQueryFor(recordTypeOf(value.type)).validate(
+    { ...query, type: value.type },
+    options
+  )
+  if (search.error) {
+    throw search.error
+  }
+  return search.value
 }
 
-export const searchErrors = (validationError) =>
-  formErrors(validationError, {
-    messages: ERROR_MESSAGES,
-    targets: ERROR_TARGETS
+/**
+ * The error summary for a search that is not valid, one entry per field in
+ * the form's order. A type that isn't one of the list is the only error
+ * shown, as the rest of the form depends on it.
+ *
+ * @param {import('joi').ValidationError} validationError
+ * @param {import('#/server/common/helpers/record-types.js').RecordType} [recordType]
+ */
+export function searchErrors(validationError, recordType) {
+  const filters = recordType?.filters ?? []
+  return formErrors(validationError, {
+    messages: {
+      type: TYPE_MESSAGE,
+      ...(recordType && {
+        q: 'Search must be 100 characters or fewer',
+        searchFields: 'Select fields to search from the list',
+        ...Object.fromEntries(
+          filters.map(({ name, heading, error }) => [
+            name,
+            error ?? `Select ${heading.toLowerCase()} from the list`
+          ])
+        ),
+        page: 'Page must be a whole number, 1 or more'
+      })
+    },
+    messagesByType: { 'type:string.base': TYPE_MESSAGE },
+    targets: {
+      type: '#type',
+      q: '#q',
+      searchFields: '#searchFields',
+      ...Object.fromEntries(filters.map(({ name }) => [name, `#${name}`]))
+    }
   })
+}
 
 /**
  * The form as the user sent it, to show it back to them when it was not
  * valid. Values that aren't options simply show unticked.
+ *
+ * @param {Record<string, unknown>} query
+ * @param {import('#/server/common/helpers/record-types.js').RecordType} recordType
  */
-export function formFromRawQuery(query) {
-  return {
-    q: asList(query.q)[0] ?? '',
-    searchFields: asList(query.searchFields),
-    status: asList(query.status),
-    year: asList(query.year)[0] ?? ''
-  }
+export const formFromRawQuery = (query, recordType) => ({
+  q: asList(query.q)[0] ?? '',
+  searchFields: asList(query.searchFields),
+  ...Object.fromEntries(
+    recordType.filters.map((filter) => [
+      filter.name,
+      filter.any === undefined
+        ? asList(query[filter.name])
+        : (asList(query[filter.name])[0] ?? '')
+    ])
+  )
+})
+
+/**
+ * The URL of a search of a record type: its type, unless it is the Legacy
+ * one a URL with no type means, then its term, fields, filters and page.
+ *
+ * @param {import('#/server/common/helpers/record-types.js').RecordType} recordType
+ * @param {{ page?: number } & Record<string, unknown>} criteria
+ */
+export function searchHref(recordType, { page, ...criteria }) {
+  const params = searchParams(recordType, criteria)
+  return pageHref(
+    SEARCH_PATH,
+    recordType.inUrl
+      ? new URLSearchParams([['type', recordType.value], ...params])
+      : params,
+    page
+  )
 }
 
-export const searchHref = ({ page, ...criteria }) =>
-  pageHref('/search', searchCriteriaParams(criteria), page)
+/** The URL of a record type's search with no search or filters. */
+export const typeHref = (recordType) =>
+  pageHref(
+    SEARCH_PATH,
+    new URLSearchParams(recordType.inUrl ? { type: recordType.value } : {})
+  )
 
 /**
  * The search term, ticked fields and filters in force, each as a tag whose
- * link shows the results without it, back on the first page.
+ * link shows the results without it, back on the first page, of the same
+ * record type.
  */
-export const selectedFilters = (criteria) =>
+export const selectedFilters = (recordType, criteria, offered) =>
   selectedFilterGroups(
     criteria,
     [
@@ -88,39 +168,21 @@ export const selectedFilters = (criteria) =>
       {
         heading: 'Search in',
         name: 'searchFields',
-        text: (field) => labelOf(SEARCH_FIELDS, field)
+        text: (field) => labelOf(recordType.searchFields, field)
       },
-      {
-        heading: 'Status',
-        name: 'status',
-        text: (value) => labelOf(STATUSES, value)
-      },
-      { heading: 'Accreditation year', name: 'year' }
+      ...recordType.filters.map((filter) => ({
+        heading: filter.heading,
+        name: filter.name,
+        text: (value) =>
+          labelOf(
+            filterOptions(
+              filter,
+              tickedValues(filter, criteria[filter.name]),
+              offered[filter.name]
+            ),
+            String(value)
+          )
+      }))
     ],
-    searchHref
+    (changed) => searchHref(recordType, changed)
   )
-
-/**
- * One results row: its reference, status, organisation, registration number,
- * material (with type and nation), year and when it was last updated, with
- * the organisation name masked. Nothing else from the stored application
- * (contacts, addresses, signatories, the business plan) reaches the page.
- */
-export function resultRow(application) {
-  return {
-    reference: mostSpecificReference(application) || application.applicationId,
-    href: recordHref(application),
-    status: statusTag(application.applicationStatus),
-    // Masked: it can be a sole trader's own name.
-    organisationName:
-      application.organisationName && maskName(application.organisationName),
-    organisationNumber: application.orgId,
-    registrationNumber: application.registrationReference,
-    material: application.materialType,
-    materialHint: [applicationType(application), nationName(application.nation)]
-      .filter(Boolean)
-      .join(' · '),
-    year: application.year,
-    updated: ukDateTime(application.updatedAt)
-  }
-}

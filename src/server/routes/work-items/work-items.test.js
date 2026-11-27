@@ -117,7 +117,7 @@ describe('Searching case management work items', () => {
   const errorLogs = () => logs.filter(({ level }) => level === 'error')
 
   describe('the Case management tab (AC01, AC02)', () => {
-    test('sits beside Legacy and Operator journey in the service navigation, marked as this page', async () => {
+    test('sits beside Operator journey in the service navigation, marked as this page', async () => {
       useFakeCaseManagement()
 
       const { $ } = await get('/work-items')
@@ -131,12 +131,7 @@ describe('Searching case management work items', () => {
           }))
           .get()
       ).toEqual([
-        { text: 'Legacy', href: '/search', current: null },
-        {
-          text: 'Operator journey',
-          href: '/operator-journey',
-          current: null
-        },
+        { text: 'Operator journey', href: '/search', current: null },
         { text: 'Case management', href: '/work-items', current: 'page' },
         { text: 'Sign out', href: '/auth/sign-out', current: null }
       ])

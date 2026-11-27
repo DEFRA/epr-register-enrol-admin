@@ -177,7 +177,7 @@ describe('Searching Legacy accreditation applications', () => {
       ])
     })
 
-    test('the service navigation marks Legacy as this page', async () => {
+    test('the service navigation marks Operator journey as this page', async () => {
       useFakeBackend(() => resultsPage([]))
 
       const { $ } = await get('/search')
@@ -190,12 +190,7 @@ describe('Searching Legacy accreditation applications', () => {
         .get()
 
       expect(navigation).toEqual([
-        { text: 'Legacy', href: '/search', current: 'page' },
-        {
-          text: 'Operator journey',
-          href: '/operator-journey',
-          current: null
-        },
+        { text: 'Operator journey', href: '/search', current: 'page' },
         { text: 'Case management', href: '/work-items', current: null },
         { text: 'Sign out', href: '/auth/sign-out', current: null }
       ])
@@ -213,6 +208,8 @@ describe('Searching Legacy accreditation applications', () => {
           .map((_i, field) => field.attribs.name)
           .get()
       ).toEqual([
+        // The record type choice comes first, in a form of its own (RA-753).
+        'type',
         'q',
         ...Array(4).fill('searchFields'),
         ...Array(10).fill('status'),
@@ -1158,11 +1155,11 @@ describe('Searching Legacy accreditation applications', () => {
   })
 
   describe('the service navigation', () => {
-    test('is shown on other pages too, without marking Legacy as current', async () => {
+    test('is shown on other pages too, without marking Operator journey as current', async () => {
       const { $ } = await get('/cookies')
 
       expect($('.govuk-service-navigation__list a').first().text().trim()).toBe(
-        'Legacy'
+        'Operator journey'
       )
       expect(
         $('.govuk-service-navigation__list a').first().attr('aria-current')

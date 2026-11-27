@@ -18,6 +18,7 @@ import { signIn, supportUser, useFakeEntra } from '#/test-helpers/fake-entra.js'
 import {
   operatorJourneyAccreditation,
   resultsPage,
+  useFakeBackend,
   useFakeOperatorJourney
 } from '#/test-helpers/fake-backend.js'
 
@@ -85,7 +86,9 @@ const searchAudits = () =>
   vi
     .mocked(audit)
     .mock.calls.map(([event]) => event)
-    .filter((event) => event.event.action === 'search-operator-journey')
+    .filter((event) =>
+      event.event.action.startsWith('search-operator-journey-')
+    )
 
 const sentQuery = (request) => [...new URL(request.url).searchParams]
 
@@ -167,15 +170,17 @@ describe('Searching Operator journey records', () => {
       HttpResponse.json({ items: countries })
     )
 
-  describe('before a record type is chosen (AC01, AC02)', () => {
-    test('offers the five record types, none chosen, and searches nothing', async () => {
-      const { response, $ } = await get('/operator-journey')
+  describe('the record type choice (AC01, AC02)', () => {
+    test('offers the Legacy applications and the five Operator journey record types', async () => {
+      useFakeOperatorJourney(`${API}/registrations`, () => resultsPage([]))
+
+      const { response, $ } = await get('/search?type=registrations')
 
       expect(response.statusCode).toBe(200)
       expect(text($, 'title')).toBe(
-        'Search Operator journey records | RREPW Reg-Accred GOV.UK'
+        'Search Operator journey registrations | RREPW Reg-Accred GOV.UK'
       )
-      expect($('h1').text()).toBe('Search Operator journey records')
+      expect($('h1').text()).toBe('Search Operator journey registrations')
       expect(text($, 'label[for="type"]')).toBe('Record type')
       expect(
         $('#type option')
@@ -185,56 +190,52 @@ describe('Searching Operator journey records', () => {
           }))
           .get()
       ).toEqual([
-        { value: '', text: 'Choose a record type' },
-        { value: 'accreditations', text: 'Accreditations' },
+        {
+          value: 'legacy-accreditation-applications',
+          text: 'Legacy: accreditation applications'
+        },
+        { value: 'accreditations', text: 'Operator journey: accreditations' },
         {
           value: 'accreditation-applications',
-          text: 'Accreditation applications'
+          text: 'Operator journey: accreditation applications'
         },
-        { value: 'registrations', text: 'Registrations' },
-        { value: 'organisations', text: 'Organisations' },
-        { value: 'overseas-sites', text: 'Overseas reprocessing sites' }
-      ])
-      expect($('#type option:selected').val()).toBe('')
-      expect($('[data-testid="type-form"]').attr('method')).toBe('get')
-      expect($('[data-testid="type-form"]').attr('action')).toBe(
-        '/operator-journey'
-      )
-      expect($('[data-testid="search-form"]')).toHaveLength(0)
-      expect($('#q')).toHaveLength(0)
-      expect(searchAudits()).toEqual([])
-    })
-
-    test('an empty type is no type chosen', async () => {
-      const { response, $ } = await get('/operator-journey?type=&q=calder')
-
-      expect(response.statusCode).toBe(200)
-      expect($('#type option:selected').val()).toBe('')
-      expect($('[data-testid="search-form"]')).toHaveLength(0)
-    })
-
-    test('the service navigation marks Operator journey as this page', async () => {
-      const { $ } = await get('/operator-journey')
-
-      expect(
-        $('.govuk-service-navigation__list a')
-          .map((_i, link) => ({
-            text: $(link).text().trim(),
-            href: $(link).attr('href'),
-            current: $(link).attr('aria-current') ?? null
-          }))
-          .get()
-      ).toEqual([
-        { text: 'Legacy', href: '/search', current: null },
+        { value: 'registrations', text: 'Operator journey: registrations' },
+        { value: 'organisations', text: 'Operator journey: organisations' },
         {
-          text: 'Operator journey',
-          href: '/operator-journey',
-          current: 'page'
-        },
-        { text: 'Case management', href: '/work-items', current: null },
-        { text: 'Sign out', href: '/auth/sign-out', current: null }
+          value: 'overseas-sites',
+          text: 'Operator journey: overseas reprocessing sites'
+        }
       ])
+      expect($('#type option:selected').val()).toBe('registrations')
+      expect($('[data-testid="type-form"]').attr('method')).toBe('get')
+      expect($('[data-testid="type-form"]').attr('action')).toBe('/search')
     })
+
+    test.each([
+      ['no type', '/search'],
+      ['an empty type', '/search?type='],
+      ['the Legacy type', '/search?type=legacy-accreditation-applications']
+    ])(
+      "with %s, searches the Legacy applications, so links made before the choice keep working (Tom's decision)",
+      async (_case, url) => {
+        const requests = useFakeBackend(() => resultsPage([]))
+
+        const { response, $ } = await get(url)
+
+        expect(response.statusCode).toBe(200)
+        expect($('h1').text()).toBe('Search accreditation applications')
+        expect($('#type option:selected').val()).toBe(
+          'legacy-accreditation-applications'
+        )
+        expect(
+          $('[data-testid="search-form"] input[name="type"]')
+        ).toHaveLength(0)
+        expect(requests).toHaveLength(1)
+        expect(
+          vi.mocked(audit).mock.calls.map(([event]) => event.event.action)
+        ).toEqual(['search-legacy-accreditation-applications'])
+      }
+    )
   })
 
   describe("each record type's search box and filters (AC01, AC07)", () => {
@@ -359,7 +360,7 @@ describe('Searching Operator journey records', () => {
           resultsPage([items[type]()])
         )
 
-        const { response, $ } = await get(`/operator-journey?type=${type}`)
+        const { response, $ } = await get(`/search?type=${type}`)
 
         expect(response.statusCode).toBe(200)
         expect($('#type option:selected').val()).toBe(type)
@@ -388,7 +389,7 @@ describe('Searching Operator journey records', () => {
         resultsPage([])
       )
 
-      const { $ } = await get('/operator-journey?type=accreditations&year=2031')
+      const { $ } = await get('/search?type=accreditations&year=2031')
 
       expect(checked($, 'year')).toEqual(['2031'])
       expect(labels($, 'year')).toEqual([...years, '2031'])
@@ -401,16 +402,14 @@ describe('Searching Operator journey records', () => {
         resultsPage([])
       )
 
-      const { $ } = await get(
-        '/operator-journey?type=overseas-sites&country=Netherlands'
-      )
+      const { $ } = await get('/search?type=overseas-sites&country=Netherlands')
 
       expect(labels($, 'country')).toEqual(['Germany', 'Netherlands'])
       expect(checked($, 'country')).toEqual(['Netherlands'])
       expect(selectedTags($)).toEqual([
         {
           text: 'Remove country Netherlands',
-          href: '/operator-journey?type=overseas-sites'
+          href: '/search?type=overseas-sites'
         }
       ])
       expect(sentQuery(requests[0])).toContainEqual(['country', 'Netherlands'])
@@ -443,7 +442,7 @@ describe('Searching Operator journey records', () => {
           resultsPage([items[type]()])
         )
 
-        const { $ } = await get(`/operator-journey?type=${type}`)
+        const { $ } = await get(`/search?type=${type}`)
 
         expect(tableHeadings($)).toEqual([
           referenceHeading,
@@ -467,7 +466,7 @@ describe('Searching Operator journey records', () => {
         resultsPage([items.organisations()])
       )
 
-      const { $ } = await get('/operator-journey?type=organisations')
+      const { $ } = await get('/search?type=organisations')
 
       expect(tableHeadings($)).toEqual([
         'Organisation number',
@@ -492,7 +491,7 @@ describe('Searching Operator journey records', () => {
           resultsPage([items[type](overrides)])
         )
 
-        const { $ } = await get(`/operator-journey?type=${type}`)
+        const { $ } = await get(`/search?type=${type}`)
 
         expect(tableRows($)[0][0]).toBe(items[type]().id)
       }
@@ -507,7 +506,7 @@ describe('Searching Operator journey records', () => {
         ])
       )
 
-      const { $ } = await get('/operator-journey?type=organisations')
+      const { $ } = await get('/search?type=organisations')
 
       expect(tableRows($)).toEqual([
         ['6650f1c2a1b2c3d4e5f60718', 'Not held Not held', '20 Nov 2026 09:14']
@@ -528,7 +527,7 @@ describe('Searching Operator journey records', () => {
         ])
       )
 
-      const { $ } = await get('/operator-journey?type=registrations')
+      const { $ } = await get('/search?type=registrations')
 
       expect(tableRows($).map((row) => row[0])).toEqual([
         'R25ER0000000002PL',
@@ -557,7 +556,7 @@ describe('Searching Operator journey records', () => {
           resultsPage([items[type]()])
         )
 
-        const { $ } = await get(`/operator-journey?type=${type}`)
+        const { $ } = await get(`/search?type=${type}`)
 
         const links = $('[data-testid="results"] a')
         expect(links).toHaveLength(1)
@@ -573,7 +572,7 @@ describe('Searching Operator journey records', () => {
         resultsPage([items.registrations({ id: 'a/b?c' })])
       )
 
-      const { $ } = await get('/operator-journey?type=registrations')
+      const { $ } = await get('/search?type=registrations')
 
       expect($('[data-testid="record-link"]').attr('href')).toBe(
         '/operator-journey/registrations/a%2Fb%3Fc'
@@ -586,7 +585,7 @@ describe('Searching Operator journey records', () => {
         resultsPage([items['overseas-sites']()])
       )
 
-      const { response } = await get('/operator-journey?type=overseas-sites')
+      const { response } = await get('/search?type=overseas-sites')
 
       expect(response.payload).not.toContain('Rotterdam Polymer Works')
       expect(response.payload).not.toContain('Harbourside Plastics Ltd')
@@ -602,7 +601,7 @@ describe('Searching Operator journey records', () => {
       )
 
       const { $ } = await get(
-        '/operator-journey?type=accreditations&q=%20HarbourSide%20&searchFields=organisationName&searchFields=id'
+        '/search?type=accreditations&q=%20HarbourSide%20&searchFields=organisationName&searchFields=id'
       )
 
       expect(sentQuery(requests[0])).toEqual([
@@ -622,7 +621,7 @@ describe('Searching Operator journey records', () => {
       )
 
       const { $ } = await get(
-        '/operator-journey?type=accreditations&searchFields=organisationName'
+        '/search?type=accreditations&searchFields=organisationName'
       )
 
       expect(sentQuery(requests[0])).toEqual([
@@ -635,7 +634,7 @@ describe('Searching Operator journey records', () => {
 
   describe('search and filters together (AC07, AC08, AC13)', () => {
     const url =
-      '/operator-journey?type=accreditation-applications&q=harbour&searchFields=organisationName&status=Submitted&status=DulyMade&year=2027&material=Plastic&nation=Wales'
+      '/search?type=accreditation-applications&q=harbour&searchFields=organisationName&status=Submitted&status=DulyMade&year=2027&material=Plastic&nation=Wales'
 
     test('are all sent, each value of a filter repeated, and the form shows them all', async () => {
       const requests = useFakeOperatorJourney(
@@ -673,7 +672,7 @@ describe('Searching Operator journey records', () => {
 
       const { $ } = await get(`${url}&page=2`)
 
-      const base = '/operator-journey?type=accreditation-applications'
+      const base = '/search?type=accreditation-applications'
       const filters =
         'status=Submitted&status=DulyMade&year=2027&material=Plastic&nation=Wales'
       expect(selectedTags($)).toEqual([
@@ -715,7 +714,7 @@ describe('Searching Operator journey records', () => {
       )
 
       const { response } = await get(
-        '/operator-journey?type=accreditations&nation=Wales&status=Approved'
+        '/search?type=accreditations&nation=Wales&status=Approved'
       )
 
       expect(response.statusCode).toBe(200)
@@ -726,7 +725,7 @@ describe('Searching Operator journey records', () => {
       ])
     })
 
-    test('are recorded in the audit log with who searched and the record type, and no results', async () => {
+    test('are recorded in the audit log under the record type, with who searched, and no results', async () => {
       useFakeOperatorJourney(`${API}/accreditation-applications`, () =>
         resultsPage([items['accreditation-applications']()])
       )
@@ -735,9 +734,11 @@ describe('Searching Operator journey records', () => {
 
       expect(searchAudits()).toEqual([
         {
-          event: { category: 'search', action: 'search-operator-journey' },
+          event: {
+            category: 'search',
+            action: 'search-operator-journey-accreditation-applications'
+          },
           context: {
-            type: 'accreditation-applications',
             q: 'harbour',
             searchFields: ['organisationName'],
             status: ['Submitted', 'DulyMade'],
@@ -757,11 +758,11 @@ describe('Searching Operator journey records', () => {
     test('the search form submits by GET with its type, so the URL holds the whole search', async () => {
       useFakeOperatorJourney(`${API}/organisations`, () => resultsPage([]))
 
-      const { $ } = await get('/operator-journey?type=organisations')
+      const { $ } = await get('/search?type=organisations')
 
       const form = $('[data-testid="search-form"]')
       expect(form.attr('method')).toBe('get')
-      expect(form.attr('action')).toBe('/operator-journey')
+      expect(form.attr('action')).toBe('/search')
       expect(
         form
           .find('[name]')
@@ -787,7 +788,7 @@ describe('Searching Operator journey records', () => {
       )
 
       const { $ } = await get(
-        '/operator-journey?type=registrations&status=Approved&page=2'
+        '/search?type=registrations&status=Approved&page=2'
       )
 
       expect(sentQuery(requests[0])).toContainEqual(['pageNumber', '2'])
@@ -798,7 +799,7 @@ describe('Searching Operator journey records', () => {
       expect(text($, '[data-testid="showing"]')).toBe(
         'Showing 51 to 100 of 120 registrations'
       )
-      const base = '/operator-journey?type=registrations&status=Approved'
+      const base = '/search?type=registrations&status=Approved'
       expect($('.govuk-pagination__prev a').attr('href')).toBe(base)
       expect($('.govuk-pagination__next a').attr('href')).toBe(`${base}&page=3`)
       expect(
@@ -813,13 +814,13 @@ describe('Searching Operator journey records', () => {
         resultsPage([], { totalItems: 120, pageNumber: 9 })
       )
 
-      const { $ } = await get('/operator-journey?type=registrations&page=9')
+      const { $ } = await get('/search?type=registrations&page=9')
 
       expect(text($, '[data-testid="past-end"]')).toBe(
         'There are only 3 pages of results. Go to page 3'
       )
       expect($('[data-testid="past-end"] a').attr('href')).toBe(
-        '/operator-journey?type=registrations&page=3'
+        '/search?type=registrations&page=3'
       )
       expect($('[data-testid="no-results"]')).toHaveLength(0)
     })
@@ -830,7 +831,7 @@ describe('Searching Operator journey records', () => {
       )
       serveCountries()
 
-      const { $ } = await get('/operator-journey?type=overseas-sites')
+      const { $ } = await get('/search?type=overseas-sites')
 
       expect(text($, '[data-testid="results-heading"]')).toBe(
         '1 overseas reprocessing site'
@@ -846,7 +847,7 @@ describe('Searching Operator journey records', () => {
     test('says No records found', async () => {
       useFakeOperatorJourney(`${API}/accreditations`, () => resultsPage([]))
 
-      const { $ } = await get('/operator-journey?type=accreditations&q=zzz')
+      const { $ } = await get('/search?type=accreditations&q=zzz')
 
       expect(text($, '[data-testid="results-heading"]')).toBe(
         '0 accreditations'
@@ -858,13 +859,11 @@ describe('Searching Operator journey records', () => {
 
   describe('with input that is not valid', () => {
     test('a record type that is not one of the list asks for one from the list, and searches nothing', async () => {
-      const { response, $ } = await get(
-        '/operator-journey?type=migration-conflicts&q=calder'
-      )
+      const { response, $ } = await get('/search?type=unknown-records&q=calder')
 
       expect(response.statusCode).toBe(400)
       expect(text($, 'title')).toBe(
-        'Error: Search Operator journey records | RREPW Reg-Accred GOV.UK'
+        'Error: Search records | RREPW Reg-Accred GOV.UK'
       )
       expect(errorSummary($)).toEqual([
         { text: 'Select a record type from the list', href: '#type' }
@@ -872,14 +871,25 @@ describe('Searching Operator journey records', () => {
       expect(text($, '#type-error')).toBe(
         'Error: Select a record type from the list'
       )
-      expect($('#type option:selected').val()).toBe('')
+      expect($('#type option[selected]')).toHaveLength(0)
       expect($('[data-testid="search-form"]')).toHaveLength(0)
-      expect(searchAudits()).toEqual([])
+      expect(vi.mocked(audit)).not.toHaveBeenCalled()
+    })
+
+    test('with an empty type, shows the Legacy form again with what was wrong', async () => {
+      const { response, $ } = await get('/search?type=&status=Lapsed')
+
+      expect(response.statusCode).toBe(400)
+      expect(errorSummary($)).toEqual([
+        { text: 'Select statuses from the list', href: '#status' }
+      ])
+      expect($('h1').text()).toBe('Search accreditation applications')
+      expect(checked($, 'year')).toEqual([''])
     })
 
     test('a record type sent twice asks for one from the list', async () => {
       const { response, $ } = await get(
-        '/operator-journey?type=accreditations&type=registrations'
+        '/search?type=accreditations&type=registrations'
       )
 
       expect(response.statusCode).toBe(400)
@@ -890,7 +900,7 @@ describe('Searching Operator journey records', () => {
 
     test("values that are not the type's options each say what is wrong, and the form shows the type again", async () => {
       const { response, $ } = await get(
-        `/operator-journey?type=accreditations&q=${'a'.repeat(101)}&searchFields=orsId&status=Submitted&status=Approved&year=1999&tonnageBand=huge&page=0`
+        `/search?type=accreditations&q=${'a'.repeat(101)}&searchFields=orsId&status=Submitted&status=Approved&year=1999&tonnageBand=huge&page=0`
       )
 
       expect(response.statusCode).toBe(400)
@@ -915,9 +925,7 @@ describe('Searching Operator journey records', () => {
     })
 
     test('a search term with a line break inside asks for one without', async () => {
-      const { response, $ } = await get(
-        '/operator-journey?type=registrations&q=a%0Ab'
-      )
+      const { response, $ } = await get('/search?type=registrations&q=a%0Ab')
 
       expect(response.statusCode).toBe(400)
       expect(errorSummary($)).toEqual([
@@ -932,7 +940,7 @@ describe('Searching Operator journey records', () => {
       serveCountries(['Germany'])
 
       const { response, $ } = await get(
-        '/operator-journey?type=overseas-sites&country=Spa%09in'
+        '/search?type=overseas-sites&country=Spa%09in'
       )
 
       expect(response.statusCode).toBe(400)
@@ -953,7 +961,7 @@ describe('Searching Operator journey records', () => {
       )
 
       const { response, $ } = await get(
-        '/operator-journey?type=registrations&q=harbour&nation=Wales'
+        '/search?type=registrations&q=harbour&nation=Wales'
       )
 
       expect(response.statusCode).toBe(200)
@@ -985,7 +993,7 @@ describe('Searching Operator journey records', () => {
         HttpResponse.json({ code: 'invalid_stored_record' }, { status: 500 })
       )
 
-      const { $ } = await get('/operator-journey?type=accreditations')
+      const { $ } = await get('/search?type=accreditations')
 
       expect(banner($)).toBe(
         'Important Operator journey accreditations are unavailable right now. Try again later.'
@@ -1007,9 +1015,7 @@ describe('Searching Operator journey records', () => {
           resultsPage([operatorJourneyAccreditation(overrides)])
         )
 
-        const { response, $ } = await get(
-          '/operator-journey?type=accreditations'
-        )
+        const { response, $ } = await get('/search?type=accreditations')
 
         expect(response.statusCode).toBe(200)
         expect(banner($)).toBe(
@@ -1036,7 +1042,7 @@ describe('Searching Operator journey records', () => {
       )
 
       const { response, $ } = await get(
-        '/operator-journey?type=overseas-sites&country=Spain'
+        '/search?type=overseas-sites&country=Spain'
       )
 
       expect(response.statusCode).toBe(200)
@@ -1063,7 +1069,7 @@ describe('Searching Operator journey records', () => {
       useFakeOperatorJourney(COUNTRIES, () => HttpResponse.json({ items: [1] }))
       useFakeOperatorJourney(`${API}/overseas-sites`, () => resultsPage([]))
 
-      const { $ } = await get('/operator-journey?type=overseas-sites')
+      const { $ } = await get('/search?type=overseas-sites')
 
       expect(banner($)).toContain('Overseas site countries are unavailable')
       expect(labels($, 'country')).toEqual([])

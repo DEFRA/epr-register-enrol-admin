@@ -3,8 +3,9 @@ import Joi from 'joi'
 /**
  * What every search page's form shares: its option lists, the search box
  * rule, its error messages and summary, its filter tags and the URLs of its
- * results. Each page (RA-740's /search, RA-751's /work-items, RA-753's
- * /operator-journey) adds only its own fields.
+ * results. Each page (/search, with a record type's own fields for each of
+ * its types (RA-740, RA-753), and RA-751's /work-items) adds only its own
+ * fields.
  */
 
 export const asList = (value) => [value ?? []].flat()

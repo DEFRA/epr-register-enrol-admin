@@ -1003,31 +1003,83 @@ describe('Searching Operator journey records', () => {
       })
     })
 
-    test.each([
-      ['with no date it last changed', { updatedAt: undefined }],
-      ['with a status this page does not know', { status: 'Lapsed' }],
-      ['with no organisation', { organisation: undefined }],
-      ['with its reference left out', { accreditationNumber: undefined }]
-    ])(
-      'a record %s is a response it cannot read: banner, error log, no made-up row',
-      async (_case, overrides) => {
-        useFakeOperatorJourney(`${API}/accreditations`, () =>
-          resultsPage([operatorJourneyAccreditation(overrides)])
+    // Every value the page reads from an item, missing, for each type, and a
+    // status it doesn't know where the type has statuses.
+    const missing = (field) => [`with no ${field}`, { [field]: undefined }]
+    const unreadable = {
+      accreditations: [
+        missing('accreditationNumber'),
+        ['with an unknown status', { status: 'Lapsed' }]
+      ],
+      'accreditation-applications': [
+        missing('applicationReference'),
+        ['with an unknown status', { status: 'Lapsed' }]
+      ],
+      registrations: [
+        missing('registrationNumber'),
+        ['with an unknown status', { status: 'Lapsed' }]
+      ],
+      organisations: [
+        [
+          'with no organisation number',
+          { organisation: { id: organisation.id, name: organisation.name } }
+        ],
+        [
+          'with no organisation name',
+          { organisation: { id: organisation.id, number: organisation.number } }
+        ]
+      ],
+      'overseas-sites': [
+        missing('orsId'),
+        ['with an unknown status', { status: 'Lapsed' }]
+      ]
+    }
+    const nouns = {
+      accreditations: 'accreditations',
+      'accreditation-applications': 'accreditation applications',
+      registrations: 'registrations',
+      organisations: 'organisations',
+      'overseas-sites': 'overseas reprocessing sites'
+    }
+
+    test.each(
+      Object.entries(unreadable).flatMap(([type, cases]) =>
+        [
+          missing('id'),
+          missing('updatedAt'),
+          missing('organisation'),
+          [
+            'with no organisation ID',
+            {
+              organisation: {
+                name: organisation.name,
+                number: organisation.number
+              }
+            }
+          ],
+          ...cases
+        ].map(([what, overrides]) => [type, what, overrides])
+      )
+    )(
+      '%s: a record %s is a response it cannot read: banner, error log, no made-up row',
+      async (type, _what, overrides) => {
+        serveCountries()
+        useFakeOperatorJourney(`${API}/${type}`, () =>
+          resultsPage([items[type](overrides)])
         )
 
-        const { response, $ } = await get('/search?type=accreditations')
+        const { response, $ } = await get(`/search?type=${type}`)
 
         expect(response.statusCode).toBe(200)
         expect(banner($)).toBe(
-          'Important Operator journey accreditations are unavailable right now. Try again later.'
+          `Important Operator journey ${nouns[type]} are unavailable right now. Try again later.`
         )
         expect($('[data-testid="results"]')).toHaveLength(0)
         expect(errorLogs()).toEqual([
           {
             level: 'error',
             fields: { http: { response: { status_code: 200 } } },
-            message:
-              'epr-register-enrol-backend GET /admin/operator-journey/accreditations returned a response it could not read'
+            message: `epr-register-enrol-backend GET /admin/operator-journey/${type} returned a response it could not read`
           }
         ])
       }

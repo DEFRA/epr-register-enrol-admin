@@ -34,7 +34,7 @@ import { ukDateTime } from './uk-date-time.js'
  * @param {{ id: string }} item as the backend sends it
  * @returns {string}
  */
-export const operatorJourneyRecordHref = (type, item) =>
+const operatorJourneyRecordHref = (type, item) =>
   `/operator-journey/${type.value}/${encodeURIComponent(item.id)}`
 
 // Shown for an organisation name or number the backend holds none of: ReEx
@@ -101,6 +101,10 @@ const MATERIALS = [
  * @property {string} [any] for a filter of one value (radios), the choice that is no filter
  */
 
+// A year to filter on, from 2000: one rule for every year filter, so they
+// can't drift apart.
+const YEAR = Joi.number().integer().min(2000).max(9999)
+
 const offeredYears = () => ({
   ok: true,
   values: accreditationYears().map(String)
@@ -112,7 +116,12 @@ const STATUS = { name: 'status', heading: 'Status' }
 const yearFilter = (heading) => ({
   name: 'year',
   heading,
-  value: Joi.string().pattern(/^[2-9]\d{3}$/, 'a year from 2000'),
+  // Four digits, kept as text so it ticks its checkbox, in YEAR's range.
+  value: Joi.string()
+    .pattern(/^\d{4}$/, 'four digits')
+    .custom((value, helpers) =>
+      YEAR.validate(value).error ? helpers.error('any.invalid') : value
+    ),
   offered: offeredYears
 })
 
@@ -185,7 +194,7 @@ const LEGACY = {
       heading: 'Accreditation year',
       error: 'Select an accreditation year from the list',
       any: 'Any year',
-      value: Joi.number().integer().min(2000).max(9999).empty(''),
+      value: YEAR.empty(''),
       offered: offeredYears,
       // A year from a shared URL that isn't one of the usual ones is offered
       // too, so the form still shows what is being filtered on. Something

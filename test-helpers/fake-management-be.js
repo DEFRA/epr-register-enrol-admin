@@ -323,6 +323,8 @@ export const priorYear = () => ({
  * @param {() => Response} [respond.workItem]
  * @param {() => Response} [respond.priorYear]
  * @param {() => Response} [respond.states]
+ * @param {(request: Request) => Response} [respond.statuses] the operator
+ *   backend's Legacy lookup; by default, each work item asked about is found
  */
 export function useFakeWorkItem({
   workItem = () => HttpResponse.json(workItemResponse()),
@@ -332,9 +334,15 @@ export function useFakeWorkItem({
       typeId: 're-accreditation',
       templateVersion: '1',
       states: reAccreditationStates()
+    }),
+  statuses = (request) =>
+    HttpResponse.json({
+      items: new URL(request.url).searchParams
+        .getAll('workItemId')
+        .map((id) => legacyStatus(id, 'Updated'))
     })
 } = {}) {
-  const requests = { workItem: [], priorYear: [], states: [] }
+  const requests = { workItem: [], priorYear: [], states: [], statuses: [] }
   const recorded =
     (name, handler) =>
     ({ request }) => {
@@ -353,6 +361,10 @@ export function useFakeWorkItem({
     http.get(
       `${MANAGEMENT_BE_URL}/work-items/:id`,
       recorded('workItem', workItem)
+    ),
+    http.get(
+      `${BACKEND_URL}/admin/accreditation-application-statuses`,
+      recorded('statuses', statuses)
     )
   )
   return requests

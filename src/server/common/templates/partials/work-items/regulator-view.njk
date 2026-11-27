@@ -12,13 +12,31 @@
 {#  - Application history: src/server/routes/work-items/audit-log.njk  #}
 {#  - Additional information:                                          #}
 {#    src/server/routes/work-items/additional-information.njk          #}
-{# Left out, as each changes the work item: the actions and assignment #}
-{# panel, flash and success banners, and the "Back to work item" links #}
-{# (the tabs are on this page).                                        #}
+{#  - the header (Defra logo, service navigation):                     #}
+{#    src/server/common/templates/layouts/page.njk `header` block,     #}
+{#    with src/config/config.js's `serviceName` default and            #}
+{#    src/config/nunjucks/context/build-navigation.js's "Work items"   #}
+{#  - the right-hand panels: detail.njk (assignment panel) and         #}
+{#    src/server/routes/standard-lifecycle/detail.njk `actionsPanel`   #}
+{#    (Outcome)                                                        #}
+{# Left out, as each changes the work item: every action, button, form #}
+{# and link in the right-hand panels (assigning, reassigning,          #}
+{# unassigning, the due date, Duly make, Make Determination, Confirm   #}
+{# applicant contact, Query, Withdraw), the actions panel itself while #}
+{# the work item is open, flash and success banners, and the "Back to  #}
+{# work item" links (the tabs are on this page). The cookie banner and #}
+{# footer are left out too.                                            #}
 {# Admin UI changes to what is kept:                                   #}
 {#  - one template, its tabs chosen by regulator.tab, inside the page's #}
-{#    Regulator view tab; each heading one level down (h2 to h3), as   #}
-{#    the page has its own h1 and the "Regulator view" h2;             #}
+{#    Regulator view tab and a frame; each heading one level down (h2  #}
+{#    to h3), as the page has its own h1 and the "Regulator view" h2;  #}
+{#  - the header is a plain block, not a second banner landmark, and   #}
+{#    "Work items" and "Sign out" are text, not links: they would act  #}
+{#    on Case management;                                              #}
+{#  - the assignment panel shows only its text: "Assigned to" and the  #}
+{#    closed line (never "Assigned to you"), and is left out when it   #}
+{#    has neither; the Outcome panel is in its own bordered panel, as  #}
+{#    management-fe's actions panel holds it;                          #}
 {#  - the banners show on the Application summary only, as in          #}
 {#    management-fe, where only the summary page is given them;        #}
 {#  - notices of its own: a type with no Regulator view, a Regulator   #}
@@ -36,17 +54,34 @@
 {% from "case-tabs/macro.njk" import appCaseTabs %}
 {% from "partials/work-items/summary-macros.njk" import documentItem, newPrefix, overseasSiteList, businessPlanPair, siteDetails %}
 
-<h2 class="govuk-heading-m">Regulator view</h2>
-<p class="govuk-body">The work item as a caseworker sees it in Case management. Nothing here can be changed. People’s names and email addresses are masked.</p>
+<h2 class="govuk-visually-hidden">Regulator view</h2>
+<p class="govuk-body-s" data-testid="regulator-view-intro">What a caseworker sees for this work item in case management, built the same way: the same layout, wording and formatting, from the same document. People’s names and email addresses are masked. Nothing here can be changed.</p>
 
 <div class="app-regulator-view" data-testid="regulator-view">
+  <div class="app-mfe-header" data-testid="mfe-header">
+    <img src="{{ getAssetPath('src/client/images/defra-logo-wide.svg') }}"
+         alt="Department for Environment, Food and Rural Affairs"
+         class="app-mfe-header__logo-img">
+  </div>
+  <div class="app-mfe-service-navigation" data-testid="mfe-service-navigation">
+    <span class="app-mfe-service-navigation__service-name">Packaging waste applications</span>
+    <ul class="app-mfe-service-navigation__list">
+      <li class="app-mfe-service-navigation__item">Work items</li>
+      <li class="app-mfe-service-navigation__item">Sign out</li>
+    </ul>
+  </div>
 {% if regulator.typeUnsupported %}
-  <p class="govuk-body" data-testid="regulator-view-unsupported">This work item type has no Regulator view in the Admin UI.</p>
+  <div class="app-regulator-view__body">
+    <p class="govuk-body" data-testid="regulator-view-unsupported">This work item type has no Regulator view in the Admin UI.</p>
+  </div>
 {% elif regulator.failed %}
-  <p class="govuk-body" data-testid="regulator-view-failed">The Regulator view of this work item can't be shown. The Document tab shows the work item as Case management sends it.</p>
+  <div class="app-regulator-view__body">
+    <p class="govuk-body" data-testid="regulator-view-failed">The Regulator view of this work item can't be shown. The Document tab shows the work item as Case management sends it.</p>
+  </div>
 {% else %}
   {{ appCaseHeader(regulator.caseHeader) }}
 
+  <div class="app-regulator-view__body">
   {{ appCaseTabs({ tabs: regulator.caseTabs }) }}
 
   {# management-fe shows these banners on the Application summary only: its #}
@@ -376,6 +411,42 @@
   {% endif %}
 
     </div>
+
+    {# ======================= Right-hand panels ======================= #}
+    <div class="govuk-grid-column-one-third">
+      {% if regulator.assignment.assignedToName or regulator.assignment.isClosed %}
+        <div class="app-case-panel" data-testid="case-assignment-panel">
+          {% if regulator.assignment.assignedToName %}
+            <p class="govuk-body" data-testid="assignment-current">
+              Assigned to {{ regulator.assignment.assignedToName }}
+            </p>
+          {% endif %}
+          {% if regulator.assignment.isClosed %}
+            <p class="govuk-body govuk-!-margin-bottom-0"
+               data-testid="assignment-closed">
+              This application is closed and can no longer be assigned or reassigned.
+            </p>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {% if regulator.outcome %}
+        <div class="app-case-panel" data-testid="actions-panel">
+          <h3 class="govuk-heading-m">Outcome</h3>
+          <p class="govuk-body" data-testid="standard-lifecycle-readonly-actions">
+            This work item is in a final state. No further actions are available.
+          </p>
+          <p class="govuk-body govuk-!-margin-bottom-0">
+            {{ govukTag({
+              text: regulator.outcome.text,
+              classes: regulator.outcome.classes,
+              attributes: { "data-testid": "standard-lifecycle-state-tag" }
+            }) }}
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
   </div>
 {% endif %}
 </div>

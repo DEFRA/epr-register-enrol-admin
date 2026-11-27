@@ -1,20 +1,85 @@
 // The work item page (RA-752). The Regulator view's styles follow
 // management-fe's (origin/main 0bd3b85)
-// src/client/stylesheets/components/_case-header.scss and _work-items.scss,
-// but are not a line-for-line copy: only the classes the Regulator view uses,
-// written again with GOV.UK palette colours rather than management-fe's own
-// (RA-752 AC09: colours can differ). Compare them by the class names.
+// src/client/stylesheets/core/_header.scss, core/_main.scss,
+// components/_case-header.scss and _work-items.scss, with its colours
+// (variables/_colours.scss), but are not a line-for-line copy: only the
+// classes the Regulator view uses, its header under classes of its own (it
+// is not the page's header), inside a frame of the Admin UI's. Compare them
+// by the class names.
 @use 'govuk-frontend' as *;
 
+// management-fe's variables/_colours.scss.
+$app-defra-green: #00a33b;
+$app-background-grey: #f5f5f5;
+$app-case-header-green: #e8f5ec;
+
+// The frame round management-fe's page: its header, then its page
+// background, with the case header full width and the rest inset.
 .app-regulator-view {
-  padding-top: govuk-spacing(2);
+  margin-bottom: govuk-spacing(4);
+  padding-bottom: govuk-spacing(6);
+  border: 1px solid $govuk-border-colour;
+  background-color: $app-background-grey;
+}
+
+.app-regulator-view__body {
+  padding: 0 govuk-spacing(4);
+}
+
+// management-fe's header: the Defra logo on white (core/_header.scss).
+.app-mfe-header {
+  padding: 8px govuk-spacing(4) 1px;
+  border-bottom: 1px solid $govuk-border-colour;
+  background-color: govuk-colour('white');
+}
+
+.app-mfe-header__logo-img {
+  display: block;
+  width: 300px;
+  max-width: 100%;
+  height: auto;
+}
+
+// management-fe's service navigation: white, black text, a green rule
+// beneath (core/_header.scss). Text only here.
+.app-mfe-service-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: govuk-spacing(2) govuk-spacing(4);
+  padding: govuk-spacing(3) govuk-spacing(4);
+  border-bottom: 4px solid $app-defra-green;
+  color: $govuk-text-colour;
+  background-color: govuk-colour('white');
+  @include govuk-font($size: 19);
+}
+
+.app-mfe-service-navigation__service-name {
+  font-weight: bold;
+}
+
+.app-mfe-service-navigation__list {
+  display: flex;
+  gap: govuk-spacing(4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-mfe-service-navigation__item {
+  text-decoration: underline;
 }
 
 .app-case-header {
   margin-bottom: govuk-spacing(4);
-  padding-top: govuk-spacing(4);
-  padding-bottom: govuk-spacing(4);
-  background-color: govuk-colour('green', $variant: 'tint-95');
+  padding: govuk-spacing(4);
+  background-color: $app-case-header-green;
+
+  // Its content lines up with the frame's, not the page's width.
+  > .govuk-width-container {
+    margin: 0;
+  }
 }
 
 .app-case-header__breadcrumbs-list {
@@ -58,10 +123,9 @@
 
 @include govuk-media-query($from: desktop) {
   .app-case-header__meta {
-    grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr) minmax(
-        0,
-        1.25fr
-      ) minmax(0, 1fr);
+    grid-template-columns:
+      minmax(0, 1.75fr) minmax(0, 1fr) minmax(0, 1.25fr)
+      minmax(0, 1fr);
   }
 }
 
@@ -96,7 +160,7 @@
 }
 
 .app-case-tabs__link--active {
-  border-bottom: 4px solid govuk-colour('green');
+  border-bottom: 4px solid $app-defra-green;
   color: $govuk-text-colour;
   text-decoration: none;
 }
@@ -110,6 +174,14 @@
   .govuk-summary-list__value {
     padding-bottom: govuk-spacing(2);
   }
+}
+
+// The right-hand panels (assignment, Outcome).
+.app-case-panel {
+  margin-bottom: govuk-spacing(4);
+  padding: govuk-spacing(3);
+  border: 1px solid $govuk-border-colour;
+  background-color: govuk-colour('white');
 }
 
 .app-audit-entry--failure {

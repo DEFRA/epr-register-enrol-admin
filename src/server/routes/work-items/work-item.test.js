@@ -17,6 +17,7 @@ import { recordLogs } from '#/test-helpers/record-logs.js'
 import { signIn, supportUser, useFakeEntra } from '#/test-helpers/fake-entra.js'
 import {
   WORK_ITEM_ID,
+  legacyStatus,
   problem,
   useFakeWorkItem,
   workItemResponse
@@ -106,16 +107,36 @@ describe('Viewing a case management work item', () => {
     logs.filter(({ level }) => level === 'warn').map(({ message }) => message)
 
   describe('opening the page', () => {
-    test('from a direct link: shows the core details, then the Document and Regulator view tabs, Document first (AC02, AC08)', async () => {
+    test('from a direct link: shows the work item ID under its collection, source and type, the Document and Regulator view tabs, Document first, and the core details beside them (AC02, AC08)', async () => {
       useFakeWorkItem()
 
       const { response, $ } = await get(PAGE)
 
       expect(response.statusCode).toBe(200)
       expect($('title').text()).toContain(WORK_ITEM_ID)
-      expect(text($, '#core-details-heading')).toBe(
-        `Core details for work item ${WORK_ITEM_ID}`
+      expect(text($, '[data-testid="record-caption"]')).toBe(
+        'workItems · case management · re-accreditation'
       )
+      expect(text($, 'h1')).toBe(WORK_ITEM_ID)
+      expect(
+        $('.govuk-breadcrumbs__list-item')
+          .map((_i, item) => [
+            [text($, item), $(item).find('a').attr('href') ?? null]
+          ])
+          .get()
+      ).toEqual([
+        ['Search', '/work-items'],
+        ['workItems', null],
+        ['3f9a1c2e…', null]
+      ])
+      // The tabs on the left, the core details on the right.
+      expect(
+        $('.govuk-grid-column-two-thirds [data-testid="work-item-tabs"]')
+      ).toHaveLength(1)
+      expect(
+        $('.govuk-grid-column-one-third > [data-testid="core-details"]')
+      ).toHaveLength(1)
+      expect(text($, '#core-details-heading')).toBe('Core details')
       expect(
         $('[data-testid="work-item-tabs"] .govuk-tabs__tab')
           .map((_i, tab) => [[$(tab).text().trim(), $(tab).attr('href')]])
@@ -340,6 +361,11 @@ describe('Viewing a case management work item', () => {
           'Important Case management work item data is unavailable right now. Try again later.'
         )
         expect(text($, 'h1')).toBe(WORK_ITEM_ID)
+        // Its type is not known without the work item.
+        expect(text($, '[data-testid="record-caption"]')).toBe(
+          'workItems · case management'
+        )
+        expect($('[data-testid="copy-link"]')).toHaveLength(0)
         expect($('[data-testid="core-details"]')).toHaveLength(0)
         expect(errorLogs()).toEqual([
           `${UPSTREAM} GET /work-items/{id} ${reason}`
@@ -404,9 +430,9 @@ describe('Viewing a case management work item', () => {
       expect(bannerText($)).toBe(
         'Important Case management work item states are unavailable right now, so states show by ID only. Try again later.'
       )
-      expect(coreDetails($).slice(1, 3)).toEqual([
-        ['State', 'assessment-in-progress'],
-        ['State ID', 'assessment-in-progress']
+      expect(coreDetails($)[1]).toEqual([
+        'Status',
+        'assessment-in-progress stateId assessment-in-progress'
       ])
       expect(text($, '[data-testid="case-header-status"]')).toBe(
         'assessment-in-progress'
@@ -415,7 +441,7 @@ describe('Viewing a case management work item', () => {
   })
 
   describe('the core details (AC06, AC07)', () => {
-    test('lists the work item ID, state with its state ID, application reference, accreditation number and registration number, each with a copy button', async () => {
+    test('lists the work item ID, status with its state ID, operator application, accreditation and registration, each reference with a copy button', async () => {
       useFakeWorkItem({
         workItem: () =>
           HttpResponse.json(
@@ -433,12 +459,11 @@ describe('Viewing a case management work item', () => {
       const { $ } = await get(PAGE)
 
       expect(coreDetails($)).toEqual([
-        ['Work item ID', WORK_ITEM_ID],
-        ['State', 'Granted'],
-        ['State ID', 'approved'],
-        ['Application reference', 'RA-000000123'],
-        ['Accreditation number', 'A27ER5001120018PL'],
-        ['Registration number', 'R25ER5001120018PL']
+        ['Work item id', WORK_ITEM_ID],
+        ['Status', 'Granted stateId approved'],
+        ['Operator application', 'RA-000000123'],
+        ['Accreditation', 'A27ER5001120018PL'],
+        ['Registration', 'R25ER5001120018PL']
       ])
       expect(
         $('[data-testid="core-details"] [data-testid="copy"]')
@@ -451,11 +476,82 @@ describe('Viewing a case management work item', () => {
           .get()
       ).toEqual([
         [WORK_ITEM_ID, 'Copy work item id'],
-        ['Granted', 'Copy state'],
-        ['approved', 'Copy state id'],
-        ['RA-000000123', 'Copy application reference'],
-        ['A27ER5001120018PL', 'Copy accreditation number'],
-        ['R25ER5001120018PL', 'Copy registration number']
+        ['RA-000000123', 'Copy operator application'],
+        ['A27ER5001120018PL', 'Copy accreditation'],
+        ['R25ER5001120018PL', 'Copy registration']
+      ])
+    })
+
+    test('tags the status with the name and colour the case header gives it', async () => {
+      useFakeWorkItem({
+        workItem: () =>
+          HttpResponse.json(workItemResponse({ stateId: 'approved' }))
+      })
+
+      const { $ } = await get(PAGE)
+
+      const tag = $('[data-testid="core-details"] .govuk-tag')
+      const headerTag = $('[data-testid="case-header-status"] .govuk-tag')
+      expect(squash(tag.text())).toBe('Granted')
+      expect(tag.attr('class')).toBe('govuk-tag govuk-tag--green')
+      expect(squash(headerTag.text())).toBe('Granted')
+      expect(headerTag.attr('class')).toContain('govuk-tag--green')
+      expect(text($, '[data-testid="state-id"]')).toBe('stateId approved')
+    })
+
+    test('links the operator application to its Legacy Record page, as the search results do (RA-751)', async () => {
+      const requests = useFakeWorkItem()
+
+      const { $ } = await get(PAGE)
+
+      expect(
+        $('[data-testid="core-details"] a')
+          .map((_i, link) => [[text($, link), $(link).attr('href')]])
+          .get()
+      ).toEqual([
+        ['RA-000000123', '/accreditation-applications/6716a3c09e4b2d1f8a5c7e30']
+      ])
+      expect(
+        requests.statuses.map(({ url }) =>
+          new URL(url).searchParams.getAll('workItemId')
+        )
+      ).toEqual([[WORK_ITEM_ID]])
+    })
+
+    test('does not link the operator application when Legacy has no application for it', async () => {
+      useFakeWorkItem({
+        statuses: () =>
+          HttpResponse.json({ items: [legacyStatus(WORK_ITEM_ID, null)] })
+      })
+
+      const { $ } = await get(PAGE)
+
+      expect(coreDetails($)[2]).toEqual([
+        'Operator application',
+        'RA-000000123'
+      ])
+      expect($('[data-testid="core-details"] a')).toHaveLength(0)
+      expect(bannerText($)).toBe('')
+    })
+
+    test('says so, and does not link the operator application, when Legacy cannot be read', async () => {
+      useFakeWorkItem({
+        statuses: () => new HttpResponse(null, { status: 500 })
+      })
+
+      const { response, $ } = await get(PAGE)
+
+      expect(response.statusCode).toBe(200)
+      expect(bannerText($)).toBe(
+        'Important Legacy accreditation applications are unavailable right now, so the operator application is not linked to its Record page. Try again later.'
+      )
+      expect(coreDetails($)[2]).toEqual([
+        'Operator application',
+        'RA-000000123'
+      ])
+      expect($('[data-testid="core-details"] a')).toHaveLength(0)
+      expect(errorLogs()).toEqual([
+        expect.stringContaining('epr-register-enrol-backend')
       ])
     })
 
@@ -467,9 +563,9 @@ describe('Viewing a case management work item', () => {
 
       const { $ } = await get(PAGE)
 
-      expect(coreDetails($).slice(4)).toEqual([
-        ['Accreditation number', 'Not issued yet'],
-        ['Registration number', 'None']
+      expect(coreDetails($).slice(3)).toEqual([
+        ['Accreditation', 'Not issued yet'],
+        ['Registration', 'None']
       ])
       expect(errorLogs()).toEqual([])
     })
@@ -490,9 +586,9 @@ describe('Viewing a case management work item', () => {
 
       const { $ } = await get(PAGE)
 
-      expect(coreDetails($).slice(3, 5)).toEqual([
-        ['Application reference', 'Missing from work item'],
-        ['Accreditation number', 'Missing from work item']
+      expect(coreDetails($).slice(2, 4)).toEqual([
+        ['Operator application', 'Missing from work item'],
+        ['Accreditation', 'Missing from work item']
       ])
       // The case header says so too, and never puts the work item ID in its
       // place; the error log below is coreDetails', once.
@@ -506,7 +602,7 @@ describe('Viewing a case management work item', () => {
     })
 
     test('reads an add overseas site work item’s references where it keeps them', async () => {
-      useFakeWorkItem({
+      const requests = useFakeWorkItem({
         workItem: () =>
           HttpResponse.json(
             workItemResponse(
@@ -522,11 +618,16 @@ describe('Viewing a case management work item', () => {
 
       const { $ } = await get(PAGE)
 
-      expect(coreDetails($).slice(3)).toEqual([
-        ['Application reference', 'None'],
-        ['Accreditation number', 'A27EX5001120018PL'],
-        ['Registration number', 'None']
+      expect(text($, '[data-testid="record-caption"]')).toBe(
+        'workItems · case management · add-overseas-site'
+      )
+      expect(coreDetails($).slice(2)).toEqual([
+        ['Operator application', 'None'],
+        ['Accreditation', 'A27EX5001120018PL'],
+        ['Registration', 'None']
       ])
+      // Only a re-accreditation is a Legacy application to look up.
+      expect(requests.statuses).toEqual([])
       expect(errorLogs()).toEqual([])
     })
 
@@ -543,9 +644,9 @@ describe('Viewing a case management work item', () => {
 
       const { $ } = await get(PAGE)
 
-      expect(coreDetails($).slice(4)).toEqual([
-        ['Accreditation number', 'None'],
-        ['Registration number', 'R25ER5001120018PL']
+      expect(coreDetails($).slice(3)).toEqual([
+        ['Accreditation', 'None'],
+        ['Registration', 'R25ER5001120018PL']
       ])
     })
 
@@ -557,9 +658,9 @@ describe('Viewing a case management work item', () => {
 
       const { $ } = await get(PAGE)
 
-      expect(coreDetails($).slice(4)).toEqual([
-        ['Accreditation number', 'Not known for this work item type'],
-        ['Registration number', 'Not known for this work item type']
+      expect(coreDetails($).slice(3)).toEqual([
+        ['Accreditation', 'Not known for this work item type'],
+        ['Registration', 'Not known for this work item type']
       ])
       expect(errorLogs()).toEqual([
         `${UPSTREAM} work item has a type the Admin UI does not know (mystery-type)`
@@ -590,7 +691,7 @@ describe('Viewing a case management work item', () => {
       expect(document).toContain('  "payload": {\n')
       expect(document).toContain('    "chargeAmountPence": 280000,\n')
       expect(document).toContain('  "notes": [\n')
-      expect(document).toContain('      "text": "Permit checked",\n')
+      expect(document).toContain('      "text": "[hidden: 14 characters]",\n')
       expect(document).toContain('  "auditLog": [\n')
       expect(document).toContain('      "action": "status-push-sent",\n')
       expect(document).toContain('  "slaState": "OnTrack",\n')
@@ -631,6 +732,172 @@ describe('Viewing a case management work item', () => {
       expect(document).toContain('"email": "p***@e******.com"')
       // IDs are not names: they stay as management-be sends them.
       expect(document).toContain('"assignedToId": "caseworker-oid-1"')
+    })
+
+    describe('notes (hidden until a logged Show)', () => {
+      const NOTE_AUDIT = 'show-case-management-work-item-notes'
+      const notesAudits = () =>
+        vi
+          .mocked(audit)
+          .mock.calls.map(([event]) => event)
+          .filter((event) => event.event.action === NOTE_AUDIT)
+
+      // A note, and the audit log entry for adding it, which carries its
+      // text too.
+      const withNote = () =>
+        HttpResponse.json(
+          workItemResponse({
+            notes: [
+              {
+                id: 'note-1',
+                text: 'Spoke to Sam Contact on 01632 960000',
+                createdAt: '2026-10-03T09:00:00Z',
+                createdBy: 'caseworker-oid-1',
+                createdByName: 'Morgan Caseworker'
+              },
+              { id: 'note-2', text: null }
+            ],
+            auditLog: [
+              {
+                id: 'audit-note-1',
+                action: 'note-added',
+                actionDisplayName: 'Note added',
+                details: { noteText: 'Spoke to Sam Contact on 01632 960000' },
+                createdAt: '2026-10-03T09:00:00Z',
+                createdBy: 'caseworker-oid-1',
+                createdByName: 'Morgan Caseworker',
+                stateId: 'assessment-in-progress'
+              }
+            ]
+          })
+        )
+
+      test('says how the Document is shown', async () => {
+        useFakeWorkItem()
+
+        const { $ } = await get(PAGE)
+
+        expect(text($, '[data-testid="document-intro"]')).toBe(
+          'The work item document. Notes are hidden whole until a logged Show. People’s names and email addresses are masked.'
+        )
+      })
+
+      test("hides each note's text whole, wherever the work item holds it, and offers to show it", async () => {
+        useFakeWorkItem({ workItem: withNote })
+
+        const { response, $ } = await get(`${PAGE}?tab=application-history`)
+
+        const document = documentText($)
+        expect(document).toContain('      "text": "[hidden: 36 characters]",\n')
+        // A note with no text is shown as management-be sent it.
+        expect(document).toContain('      "text": null\n')
+        expect(document).toContain(
+          '        "noteText": "[hidden: 36 characters]"\n'
+        )
+        expect(
+          text($, '[data-testid="work-item-audit-entry-audit-note-1"]')
+        ).toContain('Note [hidden: 36 characters]')
+        expect(response.payload).not.toContain('Spoke to')
+        expect(text($, '[data-testid="notes-toggle"]')).toBe('Show notes')
+        expect($('[data-testid="notes-toggle"]').attr('href')).toBe(
+          `${PAGE}?tab=application-history&notes=show#document`
+        )
+        expect(notesAudits()).toEqual([])
+      })
+
+      test('shows the notes when asked, still masked, and records who asked for which work item', async () => {
+        useFakeWorkItem({ workItem: withNote })
+
+        const { $ } = await get(`${PAGE}?notes=show`)
+
+        expect(documentText($)).toContain(
+          '      "text": "Spoke to Sam Contact on 01632 960000",\n'
+        )
+        expect(documentText($)).toContain(
+          '"createdByName": "M***** C*********"'
+        )
+        expect(text($, '[data-testid="notes-toggle"]')).toBe('Hide notes')
+        expect($('[data-testid="notes-toggle"]').attr('href')).toBe(
+          `${PAGE}#document`
+        )
+        expect(notesAudits()).toEqual([
+          {
+            event: { category: 'record', action: NOTE_AUDIT },
+            context: { workItemId: WORK_ITEM_ID },
+            user: { id: supportUser.oid, email: supportUser.preferred_username }
+          }
+        ])
+        // On top of the view itself.
+        expect(viewAudits().map(({ context }) => context.outcome)).toEqual([
+          'found'
+        ])
+      })
+
+      test('records no Show for a work item it could not show', async () => {
+        useFakeWorkItem({ workItem: () => problem(404, 'work-item-not-found') })
+
+        await get(`${PAGE}?notes=show`)
+
+        expect(notesAudits()).toEqual([])
+      })
+    })
+
+    test('links the work item ID to this page, and its operator application to its Legacy Record page', async () => {
+      useFakeWorkItem({
+        workItem: () =>
+          HttpResponse.json(
+            workItemResponse(
+              {},
+              {
+                operatorApplicationId: '6716a3c09e4b2d1f8a5c7e30',
+                accreditationId: 'A27ER5001120018PL'
+              }
+            )
+          )
+      })
+
+      const { $ } = await get(PAGE)
+
+      expect(
+        $('[data-testid="document"] a')
+          .map((_i, link) => [[$(link).text(), $(link).attr('href')]])
+          .get()
+      ).toEqual([
+        [WORK_ITEM_ID, PAGE],
+        [
+          '6716a3c09e4b2d1f8a5c7e30',
+          '/accreditation-applications/6716a3c09e4b2d1f8a5c7e30'
+        ]
+      ])
+      // Still the JSON management-be sent.
+      expect(documentText($)).toContain(
+        '    "operatorApplicationId": "6716a3c09e4b2d1f8a5c7e30",\n'
+      )
+      expect(documentText($)).toContain(
+        '    "accreditationId": "A27ER5001120018PL"'
+      )
+    })
+
+    test('does not link the operator application when Legacy has no application for it', async () => {
+      useFakeWorkItem({
+        workItem: () =>
+          HttpResponse.json(
+            workItemResponse(
+              {},
+              { operatorApplicationId: '6716a3c09e4b2d1f8a5c7e30' }
+            )
+          ),
+        statuses: () =>
+          HttpResponse.json({ items: [legacyStatus(WORK_ITEM_ID, null)] })
+      })
+
+      const { $ } = await get(PAGE)
+
+      expect(
+        $('[data-testid="document"] a')
+          .map((_i, link) => $(link).attr('href'))
+          .get()
+      ).toEqual([PAGE])
     })
   })
 
@@ -843,7 +1110,7 @@ describe('Viewing a case management work item', () => {
         "The Regulator view of this work item can't be shown. The Document tab shows the work item as Case management sends it."
       )
       expect($('[data-testid="case-header"]')).toHaveLength(0)
-      expect(coreDetails($)[0]).toEqual(['Work item ID', WORK_ITEM_ID])
+      expect(coreDetails($)[0]).toEqual(['Work item id', WORK_ITEM_ID])
       expect($('[data-testid="document"]').text()).toContain(
         '"uploadedAt": {\n'
       )
@@ -1140,6 +1407,111 @@ describe('Viewing a case management work item', () => {
         ])
       }
     )
+
+    test('says what it shows, inside a copy of Case management’s header, whose links are text', async () => {
+      useFakeWorkItem()
+
+      const { $ } = await get(PAGE)
+
+      expect(text($, '[data-testid="regulator-view-intro"]')).toBe(
+        'What a caseworker sees for this work item in case management, built the same way: the same layout, wording and formatting, from the same document. People’s names and email addresses are masked. Nothing here can be changed.'
+      )
+      expect(
+        regulator($).find('[data-testid="mfe-header"] img').attr('alt')
+      ).toBe('Department for Environment, Food and Rural Affairs')
+      expect(
+        regulator($).find('[data-testid="mfe-header"] img').attr('src')
+      ).toBe('/public/src/client/images/defra-logo-wide.svg')
+      expect(text($, '[data-testid="mfe-service-navigation"]')).toBe(
+        'Packaging waste applications Work items Sign out'
+      )
+      expect(
+        regulator($).find(
+          '[data-testid="mfe-header"] a, [data-testid="mfe-service-navigation"] a'
+        )
+      ).toHaveLength(0)
+    })
+
+    test('says who an open work item is assigned to, with no Outcome', async () => {
+      useFakeWorkItem()
+
+      const { $ } = await get(PAGE)
+
+      expect(text($, '[data-testid="assignment-current"]')).toBe(
+        'Assigned to M***** C*********'
+      )
+      expect($('[data-testid="assignment-closed"]')).toHaveLength(0)
+      expect($('[data-testid="actions-panel"]')).toHaveLength(0)
+    })
+
+    test('has no assignment panel for an open work item no one is assigned to', async () => {
+      useFakeWorkItem({
+        workItem: () =>
+          HttpResponse.json(
+            workItemResponse({ assignedToId: null, assignedToName: null })
+          )
+      })
+
+      const { $ } = await get(PAGE)
+
+      expect($('[data-testid="case-assignment-panel"]')).toHaveLength(0)
+    })
+
+    test('names an assignee by ID when management-be has no name for them, as Case management does', async () => {
+      useFakeWorkItem({
+        workItem: () =>
+          HttpResponse.json(workItemResponse({ assignedToName: null }))
+      })
+
+      const { $ } = await get(PAGE)
+
+      expect(text($, '[data-testid="assignment-current"]')).toBe(
+        'Assigned to caseworker-oid-1'
+      )
+    })
+
+    test('shows a granted work item as closed, its outcome and its issued accreditation', async () => {
+      useFakeWorkItem({
+        workItem: () =>
+          HttpResponse.json(
+            workItemResponse(
+              { stateId: 'approved', assignedToId: null, assignedToName: null },
+              {
+                accreditationId: 'A27ER5001120018PL',
+                accreditationStartDate: '2027-01-01',
+                accreditationYear: 2027
+              }
+            )
+          )
+      })
+
+      const { $ } = await get(PAGE)
+
+      expect($('[data-testid="assignment-current"]')).toHaveLength(0)
+      expect(text($, '[data-testid="assignment-closed"]')).toBe(
+        'This application is closed and can no longer be assigned or reassigned.'
+      )
+      expect(text($, '[data-testid="actions-panel"]')).toBe(
+        'Outcome This work item is in a final state. No further actions are available. Granted'
+      )
+      expect(
+        $('[data-testid="standard-lifecycle-state-tag"]').attr('class')
+      ).toBe('govuk-tag govuk-tag--green')
+      expect(
+        text(
+          $,
+          '[data-testid="re-accreditation-approval-panel"] h1, [data-testid="re-accreditation-approval-panel"] h2'
+        )
+      ).toBe('Accreditation issued')
+      expect(
+        text($, '[data-testid="re-accreditation-approval-panel-id"]')
+      ).toBe('A27ER5001120018PL')
+      expect(summaryRows($, 're-accreditation-decision-metadata')).toEqual([
+        ['Accreditation ID', 'A27ER5001120018PL'],
+        ['Accreditation start date', '1 January 2027'],
+        ['Accreditation year', '2027']
+      ])
+    })
 
     test('has nothing that changes the work item: no forms, and no buttons but copy buttons', async () => {
       useFakeWorkItem()

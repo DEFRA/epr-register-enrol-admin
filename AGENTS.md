@@ -88,19 +88,30 @@ view code. There is no shared package to import it from, so it is a copy, of
 management-fe `origin/main` at **`0bd3b85`**:
 
 - `src/server/routes/work-items/regulator-view/`: every file but
-  `regulator-view.js` and `work-item-types.js`, which are built from several
-  management-fe files (each header names them), and `regulator-view.test.js`,
-  which is the Admin UI's own;
+  `regulator-view.js`, `work-item-types.js` and `assignment.js`, which are
+  built from several management-fe files (each header names them), and
+  `regulator-view.test.js`, which is the Admin UI's own;
 - `src/server/common/components/case-header/` and `case-tabs/`;
 - `src/server/common/templates/partials/work-items/summary-macros.njk`, and
   `regulator-view.njk`, built from several management-fe templates;
 - `src/config/nunjucks/filters/format-date.js` and its test;
+- `src/client/images/defra-logo-wide.svg`, the logo in management-fe's
+  header;
 - `test-helpers/real-operator-submission-payload.js`, which the ported tests
   read.
 
 The Regulator view styles in `src/client/stylesheets/components/_work-item.scss`
-follow management-fe's but are written again with GOV.UK colours, not copied:
+follow management-fe's, in its colours, but are written again, not copied:
 compare them by class name.
+
+The Regulator view is read-only. It shows management-fe's header (the Defra
+logo and the service navigation, with "Work items" and "Sign out" as text, not
+links), the case header and tabs, and the right-hand panels' text only: who
+the work item is assigned to, the closed line, and the Outcome panel. It
+leaves out everything that changes a work item: every action, button, form
+and link in the right-hand panels (assigning, the due date, the decision and
+contact steps, Query, Withdraw), and the actions panel itself while the work
+item is open. `regulator-view.njk`'s header lists all of it.
 
 Each file's header names its management-fe source and lists every change the
 Admin UI makes to it, besides import paths. Comments copied from

@@ -63,8 +63,10 @@ function shellValue(value) {
 // The document as lines, each with its indent, field name, value and, for an
 // enum stored as a number, the enum's name. Empty values are shown as they
 // are. typedValue writes an extended JSON value ({ $date }, …) as one value,
-// or leaves it to be shown as the object it is.
-function lines(document, { numberedEnums, typedValue }) {
+// or leaves it to be shown as the object it is. links gives a string value a
+// link, by its field's dotted path (payload.operatorApplicationId); a value in
+// an array has no path.
+function lines(document, { numberedEnums, typedValue, links = {} }) {
   const enumName = (key, value) =>
     Number.isInteger(value) ? numberedEnums[key]?.[value] : undefined
   const lines = []
@@ -80,8 +82,9 @@ function lines(document, { numberedEnums, typedValue }) {
 
   // key is the field shown on the line (none for an array's items); enumKey
   // is the field that names a numbered enum, which for an array's items is
-  // the array's field.
-  const walk = (value, depth, key, enumKey = key) => {
+  // the array's field. path is the field's dotted path ('' for the document
+  // itself, null in an array).
+  const walk = (value, depth, key, enumKey, path) => {
     if (value === null) {
       return add(depth, key, 'null', 'null')
     }
@@ -93,7 +96,7 @@ function lines(document, { numberedEnums, typedValue }) {
       walkEntries(
         value.map((item) => [undefined, item]),
         depth + 1,
-        enumKey
+        { arrayKey: enumKey, path: null }
       )
       return add(depth, undefined, ']', 'punctuation')
     }
@@ -107,27 +110,34 @@ function lines(document, { numberedEnums, typedValue }) {
         return add(depth, key, '{}', 'punctuation')
       }
       add(depth, key, '{', 'punctuation')
-      walkEntries(entries, depth + 1)
+      walkEntries(entries, depth + 1, { path })
       return add(depth, undefined, '}', 'punctuation')
     }
     if (typeof value === 'string') {
-      return add(depth, key, JSON.stringify(value), 'string')
+      const href = path === null ? undefined : links[path]
+      return add(depth, key, JSON.stringify(value), 'string', { href })
     }
     return add(depth, key, String(value), typeof value, {
       enumName: enumName(enumKey, value)
     })
   }
 
-  const walkEntries = (entries, depth, arrayKey) => {
+  const childPath = (path, key) => {
+    if (path === null) {
+      return null
+    }
+    return path ? `${path}.${key}` : key
+  }
+  const walkEntries = (entries, depth, { arrayKey, path }) => {
     entries.forEach(([key, item], index) => {
-      walk(item, depth, key, key ?? arrayKey)
+      walk(item, depth, key, key ?? arrayKey, childPath(path, key))
       if (index < entries.length - 1) {
         lines.at(-1).comma = true
       }
     })
   }
 
-  walk(document, 0)
+  walk(document, 0, undefined, undefined, '')
   return lines
 }
 
@@ -147,7 +157,9 @@ export const documentLines = (document) =>
  * shown as the object management-be sent.
  *
  * @param {object} value plain JSON
- * @returns {{ indent: string, key?: string, text: string, type: string, comma: boolean }[]}
+ * @param {Record<string, string>} [links] where a string value links to, by
+ *   its field's dotted path (id, payload.operatorApplicationId)
+ * @returns {{ indent: string, key?: string, text: string, type: string, href?: string, comma: boolean }[]}
  */
-export const jsonLines = (value) =>
-  lines(value, { numberedEnums: {}, typedValue: () => undefined })
+export const jsonLines = (value, links = {}) =>
+  lines(value, { numberedEnums: {}, typedValue: () => undefined, links })

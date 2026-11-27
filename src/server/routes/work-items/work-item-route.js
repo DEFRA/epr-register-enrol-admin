@@ -1,10 +1,12 @@
-import { auditRecordView } from '#/server/common/helpers/audit.js'
+import { auditRecordView, auditReveal } from '#/server/common/helpers/audit.js'
+import { getLegacyStatusesForWorkItems } from '#/server/common/helpers/backend-api/backend-api.js'
 import {
   getReAccreditationPriorYear,
   getReAccreditationStates,
   getWorkItem
 } from '#/server/common/helpers/backend-api/management-api.js'
 import { jsonLines } from '#/server/common/helpers/document-lines.js'
+import { recordHref } from '#/server/common/helpers/legacy-application.js'
 import { maskPersonalData } from '#/server/common/helpers/mask-personal-data.js'
 import { statusCodes } from '#/server/common/constants/status-codes.js'
 import { APPLICATION_SUMMARY_TAB_KEY } from './regulator-view/case-header.js'
@@ -16,9 +18,10 @@ import {
   WORK_ITEMS_PATH,
   workItemHref
 } from '#/server/common/helpers/case-management.js'
-import { coreDetails, workItemParams } from './work-item.js'
+import { coreDetails, hideNotes, workItemParams } from './work-item.js'
 
 const VIEW_AUDIT = 'view-case-management-work-item'
+const NOTES_AUDIT = 'show-case-management-work-item-notes'
 const UPSTREAM = 'epr-register-enrol-management-be'
 const searchCrumb = { text: 'Search', href: WORK_ITEMS_PATH }
 
@@ -27,8 +30,18 @@ const UNAVAILABLE = {
   workItem: 'Case management work item data is unavailable right now.',
   states: STATES_UNAVAILABLE,
   priorYear:
-    "The previous year's accreditation is unavailable right now, so the Regulator view leaves it out."
+    "The previous year's accreditation is unavailable right now, so the Regulator view leaves it out.",
+  legacy:
+    'Legacy accreditation applications are unavailable right now, so the operator application is not linked to its Record page.'
 }
+
+// The page's breadcrumbs: the collection, then the work item by the start of
+// its ID, as the design names it.
+const pageCrumbs = (id) => [
+  searchCrumb,
+  { text: 'workItems' },
+  { text: `${id.slice(0, 8)}…` }
+]
 
 const notFoundPage = (h, view, model) =>
   h
@@ -68,6 +81,35 @@ async function priorYearFor(workItem, tab, user, logger) {
     return { ok: true }
   }
   return result
+}
+
+// The Legacy Record page of a re-accreditation's operator application, as
+// the search results link it (RA-751): none for another type, or when Legacy
+// has no application for it.
+async function legacyApplicationFor(workItem, logger) {
+  if (workItem.typeId !== RE_ACCREDITATION) {
+    return { ok: true }
+  }
+  const result = await getLegacyStatusesForWorkItems([workItem.id], logger)
+  if (!result.ok) {
+    return result
+  }
+  const found = result.statuses.get(workItem.id)
+  return {
+    ok: true,
+    href: found.found
+      ? recordHref({ applicationId: found.applicationId })
+      : undefined
+  }
+}
+
+// The link that shows or hides the notes, keeping the tab asked for.
+function notesHref(id, tab, show) {
+  const query = new URLSearchParams({
+    ...(tab && { tab }),
+    ...(show && { notes: 'show' })
+  }).toString()
+  return `${workItemHref(id)}${query ? `?${query}` : ''}#document`
 }
 
 // The Regulator view runs management-fe's view code over whatever the work
@@ -113,7 +155,7 @@ export const workItemRoute = {
         .view('work-items/work-item', {
           pageTitle: id,
           heading: id,
-          breadcrumbs: [searchCrumb, { text: id }],
+          breadcrumbs: pageCrumbs(id),
           unavailable: unavailable.map((name) => UNAVAILABLE[name]),
           ...model
         })
@@ -136,8 +178,13 @@ export const workItemRoute = {
         .header('cache-control', 'no-store')
     }
 
-    // Masked here, before anything reaches the view (AGENTS.md, AC10).
-    const workItem = maskPersonalData(result.workItem)
+    // Notes are hidden whole until the user asks to see them, and that is
+    // audited. Masked here, before anything reaches the view (AGENTS.md,
+    // AC10), the notes too when shown.
+    const showNotes = request.query.notes === 'show'
+    const workItem = maskPersonalData(
+      showNotes ? result.workItem : hideNotes(result.workItem)
+    )
     // A type the Admin UI doesn't know has no Regulator view, only a notice
     // (coreDetails logs the type at error), so it has no tabs to check.
     const type = getWorkItemType(workItem.typeId)
@@ -147,16 +194,36 @@ export const workItemRoute = {
       return tabNotFound(h, id)
     }
     audit('found')
+    if (showNotes) {
+      auditReveal(NOTES_AUDIT, user, { workItemId: id })
+    }
 
     const stateNames = new Map(
       states.ok ? states.states.map((s) => [s.id, s.displayName]) : []
     )
-    const priorYear = await priorYearFor(workItem, tab, user, logger)
+    const [priorYear, legacy] = await Promise.all([
+      priorYearFor(workItem, tab, user, logger),
+      legacyApplicationFor(workItem, logger)
+    ])
 
     return page(
       {
-        details: coreDetails(workItem, stateNames, logger),
-        lines: jsonLines(workItem),
+        typeId: workItem.typeId,
+        details: coreDetails(
+          workItem,
+          { stateNames, applicationHref: legacy.href },
+          logger
+        ),
+        lines: jsonLines(workItem, {
+          id: workItemHref(id),
+          ...(legacy.href && {
+            'payload.operatorApplicationId': legacy.href
+          })
+        }),
+        notes: {
+          shown: showNotes,
+          href: notesHref(id, request.query.tab, !showNotes)
+        },
         regulator: type
           ? regulatorViewOrFailure(
               {
@@ -170,7 +237,11 @@ export const workItemRoute = {
             )
           : { typeUnsupported: true }
       },
-      [!states.ok && 'states', !priorYear.ok && 'priorYear'].filter(Boolean)
+      [
+        !states.ok && 'states',
+        !priorYear.ok && 'priorYear',
+        !legacy.ok && 'legacy'
+      ].filter(Boolean)
     )
   }
 }

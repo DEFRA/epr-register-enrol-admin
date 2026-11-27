@@ -52,3 +52,19 @@ export function auditRecordView(action, user, record, outcome) {
     user: { id: user.id, email: user.email }
   })
 }
+
+/**
+ * Record in CDP Audit that someone was shown part of a record the page hides
+ * until asked: who, and which record. What was shown is not recorded.
+ *
+ * @param {'show-case-management-work-item-notes'} action what was shown
+ * @param {{ id: string, email: string }} user who asked to see it
+ * @param {{ workItemId: string }} record the record it is part of
+ */
+export function auditReveal(action, user, record) {
+  audit({
+    event: { category: 'record', action },
+    context: record,
+    user: { id: user.id, email: user.email }
+  })
+}

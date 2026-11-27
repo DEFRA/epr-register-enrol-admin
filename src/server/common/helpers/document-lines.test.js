@@ -140,3 +140,31 @@ describe('Showing JSON as it was sent (a work item, RA-752 AC08)', () => {
     ])
   })
 })
+
+describe('Linking values in JSON (RA-752)', () => {
+  test('links a string value by its field’s path from the top, and nothing else', () => {
+    const links = (lines) =>
+      lines.filter((line) => line.href).map(({ text, href }) => [text, href])
+
+    expect(
+      links(
+        jsonLines(
+          {
+            id: 'w-1',
+            payload: { id: 'p-1', operatorApplicationId: 'a-1', count: 1 },
+            notes: [{ id: 'n-1' }, 'payload.id']
+          },
+          {
+            id: '/work-items/w-1',
+            'payload.operatorApplicationId': '/accreditation-applications/a-1',
+            'payload.count': '/not-a-string',
+            'notes.id': '/in-an-array'
+          }
+        )
+      )
+    ).toEqual([
+      ['"w-1"', '/work-items/w-1'],
+      ['"a-1"', '/accreditation-applications/a-1']
+    ])
+  })
+})

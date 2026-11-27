@@ -3,7 +3,7 @@ import {
   workItemHref
 } from '#/server/common/helpers/case-management.js'
 import {
-  RECORD_PATH,
+  recordHref,
   statusTag
 } from '#/server/common/helpers/legacy-application.js'
 import { maskName } from '#/server/common/helpers/mask-personal-data.js'
@@ -64,7 +64,7 @@ function legacyColumn(item, { legacy, mappings }) {
     return { text: 'Not found in Legacy' }
   }
   const status = statusTag(found.applicationStatus)
-  const href = `${RECORD_PATH}/${encodeURIComponent(found.applicationId)}`
+  const href = recordHref({ applicationId: found.applicationId })
   const mapping = mappings?.get(item.stateId)
   const check = {
     'not-pushed': () => ({ text: 'State not pushed' }),

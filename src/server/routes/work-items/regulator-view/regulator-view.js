@@ -5,8 +5,9 @@
  * src/server/routes/work-items/detail.controller.js `renderDetail` and
  * `loadPriorYear`, audit-log.controller.js and
  * additional-information.controller.js, with
- * standard-lifecycle-view-model.js's pending-contact banner. Everything that
- * changes a work item (actions, assignment, the SLA, queries, notes,
+ * standard-lifecycle-view-model.js's pending-contact banner and the
+ * assignment and Outcome panels' text (assignment.js). Everything that
+ * changes a work item (actions, assigning, the SLA, queries, notes,
  * downloads) is left out.
  */
 import {
@@ -28,6 +29,7 @@ import {
   tonnageBandLabel
 } from './application-summary.js'
 import { buildAdditionalInformationRows } from './additional-information.js'
+import { buildAssignment, buildOutcome } from './assignment.js'
 import { buildDecisionMetadata } from './re-accreditation-decision-metadata.js'
 import { buildWithdrawnNotice } from './withdrawn-notice.js'
 import {
@@ -100,6 +102,8 @@ export function regulatorView(
 
   return {
     caseHeader: buildCaseHeader({ workItem: decorated }),
+    assignment: buildAssignment(decorated),
+    outcome: buildOutcome(decorated),
     caseTabs: buildCaseTabs({
       workItemId: workItem.id,
       active: tab,

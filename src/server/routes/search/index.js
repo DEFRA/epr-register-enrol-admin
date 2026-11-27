@@ -152,7 +152,9 @@ export const search = {
             ),
             ...(result.ok && {
               results: {
-                rows: result.page.items.map(recordType.row),
+                rows: result.page.items.map((item) =>
+                  recordType.row(item, request.logger)
+                ),
                 ...resultsSummary(
                   criteria,
                   { ...result.page, itemCount: result.page.items.length },

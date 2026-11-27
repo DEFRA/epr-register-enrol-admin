@@ -1003,21 +1003,23 @@ describe('Searching Operator journey records', () => {
       })
     })
 
-    // Every value the page reads from an item, missing, for each type, and a
-    // status it doesn't know where the type has statuses.
+    // Every value the page reads from an item, missing, for each type.
     const missing = (field) => [`with no ${field}`, { [field]: undefined }]
     const unreadable = {
       accreditations: [
         missing('accreditationNumber'),
-        ['with an unknown status', { status: 'Lapsed' }]
+        missing('status'),
+        ['with an empty status', { status: '' }]
       ],
       'accreditation-applications': [
         missing('applicationReference'),
-        ['with an unknown status', { status: 'Lapsed' }]
+        missing('status'),
+        ['with an empty status', { status: '' }]
       ],
       registrations: [
         missing('registrationNumber'),
-        ['with an unknown status', { status: 'Lapsed' }]
+        missing('status'),
+        ['with an empty status', { status: '' }]
       ],
       organisations: [
         [
@@ -1031,7 +1033,8 @@ describe('Searching Operator journey records', () => {
       ],
       'overseas-sites': [
         missing('orsId'),
-        ['with an unknown status', { status: 'Lapsed' }]
+        missing('status'),
+        ['with an empty status', { status: '' }]
       ]
     }
     const nouns = {
@@ -1080,6 +1083,41 @@ describe('Searching Operator journey records', () => {
             level: 'error',
             fields: { http: { response: { status_code: 200 } } },
             message: `epr-register-enrol-backend GET /admin/operator-journey/${type} returned a response it could not read`
+          }
+        ])
+      }
+    )
+
+    test.each([
+      ['accreditations', '6650f1c2a1b2c3d4e5f60801'],
+      ['accreditation-applications', '6650f1c2a1b2c3d4e5f60901'],
+      ['registrations', '6650f1c2a1b2c3d4e5f60802'],
+      ['overseas-sites', '6650f1c2a1b2c3d4e5f60a01']
+    ])(
+      "%s: a status the page doesn't know is shown as stored, in grey, and logged at Error (Tom's decision)",
+      async (type, id) => {
+        serveCountries()
+        useFakeOperatorJourney(`${API}/${type}`, () =>
+          resultsPage([items[type]({ status: 'Lapsed' })])
+        )
+
+        const { response, $ } = await get(`/search?type=${type}`)
+
+        expect(response.statusCode).toBe(200)
+        expect($('[data-testid="unavailable"]')).toHaveLength(0)
+        expect(tableRows($)[0][1]).toBe('Lapsed')
+        expect(
+          $('[data-testid="results"] tbody td')
+            .eq(1)
+            .find('.govuk-tag')
+            .attr('class')
+        ).toBe('govuk-tag govuk-tag--grey')
+        expect(tableRows($)[0]).toHaveLength(4)
+        expect(errorLogs()).toEqual([
+          {
+            level: 'error',
+            fields: { record: { type, id }, status: 'Lapsed' },
+            message: `epr-register-enrol-backend GET /admin/operator-journey/${type} returned a status this page does not know`
           }
         ])
       }

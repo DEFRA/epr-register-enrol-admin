@@ -151,7 +151,7 @@ const materialFilter = {
  * @property {{ value: string, text: string }[]} searchFields
  * @property {Filter[]} filters
  * @property {string[]} columns the results table's headings
- * @property {(item: object) => { text: string, hint?: string, href?: string, tag?: { text: string, classes: string }, classes?: string }[]} row
+ * @property {(item: object, logger: import('pino').Logger) => { text: string, hint?: string, href?: string, tag?: { text: string, classes: string }, classes?: string }[]} row
  *   one item's cells, in the order of `columns`
  * @property {import('joi').Schema} itemSchema what each stored item must be
  */
@@ -256,6 +256,25 @@ const LEGACY = {
   itemSchema: Joi.object()
 }
 
+/**
+ * A row's Status cell: the status's own words and colour, or, for one the
+ * record type doesn't know, the value as stored in grey, as Legacy's
+ * statusTag does, logged at Error with the record type and ID so it is
+ * noticed. The search carries on (Tom's decision, RA-753: "Show as stored +
+ * log").
+ */
+function statusCell(type, item, logger) {
+  const known = type.statuses.find(({ value }) => value === item.status)
+  if (known) {
+    return { tag: { text: known.text, classes: known.classes } }
+  }
+  logger.error(
+    { record: { type: type.value, id: item.id }, status: item.status },
+    `epr-register-enrol-backend GET ${type.path} returned a status this page does not know`
+  )
+  return { tag: { text: item.status, classes: 'govuk-tag--grey' } }
+}
+
 // What the backend always sends with an Operator journey item, and the
 // reference shown for it, null when not held. An item without them is a
 // response this page can't show, so the search fails rather than showing a
@@ -272,9 +291,9 @@ function itemSchema({ statuses, reference }) {
       .required(),
     updatedAt: Joi.string().isoDate().required(),
     ...(statuses && {
-      status: Joi.string()
-        .valid(...statuses.map(({ value }) => value))
-        .required()
+      // Any status the backend stores: one this page doesn't know is shown
+      // as stored and logged, not refused (see statusCell).
+      status: Joi.string().required()
     }),
     ...(!reference.field.includes('.') && {
       [reference.field]: Joi.string().allow(null).required()
@@ -301,6 +320,7 @@ function operatorJourneyType({
   const type = {
     ...rest,
     inUrl: true,
+    statuses,
     title: `Search Operator journey ${noun.many}`,
     noun,
     counted: noun,
@@ -323,8 +343,7 @@ function operatorJourneyType({
     ],
     itemSchema: itemSchema({ statuses, reference })
   }
-  type.row = (item) => {
-    const status = statuses?.find(({ value }) => value === item.status)
+  type.row = (item, logger) => {
     const updated = ukDateTime(item.updatedAt)
     return [
       {
@@ -332,9 +351,8 @@ function operatorJourneyType({
         href: operatorJourneyRecordHref(type, item),
         classes: 'app-results__ref-cell'
       },
-      ...(status
-        ? [{ tag: { text: status.text, classes: status.classes } }]
-        : []),
+      // Every type with statuses has a Status column, so a cell for each row.
+      ...(statuses ? [statusCell(type, item, logger)] : []),
       {
         text:
           item.organisation.name === null

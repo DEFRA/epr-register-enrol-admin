@@ -55,6 +55,8 @@ The backend only answers clients it knows, and checks each call's HMAC signature
 
 Without a backend, or with a mismatched secret, the search page stays up and shows "Legacy accreditation application data is unavailable right now", and the reason is logged at `error`.
 
+The Operator journey search page (`/operator-journey`) reads the new collections from the same backend, with the same secret: one search per record type under `GET /admin/operator-journey/` (accreditations, accreditation applications, registrations, organisations and overseas sites), and the countries for its Country filter from `GET /admin/operator-journey/overseas-site-countries`. Without them it shows a banner saying which data is unavailable.
+
 | Variable                    | Default                    | What it is                                                                                                              |
 | --------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `BACKEND_URL`               | `http://localhost:8080`    | Where `epr-register-enrol-backend` is. Set per environment in `cdp-app-config`. Required in every deployed environment. |

@@ -239,3 +239,86 @@ export async function getCaseManagementStatusMapping(logger) {
       }
     : result
 }
+
+/**
+ * An Operator journey search (RA-753) as query parameters: the term, the
+ * fields it searches and the record type's filters, under the names the
+ * backend takes. The Admin UI's /operator-journey URLs use the same names, so
+ * its links and its calls build them here, in one place. Nothing else is
+ * sent: the backend refuses a parameter it doesn't take.
+ *
+ * @param {{ filters: { name: string }[] }} recordType
+ * @param {{ q?: string, searchFields: string[] } & Record<string, string[]>} criteria
+ * @returns {URLSearchParams}
+ */
+export function operatorJourneyCriteriaParams(
+  recordType,
+  { q, searchFields, ...filters }
+) {
+  const params = new URLSearchParams()
+  if (q) {
+    params.append('q', q)
+  }
+  searchFields.forEach((field) => params.append('searchFields', field))
+  recordType.filters.forEach(({ name }) =>
+    filters[name].forEach((value) => params.append(name, value))
+  )
+  return params
+}
+
+/**
+ * Search one type of Operator journey record (`GET /admin/operator-journey/*`,
+ * docs/openapi/admin-api.yaml in epr-register-enrol-backend). Each item is
+ * checked against the record type's `itemSchema`: one that isn't is a
+ * response this service can't read, so the search fails.
+ *
+ * @param {{ path: string, filters: { name: string }[], itemSchema: import('joi').Schema }} recordType
+ * @param {{ q?: string, searchFields: string[], page: number, limit: number } & Record<string, string[]>} criteria
+ * @param {import('pino').Logger} logger the request's logger, for failures
+ * @returns {Promise<{ ok: true, page: { pageNumber: number, limit: number, totalItems: number, items: object[] } } | { ok: false }>}
+ */
+export async function searchOperatorJourney(
+  recordType,
+  { q, searchFields, page, limit, ...filters },
+  logger
+) {
+  // searchFields only narrows q, so it goes only with one.
+  const params = operatorJourneyCriteriaParams(recordType, {
+    q,
+    searchFields: q ? searchFields : [],
+    ...filters
+  })
+  params.append('pageNumber', String(page))
+  params.append('limit', String(limit))
+
+  const result = await signedGet(recordType.path, logger, {
+    params,
+    schema: pageSchema.keys({
+      items: Joi.array().items(recordType.itemSchema).required()
+    })
+  })
+  return result.ok ? { ok: true, page: result.body } : result
+}
+
+const countriesSchema = Joi.object({
+  items: Joi.array().items(Joi.string()).required()
+})
+  .unknown(true)
+  .required()
+
+/**
+ * The countries current overseas reprocessing sites are in, A to Z, for the
+ * Operator journey search's Country filter
+ * (`GET /admin/operator-journey/overseas-site-countries`).
+ *
+ * @param {import('pino').Logger} logger the request's logger, for failures
+ * @returns {Promise<{ ok: true, values: string[] } | { ok: false }>}
+ */
+export async function getOverseasSiteCountries(logger) {
+  const result = await signedGet(
+    '/admin/operator-journey/overseas-site-countries',
+    logger,
+    { schema: countriesSchema }
+  )
+  return result.ok ? { ok: true, values: result.body.items } : result
+}

@@ -1,3 +1,4 @@
+import { accreditationYears } from '#/server/common/helpers/accreditation-years.js'
 import { auditSearch } from '#/server/common/helpers/audit.js'
 import { searchLegacyAccreditationApplications } from '#/server/common/helpers/backend-api/backend-api.js'
 import { STATUSES } from '#/server/common/helpers/legacy-application.js'
@@ -8,7 +9,6 @@ import {
 } from '#/server/common/helpers/search-form.js'
 import {
   SEARCH_FIELDS,
-  accreditationYears,
   formFromRawQuery,
   resultRow,
   searchErrors,

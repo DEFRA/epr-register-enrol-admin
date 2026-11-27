@@ -16,7 +16,7 @@ import {
   listOf,
   pageHref,
   searchTerm,
-  without
+  selectedFilterGroups
 } from '#/server/common/helpers/search-form.js'
 import { ukDateTime } from '#/server/common/helpers/uk-date-time.js'
 
@@ -27,18 +27,6 @@ export const SEARCH_FIELDS = [
   { value: 'organisationNumber', text: 'Organisation number' },
   { value: 'organisationName', text: 'Organisation name' }
 ]
-
-// The accreditation years offered as filters: from 2026, the first the Legacy
-// collection holds, to two years ahead, as applications are made for the
-// years to come. A year in a shared URL that isn't listed still filters, and
-// shows as a tag.
-const FIRST_YEAR = 2026
-const YEARS_AHEAD = 2
-
-export function accreditationYears(today = new Date()) {
-  const last = today.getUTCFullYear() + YEARS_AHEAD
-  return Array.from({ length: last - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i)
-}
 
 export const searchQuery = Joi.object({
   q: searchTerm,
@@ -91,45 +79,25 @@ export const searchHref = ({ page, ...criteria }) =>
  * The search term, ticked fields and filters in force, each as a tag whose
  * link shows the results without it, back on the first page.
  */
-export function selectedFilters(criteria) {
-  const { q, searchFields, status, year } = criteria
-  const base = { ...criteria, page: 1 }
-  const groups = [
-    {
-      heading: 'Search',
-      tags: q ? [{ text: q, href: searchHref({ ...base, q: '' }) }] : []
-    },
-    {
-      heading: 'Search in',
-      tags: searchFields.map((field) => ({
-        text: labelOf(SEARCH_FIELDS, field),
-        href: searchHref({
-          ...base,
-          searchFields: without(searchFields, field)
-        })
-      }))
-    },
-    {
-      heading: 'Status',
-      tags: status.map((value) => ({
-        text: labelOf(STATUSES, value),
-        href: searchHref({ ...base, status: without(status, value) })
-      }))
-    },
-    {
-      heading: 'Accreditation year',
-      tags: year
-        ? [
-            {
-              text: String(year),
-              href: searchHref({ ...base, year: undefined })
-            }
-          ]
-        : []
-    }
-  ]
-  return groups.filter((group) => group.tags.length > 0)
-}
+export const selectedFilters = (criteria) =>
+  selectedFilterGroups(
+    criteria,
+    [
+      { heading: 'Search', name: 'q' },
+      {
+        heading: 'Search in',
+        name: 'searchFields',
+        text: (field) => labelOf(SEARCH_FIELDS, field)
+      },
+      {
+        heading: 'Status',
+        name: 'status',
+        text: (value) => labelOf(STATUSES, value)
+      },
+      { heading: 'Accreditation year', name: 'year' }
+    ],
+    searchHref
+  )
 
 /**
  * One results row: its reference, status, organisation, registration number,

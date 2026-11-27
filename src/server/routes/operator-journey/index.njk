@@ -1,0 +1,189 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/checkboxes/macro.njk" import govukCheckboxes %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% block content %}
+  {% if errors.length %}
+    {{ govukErrorSummary({
+      titleText: "There is a problem",
+      errorList: errors
+    }) }}
+  {% endif %}
+
+  {% if unavailable.length %}
+    {% set unavailableHtml %}
+      {% for message in unavailable %}
+        <p class="govuk-notification-banner__heading">{{ message }}</p>
+      {% endfor %}
+      <p class="govuk-body">Try again later.</p>
+    {% endset %}
+    {{ govukNotificationBanner({
+      titleText: "Important",
+      html: unavailableHtml,
+      attributes: { "data-testid": "unavailable" }
+    }) }}
+  {% endif %}
+
+  <h1 class="govuk-heading-l">{{ heading }}</h1>
+
+  {#- Its own form: choosing another type starts a new search of that type,
+      without the last type's search and filters. -#}
+  <form method="get" action="/operator-journey" novalidate data-testid="type-form">
+    {{ govukSelect({
+      id: "type",
+      name: "type",
+      label: { text: "Record type", classes: "govuk-label--s" },
+      items: typeItems,
+      errorMessage: errorByField.type
+    }) }}
+    {{ govukButton({
+      text: "Show records",
+      classes: "govuk-button--secondary",
+      attributes: { "data-testid": "choose-type" }
+    }) }}
+  </form>
+
+  {% if recordType %}
+    <form method="get" action="/operator-journey" novalidate data-testid="search-form">
+      <input type="hidden" name="type" value="{{ recordType.value }}">
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-three-quarters app-search-layout__main">
+          <div class="app-search">
+            {{ govukInput({
+              id: "q",
+              name: "q",
+              type: "search",
+              value: form.q,
+              spellcheck: false,
+              label: { text: "Search " + recordType.noun.many, classes: "govuk-label--s" },
+              hint: { text: recordType.searchHint },
+              classes: "app-search__input",
+              errorMessage: errorByField.q
+            }) }}
+            {{ govukButton({
+              text: "Search",
+              classes: "app-search__button",
+              attributes: { "data-testid": "search" }
+            }) }}
+          </div>
+
+          {{ govukCheckboxes({
+            idPrefix: "searchFields",
+            name: "searchFields",
+            classes: "govuk-checkboxes--small app-search-fields",
+            fieldset: { legend: { text: "Search in", classes: "govuk-fieldset__legend--s" } },
+            hint: { text: "Leave them all unticked to search them all." },
+            items: searchFieldItems,
+            errorMessage: errorByField.searchFields
+          }) }}
+
+          {% if selectedFilters.length %}
+            <div class="app-selected-filters" data-testid="selected-filters">
+              <h2 class="govuk-heading-s">Selected</h2>
+              {% for group in selectedFilters %}
+                <h3 class="govuk-body-s govuk-!-font-weight-bold govuk-!-margin-bottom-1">{{ group.heading }}</h3>
+                <ul class="app-selected-filters__tags">
+                  {% for tag in group.tags %}
+                    <li>
+                      <a class="app-filter-tag" href="{{ tag.href }}">
+                        <span class="govuk-visually-hidden">Remove {{ group.heading | lower }}</span> {{ tag.text }}
+                      </a>
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% endfor %}
+              <p class="govuk-body-s"><a class="govuk-link" href="{{ clearHref }}" data-testid="clear-filters">Clear search and filters</a></p>
+            </div>
+          {% endif %}
+
+          {% if results %}
+            <div class="app-results-heading">
+              <h2 class="govuk-heading-m" data-testid="results-heading">
+                {{ results.totalItems }} {{ recordType.noun.one if results.totalItems == 1 else recordType.noun.many }}
+              </h2>
+              <p class="govuk-body-s govuk-hint">Most recently changed first</p>
+            </div>
+
+            {% if results.rows.length %}
+              <table class="govuk-table app-results" data-testid="results">
+                <thead class="govuk-table__head">
+                  <tr class="govuk-table__row">
+                    <th scope="col" class="govuk-table__header">{{ recordType.reference.heading }}</th>
+                    {% if recordType.statuses %}
+                      <th scope="col" class="govuk-table__header">Status</th>
+                    {% endif %}
+                    <th scope="col" class="govuk-table__header">Organisation</th>
+                    <th scope="col" class="govuk-table__header">Last changed</th>
+                  </tr>
+                </thead>
+                <tbody class="govuk-table__body">
+                  {% for row in results.rows %}
+                    <tr class="govuk-table__row">
+                      {#- Plain text until the record page exists (RA-754): it
+                          becomes a link here. -#}
+                      <td class="govuk-table__cell app-results__ref-cell">{{ row.reference }}</td>
+                      {% if recordType.statuses %}
+                        <td class="govuk-table__cell">{{ govukTag({ text: row.status.text, classes: row.status.classes }) }}</td>
+                      {% endif %}
+                      <td class="govuk-table__cell">
+                        {{ row.organisationName }}
+                        <span class="govuk-hint govuk-!-margin-bottom-0">{{ row.organisationNumber }}</span>
+                      </td>
+                      <td class="govuk-table__cell app-results__updated">
+                        {{ row.updated.date }}
+                        <span class="govuk-hint govuk-!-margin-bottom-0">{{ row.updated.time }}</span>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+
+              <p class="govuk-body" data-testid="showing">
+                Showing {{ results.from }} to {{ results.to }} of {{ results.totalItems }} {{ recordType.noun.one if results.totalItems == 1 else recordType.noun.many }}
+              </p>
+            {% elif results.pastEnd %}
+              <p class="govuk-body" data-testid="past-end">
+                There {{ "is" if results.pastEnd.lastPage == 1 else "are" }} only {{ results.pastEnd.lastPage }} page{{ "" if results.pastEnd.lastPage == 1 else "s" }} of results.
+                <a class="govuk-link" href="{{ results.pastEnd.href }}">Go to page {{ results.pastEnd.lastPage }}</a>
+              </p>
+            {% else %}
+              <p class="govuk-body" data-testid="no-results">No records found</p>
+            {% endif %}
+
+            {% if results.pagination %}
+              {{ govukPagination(results.pagination) }}
+            {% endif %}
+          {% endif %}
+        </div>
+
+        <div class="govuk-grid-column-one-quarter" data-testid="filters">
+          <h2 class="govuk-heading-m">Filters</h2>
+
+          {% for filter in filters %}
+            {{ govukCheckboxes({
+              idPrefix: filter.name,
+              name: filter.name,
+              classes: "govuk-checkboxes--small",
+              fieldset: { legend: { text: filter.heading, classes: "govuk-fieldset__legend--s" } },
+              items: filter.items,
+              errorMessage: errorByField[filter.name]
+            }) }}
+          {% endfor %}
+
+          {{ govukButton({
+            text: "Apply filters",
+            classes: "govuk-button--secondary",
+            attributes: { "data-testid": "apply-filters" }
+          }) }}
+        </div>
+      </div>
+    </form>
+  {% endif %}
+{% endblock %}

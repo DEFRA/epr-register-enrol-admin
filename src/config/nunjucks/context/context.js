@@ -6,6 +6,7 @@ import { createLogger } from '#/server/common/helpers/logging/logger.js'
 import { hasRequiredRole } from '#/server/common/helpers/auth/user-session.js'
 import { RECORD_PATH } from '#/server/common/helpers/legacy-application.js'
 import { WORK_ITEMS_PATH } from '#/server/common/helpers/case-management.js'
+import { OPERATOR_JOURNEY_PATH } from '#/server/common/helpers/operator-journey.js'
 
 const logger = createLogger()
 const assetPath = config.get('assetPath')
@@ -47,10 +48,15 @@ export function context(request) {
       ? [
           {
             href: '/search',
-            text: 'Operator journey',
+            text: 'Legacy',
             current:
               request.path === '/search' ||
               request.path.startsWith(`${RECORD_PATH}/`)
+          },
+          {
+            href: OPERATOR_JOURNEY_PATH,
+            text: 'Operator journey',
+            current: request.path === OPERATOR_JOURNEY_PATH
           },
           {
             href: WORK_ITEMS_PATH,

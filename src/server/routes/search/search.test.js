@@ -1,4 +1,3 @@
-import { accreditationYears } from './search-form.js'
 import { createHmac } from 'node:crypto'
 
 import * as cheerio from 'cheerio'
@@ -16,6 +15,7 @@ import {
 } from 'vitest'
 
 import { config } from '#/config/config.js'
+import { accreditationYears } from '#/server/common/helpers/accreditation-years.js'
 import { createServer } from '#/server/server.js'
 import { recordLogs } from '#/test-helpers/record-logs.js'
 import {
@@ -177,7 +177,7 @@ describe('Searching Legacy accreditation applications', () => {
       ])
     })
 
-    test('the service navigation marks Operator journey as this page', async () => {
+    test('the service navigation marks Legacy as this page', async () => {
       useFakeBackend(() => resultsPage([]))
 
       const { $ } = await get('/search')
@@ -190,7 +190,12 @@ describe('Searching Legacy accreditation applications', () => {
         .get()
 
       expect(navigation).toEqual([
-        { text: 'Operator journey', href: '/search', current: 'page' },
+        { text: 'Legacy', href: '/search', current: 'page' },
+        {
+          text: 'Operator journey',
+          href: '/operator-journey',
+          current: null
+        },
         { text: 'Case management', href: '/work-items', current: null },
         { text: 'Sign out', href: '/auth/sign-out', current: null }
       ])
@@ -1153,11 +1158,11 @@ describe('Searching Legacy accreditation applications', () => {
   })
 
   describe('the service navigation', () => {
-    test('is shown on other pages too, without marking Operator journey as current', async () => {
+    test('is shown on other pages too, without marking Legacy as current', async () => {
       const { $ } = await get('/cookies')
 
       expect($('.govuk-service-navigation__list a').first().text().trim()).toBe(
-        'Operator journey'
+        'Legacy'
       )
       expect(
         $('.govuk-service-navigation__list a').first().attr('aria-current')

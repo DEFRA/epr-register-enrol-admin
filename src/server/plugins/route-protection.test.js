@@ -93,7 +93,7 @@ describe('Every route', () => {
 
     test('includes the search pages', () => {
       expect(protectedPages()).toEqual(
-        expect.arrayContaining(['/search', '/work-items'])
+        expect.arrayContaining(['/search', '/operator-journey', '/work-items'])
       )
     })
 

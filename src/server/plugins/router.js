@@ -2,6 +2,7 @@ import inert from '@hapi/inert'
 
 import { home } from '../routes/home/index.js'
 import { search } from '../routes/search/index.js'
+import { operatorJourney } from '../routes/operator-journey/index.js'
 import { workItems } from '../routes/work-items/index.js'
 import { accreditationApplications } from '../routes/accreditation-applications/index.js'
 import { authRoutes } from '../routes/auth/index.js'
@@ -26,6 +27,7 @@ export const router = {
         home,
         authRoutes,
         search,
+        operatorJourney,
         accreditationApplications,
         workItems
       ])

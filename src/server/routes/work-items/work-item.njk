@@ -1,0 +1,113 @@
+{% extends 'layouts/page.njk' %}
+
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "partials/copy/macros.njk" import copyButton, copyIcon %}
+
+{% block content %}
+  {% if unavailable.length %}
+    {% set unavailableHtml %}
+      {% for message in unavailable %}
+        <p class="govuk-notification-banner__heading">{{ message }}</p>
+      {% endfor %}
+      <p class="govuk-body">Try again later.</p>
+    {% endset %}
+    {{ govukNotificationBanner({
+      titleText: "Important",
+      html: unavailableHtml,
+      attributes: { "data-testid": "unavailable" }
+    }) }}
+  {% endif %}
+
+  <p class="govuk-visually-hidden" aria-live="polite" data-copy-status></p>
+
+  {# The collection, where it comes from and the work item type, above the #}
+  {# work item's ID. #}
+  <div class="app-record-heading">
+    <span class="govuk-caption-l" data-testid="record-caption"><span class="app-mono">workItems</span> · case management{% if typeId %} · {{ typeId }}{% endif %}</span>
+    <h1 class="govuk-heading-l app-record__heading">{{ heading }}</h1>
+    {% if details %}
+      <button type="button" class="app-copy app-copy--link govuk-link" data-copy-page-link data-testid="copy-link" hidden>
+        {{ copyIcon() }}
+        Copy link to this page
+      </button>
+    {% endif %}
+  </div>
+
+  {% if details %}
+    <div class="govuk-grid-row">
+      <div class="govuk-grid-column-two-thirds">
+        {# GOV.UK Tabs, written out rather than through govukTabs: the macro
+           re-indents each panel's HTML, which would shift the document's
+           lines in its <pre>. #}
+        <div class="govuk-tabs" data-module="govuk-tabs" data-testid="work-item-tabs">
+          <h2 class="govuk-tabs__title">Contents</h2>
+          <ul class="govuk-tabs__list">
+            <li class="govuk-tabs__list-item govuk-tabs__list-item--selected">
+              <a class="govuk-tabs__tab" href="#document">Document</a>
+            </li>
+            <li class="govuk-tabs__list-item">
+              <a class="govuk-tabs__tab" href="#regulator-view">Regulator view</a>
+            </li>
+          </ul>
+          <div class="govuk-tabs__panel" id="document">
+            <h2 class="govuk-visually-hidden">Document</h2>
+            <p class="govuk-body-s" data-testid="document-intro">The work item document. Notes are hidden whole until a logged Show. People’s names and email addresses are masked.</p>
+            <p class="govuk-body-s">
+              <a class="govuk-link" href="{{ notes.href }}" data-testid="notes-toggle">{{ "Hide notes" if notes.shown else "Show notes" }}</a>
+            </p>
+            <pre class="app-document" data-testid="document" tabindex="0"><code>
+              {%- for line in lines -%}
+                {{ line.indent }}{% if line.key is defined %}<span class="app-document__key">{{ line.key | dump }}</span>: {% endif -%}
+                <span class="app-document__{{ line.type }}">
+                  {%- if line.href -%}
+                    "<a class="govuk-link" href="{{ line.href }}">{{ line.text.slice(1, -1) }}</a>"
+                  {%- else -%}
+                    {{ line.text }}
+                  {%- endif -%}
+                </span>
+                {%- if line.comma %},{% endif -%}
+                {{ "\n" }}
+              {%- endfor -%}
+            </code></pre>
+          </div>
+          <div class="govuk-tabs__panel govuk-tabs__panel--hidden" id="regulator-view">
+            {% include "partials/work-items/regulator-view.njk" %}
+          </div>
+        </div>
+      </div>
+
+      <div class="govuk-grid-column-one-third">
+        <section class="app-panel app-panel--details" data-testid="core-details" aria-labelledby="core-details-heading">
+          <h2 class="govuk-heading-m" id="core-details-heading">Core details</h2>
+          <dl class="app-details app-details--stacked">
+            {% for row in details %}
+              <div class="app-details__item">
+                <dt class="govuk-heading-s govuk-!-margin-bottom-1">{{ row.key }}</dt>
+                <dd class="govuk-body govuk-!-margin-bottom-0 govuk-!-margin-left-0">
+                  {%- if row.tag -%}
+                    <span>
+                      {{- govukTag(row.tag) -}}
+                      <span class="govuk-caption-s app-details__caption" data-testid="state-id">stateId <span class="app-mono">{{ row.caption }}</span></span>
+                    </span>
+                  {%- elif row.value -%}
+                    {%- if row.href -%}
+                      <a class="govuk-link app-details__reference" href="{{ row.href }}">{{ row.value }}</a>
+                    {%- else -%}
+                      <span class="app-details__reference">{{ row.value }}</span>
+                    {%- endif -%}
+                    {{ copyButton(row.value, row.key | lower) }}
+                  {%- elif row.missing -%}
+                    <strong class="app-missing">Missing from work item</strong>
+                  {%- else -%}
+                    <span class="govuk-hint govuk-!-margin-bottom-0">{{ row.absent }}</span>
+                  {%- endif -%}
+                </dd>
+              </div>
+            {% endfor %}
+          </dl>
+        </section>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

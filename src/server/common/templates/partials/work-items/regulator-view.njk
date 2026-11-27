@@ -1,0 +1,452 @@
+{# ------------------------------------------------------------------ #}
+{# Regulator view (RA-752 AC09): management-fe's work item page,       #}
+{# read-only. Ported from management-fe origin/main 0bd3b85:           #}
+{#  - banners: src/server/routes/work-items/detail.njk (withdrawn      #}
+{#    notice, notification failed) and                                 #}
+{#    src/server/routes/standard-lifecycle/detail.njk (pending contact) #}
+{#  - Application summary: detail.njk `applicationSummary` block and   #}
+{#    src/server/routes/re-accreditation/detail-v1.njk                 #}
+{#    `summaryListBefore` (issued accreditation)                       #}
+{#  - add-ORS Application summary:                                   #}
+{#    src/server/routes/add-overseas-site/detail-v1.njk               #}
+{#  - Application history: src/server/routes/work-items/audit-log.njk  #}
+{#  - Additional information:                                          #}
+{#    src/server/routes/work-items/additional-information.njk          #}
+{#  - the header (Defra logo, service navigation):                     #}
+{#    src/server/common/templates/layouts/page.njk `header` block,     #}
+{#    with src/config/config.js's `serviceName` default and            #}
+{#    src/config/nunjucks/context/build-navigation.js's "Work items"   #}
+{#  - the right-hand panels: detail.njk (assignment panel) and         #}
+{#    src/server/routes/standard-lifecycle/detail.njk `actionsPanel`   #}
+{#    (Outcome)                                                        #}
+{# Left out, as each changes the work item: every action, button, form #}
+{# and link in the right-hand panels (assigning, reassigning,          #}
+{# unassigning, the due date, Duly make, Make Determination, Confirm   #}
+{# applicant contact, Query, Withdraw), the actions panel itself while #}
+{# the work item is open, flash and success banners, and the "Back to  #}
+{# work item" links (the tabs are on this page). The cookie banner and #}
+{# footer are left out too.                                            #}
+{# Admin UI changes to what is kept:                                   #}
+{#  - one template, its tabs chosen by regulator.tab, inside the page's #}
+{#    Regulator view tab and a frame; each heading one level down (h2  #}
+{#    to h3), as the page has its own h1 and the "Regulator view" h2;  #}
+{#  - the header is a plain block, not a second banner landmark, and   #}
+{#    "Work items" and "Sign out" are text, not links: they would act  #}
+{#    on Case management;                                              #}
+{#  - the assignment panel shows only its text: "Assigned to" and the  #}
+{#    closed line (never "Assigned to you"), and is left out when it   #}
+{#    has neither; the Outcome panel is in its own bordered panel, as  #}
+{#    management-fe's actions panel holds it;                          #}
+{#  - the banners show on the Application summary only, as in          #}
+{#    management-fe, where only the summary page is given them;        #}
+{#  - notices of its own: a type with no Regulator view, a Regulator   #}
+{#    view that failed to build, and a processing type that is neither #}
+{#    reprocessor nor exporter (on the summary and Additional          #}
+{#    information, which depend on it).                                #}
+{# ------------------------------------------------------------------ #}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/panel/macro.njk" import govukPanel %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+{% from "case-header/macro.njk" import appCaseHeader %}
+{% from "case-tabs/macro.njk" import appCaseTabs %}
+{% from "partials/work-items/summary-macros.njk" import documentItem, newPrefix, overseasSiteList, businessPlanPair, siteDetails %}
+
+<h2 class="govuk-visually-hidden">Regulator view</h2>
+<p class="govuk-body-s" data-testid="regulator-view-intro">What a caseworker sees for this work item in case management, built the same way: the same layout, wording and formatting, from the same document. People’s names and email addresses are masked. Nothing here can be changed.</p>
+
+<div class="app-regulator-view" data-testid="regulator-view">
+  <div class="app-mfe-header" data-testid="mfe-header">
+    <img src="{{ getAssetPath('src/client/images/defra-logo-wide.svg') }}"
+         alt="Department for Environment, Food and Rural Affairs"
+         class="app-mfe-header__logo-img">
+  </div>
+  <div class="app-mfe-service-navigation" data-testid="mfe-service-navigation">
+    <span class="app-mfe-service-navigation__service-name">Packaging waste applications</span>
+    <ul class="app-mfe-service-navigation__list">
+      <li class="app-mfe-service-navigation__item">Work items</li>
+      <li class="app-mfe-service-navigation__item">Sign out</li>
+    </ul>
+  </div>
+{% if regulator.typeUnsupported %}
+  <div class="app-regulator-view__body">
+    <p class="govuk-body" data-testid="regulator-view-unsupported">This work item type has no Regulator view in the Admin UI.</p>
+  </div>
+{% elif regulator.failed %}
+  <div class="app-regulator-view__body">
+    <p class="govuk-body" data-testid="regulator-view-failed">The Regulator view of this work item can't be shown. The Document tab shows the work item as Case management sends it.</p>
+  </div>
+{% else %}
+  {{ appCaseHeader(regulator.caseHeader) }}
+
+  <div class="app-regulator-view__body">
+  {{ appCaseTabs({ tabs: regulator.caseTabs }) }}
+
+  {# management-fe shows these banners on the Application summary only: its #}
+  {# other tab pages are not given them.                                  #}
+  {% if regulator.tab == 'application-summary' %}
+  {% if regulator.pendingContactBanner %}
+    {% set pendingContactHtml %}
+      <p class="govuk-notification-banner__heading">{{ regulator.pendingContactBanner.text }}</p>
+      {% if regulator.pendingContactBanner.accreditationId %}
+        <p class="govuk-body">Accreditation ID: <strong data-testid="standard-lifecycle-pending-contact-accreditation-id">{{ regulator.pendingContactBanner.accreditationId }}</strong></p>
+      {% endif %}
+    {% endset %}
+    {{ govukNotificationBanner({
+      type: 'success',
+      titleText: regulator.pendingContactBanner.title,
+      html: pendingContactHtml,
+      disableAutoFocus: true,
+      role: 'region',
+      attributes: { "data-testid": "standard-lifecycle-pending-contact-banner" }
+    }) }}
+  {% endif %}
+
+  {% if regulator.withdrawnNotice %}
+    {% set withdrawnNoticeHtml %}
+      {{- regulator.withdrawnNotice.subject -}}
+      {%- if regulator.withdrawnNotice.applicationRef %} <strong data-testid="work-item-withdrawn-reference">{{ regulator.withdrawnNotice.applicationRef }}</strong>{% endif %} {{ regulator.withdrawnNotice.tail -}}
+    {% endset %}
+    {{ govukErrorSummary({
+      titleText: regulator.withdrawnNotice.title,
+      errorList: [{ html: withdrawnNoticeHtml }],
+      disableAutoFocus: true,
+      attributes: { "data-testid": "work-item-withdrawn-notice" }
+    }) }}
+  {% endif %}
+
+  {% if regulator.notificationFailedBanner %}
+    {{ govukErrorSummary({
+      titleText: 'There is a problem',
+      errorList: [{ text: 'A notification email for this application could not be sent. Check the application history for details.' }],
+      disableAutoFocus: true,
+      attributes: { "data-testid": "work-item-notification-failed-banner" }
+    }) }}
+  {% endif %}
+  {% endif %}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+  {% if regulator.processingTypeNotRecorded and regulator.tab != 'application-history' %}
+    {{ govukWarningText({
+      text: "This work item's application type is not recorded as reprocessor or exporter, so Case management's view of it can't be shown. The Document tab shows it as stored.",
+      attributes: { "data-testid": "processing-type-not-recorded" }
+    }) }}
+  {% elif regulator.tab == 'application-summary' and regulator.summaryLayout == 'add-overseas-site' %}
+
+    <h3 class="govuk-heading-m" data-testid="application-details-heading">Application details</h3>
+    {% if regulator.applicationSummary.validFrom %}
+      <dl class="govuk-summary-list app-summary-list--borderless govuk-!-margin-bottom-6"
+          data-testid="application-valid-from">
+        <div class="govuk-summary-list__row" data-testid="app-detail-row-valid-from">
+          <dt class="govuk-summary-list__key">{{ regulator.applicationSummary.validFrom.label }}</dt>
+          <dd class="govuk-summary-list__value" data-testid="app-detail-value-valid-from">
+            <p class="govuk-body govuk-!-margin-bottom-0">{{ regulator.applicationSummary.validFrom.value }}</p>
+          </dd>
+        </div>
+      </dl>
+    {% endif %}
+    <dl class="govuk-summary-list app-summary-list--borderless" data-testid="application-details">
+      {% for row in regulator.applicationSummary.rows %}
+        <div class="govuk-summary-list__row"
+             data-testid="app-detail-row-{{ row.key }}">
+          <dt class="govuk-summary-list__key">{{ row.label }}</dt>
+          <dd class="govuk-summary-list__value"
+              data-testid="app-detail-value-{{ row.key }}">
+            {% if row.kind == 'files' %}
+              {% if row.files.length %}
+                <ul class="govuk-list govuk-!-margin-bottom-0">
+                  {% for file in row.files %}{{ documentItem(file, showDates=true, newTestId=('app-detail-supplied-' + row.key) if (row.supplied and loop.first) else '') }}{% endfor %}
+                </ul>
+              {% else %}
+                <span data-testid="app-detail-documents-none">No documents uploaded.</span>
+              {% endif %}
+            {% else %}
+              {% for line in row.values %}
+                <p class="govuk-body govuk-!-margin-bottom-0">{% if row.supplied and loop.first %}{{ newPrefix('app-detail-supplied-' + row.key) }}{% endif %}{{ line }}</p>
+              {% endfor %}
+            {% endif %}
+          </dd>
+        </div>
+      {% endfor %}
+    </dl>
+
+    {% if regulator.applicationSummary.interimSites.length %}
+      <div class="govuk-!-margin-top-8" data-testid="interim-sites">
+        <h3 class="govuk-heading-m" data-testid="interim-sites-heading">Interim sites ({{ regulator.applicationSummary.interimSites.length }})</h3>
+        {% for interimSite in regulator.applicationSummary.interimSites %}
+          <div class="govuk-!-margin-bottom-4" data-testid="interim-site">
+            <h4 class="govuk-heading-s govuk-!-margin-bottom-2">
+              <span data-testid="interim-site-name">{{ interimSite.siteName }}</span>
+              {% if interimSite.shortAddress %}
+                <br>
+                <span class="govuk-!-font-weight-regular" data-testid="interim-site-summary-address">{{ interimSite.shortAddress }}</span>
+              {% endif %}
+            </h4>
+            {{ siteDetails(interimSite.details, 'interim-site') }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+  {% elif regulator.tab == 'application-summary' %}
+    {% if regulator.decisionMetadata %}
+      {% if not regulator.isPendingContact %}
+        {{ govukPanel({
+          titleText: "Accreditation issued",
+          html: 'Accreditation ID<br><strong data-testid="re-accreditation-approval-panel-id">'
+                + (regulator.decisionMetadata.accreditationId | escape) + '</strong>',
+          attributes: { "data-testid": "re-accreditation-approval-panel" }
+        }) }}
+      {% endif %}
+      {% set metadataRows = [
+        {
+          key: { text: "Accreditation ID" },
+          value: {
+            html: '<span data-testid="re-accreditation-accreditation-id">'
+                  + (regulator.decisionMetadata.accreditationId | escape) + '</span>'
+          }
+        }
+      ] %}
+      {% if regulator.decisionMetadata.showIssuedDetails %}
+        {% set metadataRows = metadataRows.concat([
+          {
+            key: { text: "Accreditation start date" },
+            value: {
+              html: '<span data-testid="re-accreditation-accreditation-start-date">'
+                    + (regulator.decisionMetadata.accreditationStartDateFormatted | escape)
+                    + '</span>'
+            }
+          },
+          {
+            key: { text: "Accreditation year" },
+            value: {
+              html: '<span data-testid="re-accreditation-accreditation-year">'
+                    + ((regulator.decisionMetadata.accreditationYear or '—') | escape)
+                    + '</span>'
+            }
+          }
+        ]) %}
+      {% endif %}
+      {{ govukSummaryList({
+        attributes: { "data-testid": "re-accreditation-decision-metadata" },
+        rows: metadataRows
+      }) }}
+    {% endif %}
+
+    <h3 class="govuk-heading-m">Application details</h3>
+
+    <dl class="govuk-summary-list app-summary-list--borderless"
+        data-testid="application-details">
+      {% for row in regulator.applicationSummary.rows %}
+        <div class="govuk-summary-list__row"
+             data-testid="app-detail-row-{{ row.key }}">
+          <dt class="govuk-summary-list__key">{{ row.label }}</dt>
+          <dd class="govuk-summary-list__value"
+              data-testid="app-detail-value-{{ row.key }}">
+
+            {% if row.kind == 'text' %}
+              {{ row.value }}
+
+            {% elif row.kind == 'lines' %}
+              {% for line in row.values %}
+                <p class="govuk-body govuk-!-margin-bottom-1"
+                   data-testid="app-detail-line">{{ line }}</p>
+              {% else %}
+                —
+              {% endfor %}
+
+            {% elif row.kind == 'files' %}
+              {% if row.files.length %}
+                <ul class="govuk-list">
+                  {% for file in row.files %}{{ documentItem(file, row.key == 'sampling-inspection-plan') }}{% endfor %}
+                </ul>
+              {% else %}
+                <span data-testid="app-detail-documents-none">No documents uploaded.</span>
+              {% endif %}
+
+            {% elif row.kind == 'pairs' %}
+              {% for pair in row.pairs %}{{ businessPlanPair(pair) }}
+              {% else %}
+                —
+              {% endfor %}
+
+            {% elif row.kind == 'bes-sites' %}
+              {% for site in row.sites %}
+                <div data-testid="bes-site">
+                  <p class="govuk-body govuk-!-margin-bottom-1">
+                    <strong>{{ site.siteName }}</strong>{% if site.country %} ({{ site.country }}){% endif %}
+                  </p>
+                  {% if site.files.length %}
+                    <ul class="govuk-list">
+                      {% for file in site.files %}{{ documentItem(file) }}{% endfor %}
+                    </ul>
+                  {% endif %}
+                </div>
+              {% else %}
+                —
+              {% endfor %}
+
+            {% elif row.kind == 'overseas-sites' %}
+              {{ overseasSiteList(row.sites) }}
+
+            {% elif row.kind == 'authority-contacts' %}
+              {% for contact in row.contacts %}
+                <p class="govuk-body govuk-!-margin-bottom-1"
+                   data-testid="authority-to-issue-contact">
+                  {% if contact.isNew %}{{ newPrefix('authority-to-issue-new-tag') }}{% endif %}<span data-testid="authority-to-issue-contact-name">{{ contact.name }}</span>{% if contact.email %} ({{ contact.email }}){% endif %}
+                </p>
+              {% else %}
+                —
+              {% endfor %}
+            {% endif %}
+
+          </dd>
+        </div>
+      {% endfor %}
+    </dl>
+
+    {% if regulator.priorYear %}
+      <h3 class="govuk-heading-m" data-testid="prior-year-heading">
+        Previous year ({{ regulator.priorYear.year }})
+      </h3>
+      <dl class="govuk-summary-list app-summary-list--borderless"
+          data-testid="prior-year-details">
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">PRN tonnage</dt>
+          <dd class="govuk-summary-list__value"
+              data-testid="prior-year-tonnage">{{ regulator.priorYear.tonnageBand }}</dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">PRN authorisers</dt>
+          <dd class="govuk-summary-list__value" data-testid="prior-year-authorisers">
+            {% for line in regulator.priorYear.authoriserLines %}
+              <p class="govuk-body govuk-!-margin-bottom-1">{{ line }}</p>
+            {% else %}
+              —
+            {% endfor %}
+          </dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Business plan</dt>
+          <dd class="govuk-summary-list__value" data-testid="prior-year-business-plan">
+            {% for pair in regulator.priorYear.businessPlanPairs %}{{ businessPlanPair(pair, 'prior-year-pair') }}
+            {% else %}
+              —
+            {% endfor %}
+          </dd>
+        </div>
+      </dl>
+    {% endif %}
+
+  {% elif regulator.tab == 'application-history' %}
+    {% if regulator.auditLog.length > 0 %}
+      <ol class="govuk-list" data-testid="work-item-audit-log">
+        {% for entry in regulator.auditLog %}
+          <li class="govuk-!-margin-bottom-3{% if entry.isFailure %} app-audit-entry--failure{% endif %}" data-testid="work-item-audit-entry-{{ entry.id }}" data-action="{{ entry.action }}">
+            <p class="govuk-body govuk-!-margin-bottom-1">
+              {% if entry.isFailure %}
+                {{ govukTag({ text: "Failed", classes: "govuk-tag--red" }) }}
+              {% endif %}
+              <strong>{{ entry.actionDisplayName }}</strong>
+              {% if entry.summary %}
+                — {{ entry.summary }}
+              {% endif %}
+            </p>
+            <p class="govuk-body-s govuk-hint govuk-!-margin-bottom-1">
+              {{ entry.createdByName or entry.createdBy or "System" }} — {{ entry.createdAt | formatDateTimeGds }}
+            </p>
+            {% if entry.detailRows and entry.detailRows.length > 0 %}
+              <details class="govuk-details govuk-!-margin-top-1 govuk-!-margin-bottom-0" data-testid="work-item-audit-entry-details">
+                <summary class="govuk-details__summary">
+                  <span class="govuk-details__summary-text">Show details</span>
+                </summary>
+                <div class="govuk-details__text">
+                  <dl class="govuk-summary-list govuk-summary-list--no-border govuk-!-margin-bottom-0">
+                    {% for row in entry.detailRows %}
+                      <div class="govuk-summary-list__row">
+                        <dt class="govuk-summary-list__key">{{ row.key }}</dt>
+                        <dd class="govuk-summary-list__value">
+                          {% if row.preformatted %}
+                            <pre class="govuk-!-font-size-14 govuk-!-margin-top-0 govuk-!-margin-bottom-0"
+                                 data-testid="work-item-audit-entry-detail-pre"><code>{{ row.value }}</code></pre>
+                          {% elif row.multiline %}
+                            {% for line in row.value.split('\n') %}
+                              <p class="govuk-body govuk-!-margin-bottom-1">{{ line }}</p>
+                            {% endfor %}
+                          {% else %}
+                            {{ row.value }}
+                          {% endif %}
+                        </dd>
+                      </div>
+                    {% endfor %}
+                  </dl>
+                </div>
+              </details>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="govuk-body" data-testid="work-item-no-audit-log">
+        No actions have been recorded against this work item yet.
+      </p>
+    {% endif %}
+
+  {% else %}
+    <dl class="govuk-summary-list app-summary-list--borderless"
+        data-testid="additional-information">
+      {% for row in regulator.additionalInformationRows %}
+        <div class="govuk-summary-list__row"
+             data-testid="additional-information-row-{{ row.key }}">
+          <dt class="govuk-summary-list__key">{{ row.label }}</dt>
+          <dd class="govuk-summary-list__value"
+              data-testid="additional-information-value-{{ row.key }}">{{ row.value }}</dd>
+        </div>
+      {% endfor %}
+    </dl>
+  {% endif %}
+
+    </div>
+
+    {# ======================= Right-hand panels ======================= #}
+    <div class="govuk-grid-column-one-third">
+      {% if regulator.assignment.assignedToName or regulator.assignment.isClosed %}
+        <div class="app-case-panel" data-testid="case-assignment-panel">
+          {% if regulator.assignment.assignedToName %}
+            <p class="govuk-body" data-testid="assignment-current">
+              Assigned to {{ regulator.assignment.assignedToName }}
+            </p>
+          {% endif %}
+          {% if regulator.assignment.isClosed %}
+            <p class="govuk-body govuk-!-margin-bottom-0"
+               data-testid="assignment-closed">
+              This application is closed and can no longer be assigned or reassigned.
+            </p>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {% if regulator.outcome %}
+        <div class="app-case-panel" data-testid="actions-panel">
+          <h3 class="govuk-heading-m">Outcome</h3>
+          <p class="govuk-body" data-testid="standard-lifecycle-readonly-actions">
+            This work item is in a final state. No further actions are available.
+          </p>
+          <p class="govuk-body govuk-!-margin-bottom-0">
+            {{ govukTag({
+              text: regulator.outcome.text,
+              classes: regulator.outcome.classes,
+              attributes: { "data-testid": "standard-lifecycle-state-tag" }
+            }) }}
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  </div>
+{% endif %}
+</div>

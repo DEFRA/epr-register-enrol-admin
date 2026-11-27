@@ -118,7 +118,7 @@ export async function getLegacyAccreditationApplication(reference, logger) {
     {
       logPath: '/admin/accreditation-applications/{reference}',
       schema: applicationSchema,
-      notFoundCode: NOT_FOUND_CODE
+      isNotFound: (problem) => problem.error?.code === NOT_FOUND_CODE
     }
   )
   return result.ok ? { ok: true, application: result.body } : result

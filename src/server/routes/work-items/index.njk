@@ -135,7 +135,7 @@
               <tbody class="govuk-table__body">
                 {% for row in results.rows %}
                   <tr class="govuk-table__row{{ ' app-results__row--mismatch' if row.legacy.mismatch }}">
-                    <td class="govuk-table__cell app-results__reference" data-testid="work-item-id">{{ row.id }}</td>
+                    <td class="govuk-table__cell app-results__reference"><a class="govuk-link" href="{{ row.href }}" data-testid="work-item-id">{{ row.id }}</a></td>
                     <td class="govuk-table__cell app-results__reference">{{ missingOr(row.applicationReference, "None") }}</td>
                     <td class="govuk-table__cell">
                       {{ missingOr(row.organisationName, "No name") }}

@@ -1,6 +1,9 @@
-import { RE_ACCREDITATION } from '#/server/common/helpers/case-management.js'
 import {
-  RECORD_PATH,
+  RE_ACCREDITATION,
+  workItemHref
+} from '#/server/common/helpers/case-management.js'
+import {
+  recordHref,
   statusTag
 } from '#/server/common/helpers/legacy-application.js'
 import { maskName } from '#/server/common/helpers/mask-personal-data.js'
@@ -61,7 +64,7 @@ function legacyColumn(item, { legacy, mappings }) {
     return { text: 'Not found in Legacy' }
   }
   const status = statusTag(found.applicationStatus)
-  const href = `${RECORD_PATH}/${encodeURIComponent(found.applicationId)}`
+  const href = recordHref({ applicationId: found.applicationId })
   const mapping = mappings?.get(item.stateId)
   const check = {
     'not-pushed': () => ({ text: 'State not pushed' }),
@@ -101,6 +104,7 @@ export function workItemRow(item, { stateNames, legacy, mappings }, logger) {
   }
   return {
     id: item.id,
+    href: workItemHref(item.id),
     ...payloadFields(item, logger),
     state: stateLabel(stateNames, item.stateId),
     assignee: assignee(item),

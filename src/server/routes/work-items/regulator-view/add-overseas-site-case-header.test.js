@@ -1,0 +1,195 @@
+// Ported from management-fe (origin/main 0bd3b85), src/server/routes/add-overseas-site/case-header.test.js. A copy: there is no shared package to import it from.
+// Admin UI changes, besides import paths: nothing is registered first
+// (work-item-types.js is static), and decorateForCaseHeader is given the
+// state names management-be's state list would give (STATE_NAMES).
+import { describe, expect, test } from 'vitest'
+
+import { NOT_RECEIVED, decorateForCaseHeader } from './case-header.js'
+
+import { buildAddOverseasSiteHeader } from './add-overseas-site-case-header.js'
+
+const EM_DASH = '—'
+
+const SHARED_HEADER = {
+  backHref: '/work-items',
+  backText: 'Applications',
+  applicationRef: 'IYC-ORS-2026-00001'
+}
+
+function metaValue(header, key) {
+  return header.meta.find((entry) => entry.key === key)?.value
+}
+
+function headerFor(workItem, assignment = null) {
+  return buildAddOverseasSiteHeader({
+    header: SHARED_HEADER,
+    workItem,
+    assignment
+  })
+}
+
+// The state names management-be's state list gives the Admin UI.
+const STATE_NAMES = new Map([['submitted', 'Not started']])
+
+describe('RA-739 / RA-495: add-ORS case header', () => {
+  const addOrs = (overrides = {}) =>
+    decorateForCaseHeader(
+      {
+        id: 'w-1',
+        typeId: 'add-overseas-site',
+        stateId: 'submitted',
+        submittedAt: '2027-02-12T10:00:00Z',
+        payload: {
+          applicationReference: 'IYC-ORS-2026-00001',
+          organisationName: 'GreenLoop Recovery',
+          operatorOrgNumber: 123001,
+          material: 'Plastic',
+          accreditationReference: 'ACC-1',
+          submittedBy: {
+            fullName: 'Sam Operator',
+            jobTitle: 'Director',
+            email: 'sam@greenloop.example'
+          },
+          site: {
+            orsId: '007',
+            siteName: 'Denmark PR',
+            addressLine1: 'Ejbyvvej 12',
+            townOrCity: 'Copenhagen',
+            country: 'Denmark',
+            chargePence: 32800
+          }
+        },
+        ...overrides
+      },
+      STATE_NAMES
+    )
+
+  test('decorates the work item with its type and state', () => {
+    const item = addOrs()
+    expect(item.typeDisplayName).toBe('New ORS accreditation')
+    expect(item.stateDisplayName).toBe('Not started')
+    expect(item.stateTagClass).toEqual(expect.any(String))
+  })
+
+  test('titles with the site, with no caption (the breadcrumb has the reference) and no organisation', () => {
+    const header = headerFor(addOrs())
+    expect(header).toMatchObject(SHARED_HEADER)
+    expect(header.caption).toBeUndefined()
+    expect(header.title).toBe('Denmark PR (007)')
+    expect(header.organisationName).toBeUndefined()
+    expect(header.organisationId).toBeUndefined()
+  })
+
+  test('titles with the site name alone when there is no ORS id', () => {
+    const item = addOrs()
+    item.payload.site = { siteName: 'Denmark PR' }
+    expect(headerFor(item).title).toBe('Denmark PR')
+  })
+
+  test('titles with the dash when there is no site', () => {
+    const item = addOrs()
+    delete item.payload.site
+    expect(headerFor(item).title).toBe(EM_DASH)
+  })
+
+  test('has the ten meta items, in the order re-accreditation shares', () => {
+    const header = headerFor(addOrs())
+    expect(header.meta.map((entry) => [entry.label, entry.value])).toEqual([
+      ['Application type', 'New ORS accreditation'],
+      ['Status', 'Not started'],
+      ['Assigned to', 'Unassigned'],
+      ['Due date', EM_DASH],
+      ['Accreditation number', 'ACC-1'],
+      ['Material', 'Plastic'],
+      ['Charge', '£328.00'],
+      ['Payment date', NOT_RECEIVED],
+      ['Submitted by', 'Sam Operator'],
+      ['Submitted on', '12 Feb 2027']
+    ])
+  })
+
+  // A registered ORS added to a registration with no accreditation: the
+  // operator backend sends no accreditationReference.
+  test('shows the registration number when there is no accreditation', () => {
+    const item = addOrs()
+    item.payload.accreditationReference = null
+    item.payload.registrationReference = 'R26EX0500190001PL'
+    const header = headerFor(item)
+
+    expect(header.meta[4]).toEqual({
+      key: 'registration-number',
+      label: 'Registration number',
+      value: 'R26EX0500190001PL'
+    })
+    expect(header.meta.map((entry) => entry.key)).not.toContain(
+      'accreditation-number'
+    )
+  })
+
+  test('shows the accreditation number, not the registration number, when there is both', () => {
+    const item = addOrs()
+    item.payload.registrationReference = 'R26EX0500190001PL'
+    const header = headerFor(item)
+
+    expect(header.meta[4]).toMatchObject({
+      key: 'accreditation-number',
+      label: 'Accreditation number',
+      value: 'ACC-1'
+    })
+    expect(header.meta.map((entry) => entry.key)).not.toContain(
+      'registration-number'
+    )
+  })
+
+  test('shows the accreditation number dash when there is neither', () => {
+    const item = addOrs()
+    item.payload.accreditationReference = undefined
+    expect(headerFor(item).meta[4]).toEqual({
+      key: 'accreditation-number',
+      label: 'Accreditation number',
+      value: EM_DASH
+    })
+  })
+
+  // The Valid from date is on the Application summary instead.
+  test('has no Valid from date, even once a date is recorded', () => {
+    const item = addOrs()
+    item.payload.effectiveDate = '2027-03-01'
+    const keys = headerFor(item).meta.map((entry) => entry.key)
+    expect(keys).not.toContain('effective-date')
+  })
+
+  test('shows the payment date once the item is duly made', () => {
+    const item = addOrs()
+    item.payload.paymentDate = '2027-02-20'
+    expect(metaValue(headerFor(item), 'payment-date')).toBe('20 Feb 2027')
+  })
+
+  test('shows the dash for every missing value', () => {
+    const item = addOrs()
+    item.payload.material = undefined
+    item.payload.accreditationReference = undefined
+    item.payload.site = { siteName: 'Denmark PR' }
+    const header = headerFor(item)
+    for (const key of ['material', 'accreditation-number', 'charge']) {
+      expect(metaValue(header, key), key).toBe(EM_DASH)
+    }
+  })
+
+  test('shows the assignment panel name in Assigned to when there is one', () => {
+    const header = headerFor(addOrs({ assignedToName: 'Old Name' }), {
+      assignedToName: 'Stub Caseworker One'
+    })
+    expect(metaValue(header, 'assigned-to')).toBe('Stub Caseworker One')
+  })
+
+  test('suppresses the due date for a cancelled SLA, as on re-accreditation', () => {
+    const due = { slaDueDate: '2027-03-11T10:00:00Z' }
+    expect(
+      metaValue(headerFor(addOrs({ ...due, slaState: 'OnTrack' })), 'due-on')
+    ).toBe('11 Mar 2027')
+    expect(
+      metaValue(headerFor(addOrs({ ...due, slaState: 'Cancelled' })), 'due-on')
+    ).toBe(EM_DASH)
+  })
+})

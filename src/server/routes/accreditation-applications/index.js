@@ -3,13 +3,10 @@ import { getLegacyAccreditationApplication } from '#/server/common/helpers/backe
 import { maskPersonalData } from '#/server/common/helpers/mask-personal-data.js'
 import { statusCodes } from '#/server/common/constants/status-codes.js'
 import { RECORD_PATH } from '#/server/common/helpers/legacy-application.js'
-import {
-  coreDetails,
-  documentLines,
-  recordTitle,
-  referenceParam
-} from './record.js'
+import { documentLines } from '#/server/common/helpers/document-lines.js'
+import { coreDetails, recordTitle, referenceParam } from './record.js'
 
+const VIEW_AUDIT = 'view-legacy-accreditation-application'
 const searchCrumb = { text: 'Search', href: '/search' }
 
 // AC04: a reference no application has, or one that couldn't be one.
@@ -47,10 +44,15 @@ export const accreditationApplications = {
           )
 
           if (result.notFound) {
-            auditRecordView(user, reference, 'not-found')
+            auditRecordView(VIEW_AUDIT, user, { reference }, 'not-found')
             return notFound(h, reference)
           }
-          auditRecordView(user, reference, result.ok ? 'found' : 'unavailable')
+          auditRecordView(
+            VIEW_AUDIT,
+            user,
+            { reference },
+            result.ok ? 'found' : 'unavailable'
+          )
 
           if (!result.ok) {
             return h.view('accreditation-applications/record', {

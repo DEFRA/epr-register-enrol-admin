@@ -3,10 +3,12 @@ import { withTraceId } from '@defra/hapi-tracing'
 import { config } from '#/config/config.js'
 import { signRequestHeaders } from './sign-request.js'
 
-// A problem body's code (e.g. invalid_signature) and traceId say what went
-// wrong, and neither holds personal data. Only values shaped like those are
-// logged, never the body itself.
-const PROBLEM_CODE = /^[a-z][a-z_]{0,63}$/
+// A problem body's code and traceId say what went wrong, and neither holds
+// personal data. Only values shaped like those are logged, never the body
+// itself. epr-register-enrol-backend sends its code as `code`, snake_case
+// (e.g. invalid_signature); epr-register-enrol-management-be sends its as the
+// `errorCode` extension, kebab-case (e.g. work-item-not-found).
+const PROBLEM_CODE = /^[a-z][a-z_-]{0,63}$/
 // A .NET backend's traceId is a W3C trace ID (00-<trace>-<span>-<flags>), or
 // Kestrel's connection:request identifier when there's no trace.
 const TRACE_ID =
@@ -16,7 +18,7 @@ async function problemFields(response) {
   const body = await response.json().catch(() => undefined)
   const ifMatches = (value, pattern) =>
     typeof value === 'string' && pattern.test(value) ? value : undefined
-  const code = ifMatches(body?.code, PROBLEM_CODE)
+  const code = ifMatches(body?.code ?? body?.errorCode, PROBLEM_CODE)
   const id = ifMatches(body?.traceId, TRACE_ID)
   return code || id ? { error: { code, id } } : {}
 }
@@ -35,8 +37,8 @@ async function problemFields(response) {
  * `schema`. Every failure (no response, an error status, or a body that isn't
  * JSON or doesn't match) is logged at error (CDP's logger adds the trace ID)
  * with the upstream named, and returned as { ok: false }: the caller shows a
- * banner and the page carries on. A 404 whose problem code is `notFoundCode`
- * is the record not existing, not a failure: it is returned as
+ * banner and the page carries on. A 404 that `isNotFound` accepts is the
+ * record not existing, not a failure: it is returned as
  * { ok: false, notFound: true } and not logged. Nothing from the request's
  * path or query, or from the response body, is logged, as any of them can
  * hold personal data.
@@ -48,14 +50,15 @@ async function problemFields(response) {
  * @param {import('joi').Schema} options.schema what the body must be
  * @param {URLSearchParams} [options.params] the query
  * @param {string} [options.logPath] the path as logged, when the real one holds an ID
- * @param {string} [options.notFoundCode] the problem code that means "no such record"
+ * @param {(problem: { error?: { code?: string } }) => boolean} [options.isNotFound]
+ *   whether a 404, by its problem fields, means "no such record"
  * @returns {Promise<{ ok: true, body: any } | { ok: false, notFound?: true }>}
  */
 export async function signedGet(
   { name, url: baseUrl, timeoutMs, sharedSecret, trustHeaders },
   path,
   logger,
-  { schema, params, logPath = path, notFoundCode }
+  { schema, params, logPath = path, isNotFound }
 ) {
   const query = params ? `?${params}` : ''
   const url = `${baseUrl.replace(/\/$/, '')}${path}${query}`
@@ -91,11 +94,7 @@ export async function signedGet(
   const httpFields = { http: { response: { status_code: response.status } } }
   if (!response.ok) {
     const problem = await problemFields(response)
-    if (
-      notFoundCode &&
-      response.status === 404 &&
-      problem.error?.code === notFoundCode
-    ) {
+    if (response.status === 404 && isNotFound?.(problem)) {
       return { ok: false, notFound: true }
     }
     return fail({ ...httpFields, ...problem }, `returned ${response.status}`)

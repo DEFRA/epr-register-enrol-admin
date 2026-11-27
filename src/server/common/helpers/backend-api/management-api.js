@@ -202,3 +202,108 @@ export async function searchWorkItems(
   })
   return result.ok ? { ok: true, page: result.body } : result
 }
+
+// management-be names why it answered 404 in the problem's `errorCode`. Only
+// that code means the record is not there: a 404 without it (a route
+// management-be doesn't have, a wrong path prefix, a proxy) is a failure,
+// shown as the banner and logged, not read as "no such record".
+const notFoundCode = (code) => (problem) => problem.error?.code === code
+
+// What the work item page reads from a work item (WorkItemResponse in
+// management-be). The rest of the projection is shown as it comes, in the
+// Document tab.
+const auditEntrySchema = Joi.object({
+  id: Joi.string().required(),
+  action: Joi.string().required(),
+  actionDisplayName: Joi.string().required(),
+  details: Joi.object()
+    .pattern(Joi.string(), Joi.string().allow(null, ''))
+    .required(),
+  createdAt: Joi.date().iso().raw().required()
+}).unknown(true)
+
+const workItemSchema = Joi.object({
+  id: Joi.string().guid().required(),
+  typeId: Joi.string().required(),
+  stateId: Joi.string().required(),
+  submittedAt: Joi.date().iso().raw().required(),
+  lastModifiedAt: Joi.date().iso().raw().required(),
+  payload: Joi.object().unknown(true).required(),
+  notes: Joi.array().items(Joi.object().unknown(true)).required(),
+  auditLog: Joi.array().items(auditEntrySchema).required()
+})
+  .unknown(true)
+  .required()
+
+/**
+ * One case management work item, as management-be projects it
+ * (`GET /work-items/{id}`): envelope, payload, notes, audit log and SLA.
+ *
+ * @param {string} id the work item's ID, a GUID
+ * @param {{ id: string, name: string }} user the signed-in user
+ * @param {import('pino').Logger} logger the request's logger, for failures
+ * @returns {Promise<{ ok: true, workItem: object } | { ok: false, notFound?: true }>}
+ */
+export async function getWorkItem(id, user, logger) {
+  const logPath = '/work-items/{id}'
+  const asUser = signedInUser(user, logPath, logger)
+  if (!asUser) {
+    return { ok: false }
+  }
+  const result = await signedGet(
+    managementBe(asUser),
+    `/work-items/${encodeURIComponent(id)}`,
+    logger,
+    {
+      logPath,
+      schema: workItemSchema,
+      isNotFound: notFoundCode('work-item-not-found')
+    }
+  )
+  return result.ok ? { ok: true, workItem: result.body } : result
+}
+
+const priorYearSchema = Joi.object({
+  year: Joi.number().integer().required(),
+  tonnageBand: Joi.string().allow(null).required(),
+  authorisers: Joi.array().items(Joi.object().unknown(true)).required(),
+  businessPlan: Joi.object().unknown(true).required()
+})
+  .unknown(true)
+  .required()
+
+/**
+ * The previous year's accreditation for a re-accreditation work item, read
+ * live from ReEx by management-be
+ * (`GET /work-items/re-accreditation/{id}/prior-year`). management-be
+ * answers 404 `prior-year-not-found` when the work item has none (it was
+ * created by form, or ReEx has no record), which is not a failure:
+ * management-fe leaves the section out then, and so does the Admin UI. It
+ * answers 502 `reex-unavailable` when it could not ask ReEx, which is.
+ *
+ * @param {string} id the work item's ID, a GUID
+ * @param {{ id: string, name: string }} user the signed-in user
+ * @param {import('pino').Logger} logger the request's logger, for failures
+ * @returns {Promise<{ ok: true, priorYear: object } | { ok: false, notFound?: true }>}
+ */
+export async function getReAccreditationPriorYear(id, user, logger) {
+  const logPath = '/work-items/re-accreditation/{id}/prior-year'
+  const asUser = signedInUser(user, logPath, logger)
+  if (!asUser) {
+    return { ok: false }
+  }
+  const result = await signedGet(
+    managementBe(asUser),
+    `/work-items/re-accreditation/${encodeURIComponent(id)}/prior-year`,
+    logger,
+    {
+      logPath,
+      schema: priorYearSchema,
+      // The work item has no previous year (it was created by form, or ReEx
+      // has no record of one). A work item that is gone between the two
+      // reads answers work-item-not-found, which is a failure here.
+      isNotFound: notFoundCode('prior-year-not-found')
+    }
+  )
+  return result.ok ? { ok: true, priorYear: result.body } : result
+}

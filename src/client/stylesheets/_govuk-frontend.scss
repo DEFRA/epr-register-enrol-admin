@@ -1,4 +1,8 @@
 @forward 'pkg:govuk-frontend' with (
   $govuk-assets-path: '../../../node_modules/govuk-frontend/dist/govuk/assets/',
-  $govuk-global-styles: true
+  $govuk-global-styles: true,
+  // The RREPW admin design boards (RA-750 to RA-752) are drawn 1140px wide,
+  // wider than GOV.UK's 960px: the Work item page's Regulator view sits in a
+  // two-thirds column and management-fe's case header needs the room.
+  $govuk-page-width: 1140px
 );
